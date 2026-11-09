@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68,<76"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solana-wallet-risk"
+version = "0.0.0"
+description = "Reproducible foundation for point-in-time Solana wallet-risk research"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.4",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["solana_risk*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["tests"]
