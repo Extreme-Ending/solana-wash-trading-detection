@@ -108,7 +108,7 @@ Replace the placeholders with the name and email that should appear in the asses
 
 Run it personally from a terminal anywhere inside this repository. It displays the pending files, blocks steering instructions, secrets, raw datasets, and generated model artifacts, then asks before staging and again before committing. It runs Git’s staged-diff check and pushes the current branch without force; when no upstream exists, it sets `origin/<current-branch>` as the upstream.
 
-The script intentionally stages all eligible working-tree changes after confirmation, so review its displayed file list carefully. Cancelling after staging leaves changes staged for the student to inspect. If a commit succeeds but pushing fails, the commit remains local and the script reports the manual push command to retry after resolving network or authentication issues. The helper does not amend, reset, rebase, bypass hooks, rewrite history, delete files, or store credentials.
+The script intentionally stages all eligible working-tree changes after confirmation, so review its displayed file list carefully. Cancelling after staging leaves changes staged for the student to inspect. If a commit succeeds but pushing fails, the commit remains local; after resolving network or authentication issues, rerunning the helper detects the clean tree and offers to push the existing local commit. The helper does not amend, reset, rebase, bypass hooks, rewrite history, delete files, or store credentials.
 
 ## Planned gated milestones
 

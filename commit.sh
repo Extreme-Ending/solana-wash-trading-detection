@@ -127,6 +127,25 @@ collect_pending_paths() {
     printf '%s\0' "${!seen[@]}"
 }
 
+push_current_branch() {
+    local commit_hash=$1
+
+    if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+        printf 'Pushing with: git push\n'
+        if ! git push; then
+            die "push failed. Commit $commit_hash remains local; resolve network, authentication, or remote issues and rerun this script or run 'git push' yourself."
+        fi
+    else
+        printf 'No upstream configured. Pushing with: git push -u origin %s\n' "$branch"
+        if ! git push -u origin "$branch"; then
+            die "push failed. Commit $commit_hash remains local; resolve network, authentication, or remote issues and rerun this script or run 'git push -u origin $branch' yourself."
+        fi
+    fi
+
+    printf 'Push completed successfully.\n'
+    printf 'Commit %s is now pushed from branch %s.\n' "$commit_hash" "$branch"
+}
+
 if [[ ! -t 0 ]]; then
     die "interactive input is required; run this script yourself from a terminal."
 fi
@@ -161,7 +180,31 @@ printf 'Origin:          %s\n\n' "$origin_url"
 
 status_output=$(git status --short --untracked-files=all)
 if [[ -z "$status_output" ]]; then
-    printf 'No changes to commit. Nothing was staged, committed, or pushed.\n'
+    if ! commit_hash=$(git rev-parse --verify HEAD 2>/dev/null); then
+        printf 'No changes and no commits to push. Nothing was staged, committed, or pushed.\n'
+        exit 0
+    fi
+
+    if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+        ahead_count=$(git rev-list --count '@{upstream}..HEAD')
+        if ((ahead_count == 0)); then
+            printf 'No changes to commit and no local commits waiting to be pushed.\n'
+            exit 0
+        fi
+        printf 'No working-tree changes, but %s local commit(s) have not been pushed.\n' "$ahead_count"
+        if ! confirm "Push the existing local commit(s) now?"; then
+            printf 'Push cancelled. No Git write operation was performed.\n'
+            exit 0
+        fi
+    else
+        printf 'No working-tree changes, but branch %s has no available upstream.\n' "$branch"
+        if ! confirm "Push commit $commit_hash and set origin/$branch as upstream?"; then
+            printf 'Push cancelled. No Git write operation was performed.\n'
+            exit 0
+        fi
+    fi
+
+    push_current_branch "$commit_hash"
     exit 0
 fi
 
@@ -227,18 +270,4 @@ fi
 
 commit_hash=$(git rev-parse HEAD)
 printf '\nCreated commit: %s\n' "$commit_hash"
-
-if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
-    printf 'Pushing with: git push\n'
-    if ! git push; then
-        die "push failed. Commit $commit_hash remains local; resolve network, authentication, or remote issues and run 'git push' yourself."
-    fi
-else
-    printf 'No upstream configured. Pushing with: git push -u origin %s\n' "$branch"
-    if ! git push -u origin "$branch"; then
-        die "push failed. Commit $commit_hash remains local; resolve network, authentication, or remote issues and run 'git push -u origin $branch' yourself."
-    fi
-fi
-
-printf 'Push completed successfully.\n'
-printf 'Commit %s is now pushed from branch %s.\n' "$commit_hash" "$branch"
+push_current_branch "$commit_hash"
