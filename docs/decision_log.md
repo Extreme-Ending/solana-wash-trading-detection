@@ -15,7 +15,7 @@ This log records decisions that constrain later implementation. It does not clai
 - **Date:** 2026-11-07
 - **Status:** active blocker
 - **Decision:** Do not create labels, train a classifier, serialize a model, or report supervised metrics until an independently verifiable wallet-level label source passes provenance and as-of checks.
-- **Reason:** The steering audit reports no explicit target in the earlier CSV uploads, and those raw files are absent from the current working tree.
+- **Reason:** The Phase 1 audit of the root `nft.csv` confirms that none of its 18 columns is an explicit wash-trading target.
 - **Required evidence:** `wallet`, label definition, evidence/source, label or knowledge timestamp, label version, and review methodology.
 
 ## D003 — Disable graph claims without direct edges
@@ -85,3 +85,35 @@ This log records decisions that constrain later implementation. It does not clai
 - **Decision:** A future address lookup requires an authorized, timestamped event source or precomputed snapshot/index. Until then, any valid inference interface must accept sufficiently validated event history or feature-compatible input with explicit `as_of` semantics.
 - **Reason:** A public address alone does not supply historical events, feature lineage, or a valid scoring cutoff.
 - **Consequence:** The future API must return explicit model/data-not-ready responses rather than mock probabilities.
+
+## D012 — Audit one immutable root dataset
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 1
+- **Decision:** Audit only `<repository-root>/nft.csv`; resolve that location with `pathlib`, accept an explicit CLI override, never read `nft_trades.csv`, and never modify or track the source file.
+- **Reason:** The approved Phase 1 specification establishes a single research dataset and forbids substitution, movement, combination, or cleaning during inspection.
+- **Evidence:** Local SHA-256 remained `8f387709c6742f2fc31c19fc32dac27474b6b27b9304786c367a8d8bece81271` before and after the audit. Generated reports are under the Git-ignored `reports/data_audit/` directory.
+
+## D013 — Classify the records as DEX/swap evidence, not NFT sales
+
+- **Date:** 2026-11-10
+- **Status:** accepted evidence interpretation
+- **Decision:** Describe the actual rows as DEX/swap events and treat NFT-sale semantics as unsupported.
+- **Reason:** The schema contains DEX, token-in/out, amount-in/out, and swap-source fields, while no NFT, collection, buyer, or seller field exists. A filename cannot override the observed schema.
+- **Consequence:** Proposal differences are disclosed. No NFT wash-trading relationship or behaviour is inferred.
+
+## D014 — Preserve diagnostic distinctions during inspection
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 1
+- **Decision:** Report exact rows, repeated transaction hashes, and complete instruction-key collisions separately; report IQR outliers and nonpositive amounts without deleting or correcting rows; convert the literal `<nil>` only for missingness measurement.
+- **Reason:** One Solana transaction can contain multiple valid instructions, heavy-tailed financial values are not automatically errors, and Lab 2 requires inspection before treatment.
+- **Consequence:** Phase 2 must define and test event-grain, missingness, validity, and categorical-normalization policies after student approval.
+
+## D015 — Make audit artifacts deterministic and private by default
+
+- **Date:** 2026-11-10
+- **Status:** accepted
+- **Decision:** Produce strict JSON and human-readable Markdown without generation timestamps or absolute source paths; redact wallet, transaction, and token samples; ignore generated reports in Git.
+- **Reason:** Stable artifacts support reproducibility, while raw identifiers and machine-specific paths do not belong in tracked evidence.
+- **Implementation:** `pandas==3.0.2` is the sole Phase 1 runtime dependency. Synthetic tests cover validation, audit calculations, determinism, path resolution, and input immutability.

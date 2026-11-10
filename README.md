@@ -1,83 +1,20 @@
 # Detecting Coordinated Wash Trading on Solana
 
-This repository is the foundation for the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The approved intent is to estimate wallet-level wash-trading risk at an explicit scoring time, rank wallets for human review, and provide defensible feature-level reasons using only information available before that time.
+This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 0 contains project metadata, architecture decisions, documentation, and a minimal testable Python package only. It does **not** contain data ingestion, preprocessing, feature engineering, model training, predictions, a backend API, a frontend, Docker assets, cloud resources, or evaluation results.
+Phase 1 implements a deterministic, read-only inspection of the single root-level dataset, `nft.csv`. It does not clean or transform data, create features or labels, train a model, expose an API, create a frontend, build containers, or deploy cloud resources.
 
-## Current evidence and blockers
+## Phase 1 evidence and blockers
 
-The primary proposal and capstone-rubric PDFs are not present under a local `references/` directory. The current scope therefore follows the verified summaries in the local steering documents; those summaries are not a substitute for reading the primary documents when they become available.
+The audited file contains 10,800 rows, 18 columns, and 2,312 unique wallets between 1 January and 30 November 2025 UTC. Its columns and source values support DEX/swap-event semantics, not verified NFT marketplace-sale semantics. Despite the filename, no NFT-specific column is present.
 
-The working tree also contains no raw datasets, so the earlier steering audit cannot yet be repeated. That audit reports that the supplied CSV schemas were DEX/swap-like event data with no explicit wallet-level wash-trading target. Before supervised modelling can begin, the project needs:
+There is no verified wash-trading target and no buyer, seller, or wallet-counterparty field. Supervised wash-trading classification and graph-based coordination features therefore remain blocked. The data also has very limited longitudinal wallet coverage: 2,302 wallets occur in one calendar month and only 10 occur in two months. See [`docs/data_audit_findings.md`](docs/data_audit_findings.md) for the verified findings, assumptions, proposal differences, and Phase 2 prerequisites.
 
-- a verifiable wallet label table with label meaning, source, version, review method, and knowledge timestamp;
-- independently evidenced wallet-to-wallet edges before any coordination or graph feature is claimed;
-- the actual on-chain provider/API, collection query, licence, snapshot details, and checksums;
-- clarification of whether the intended domain is NFT marketplace sales or DEX swaps; and
-- the proposal and rubric primary documents for direct traceability.
+The primary proposal and capstone-rubric PDFs are not present under a local `references/` directory. The implementation therefore records proposal comparisons only where the local approved specification or steering evidence gives a concrete expectation. Provider/API, extraction query, collection method, licence, source snapshot, and independent provenance remain unresolved.
 
-Until these conditions are met, no classifier, fraud probability, SHAP claim, or supervised metric is valid. An anomaly score, if explored later with approval, would remain descriptive and would not be presented as a wash-trading label or calibrated probability.
+## Install and run
 
-## Intended unit and scientific contract
-
-The modelling unit is `(wallet, as_of)`. Future features must use events satisfying `block_time < as_of`. Wallets and transaction hashes are identifiers rather than predictors, supplied precomputed temporal fields require validation, and all fitted transforms must be learned inside training folds. The approved validation direction is chronological rather than a blindly copied random or group-only split.
-
-## Approved architecture (future milestones, not yet implemented)
-
-All assessed components will remain in this single repository, with clear boundaries between offline ML, serving, and the user interface:
-
-- Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations will live in the importable `src/solana_risk/` package and run locally.
-- The future `api/` component will be a lightweight FastAPI application. Its Docker image will serve an already-created model artifact; it will never train on startup or during a prediction request.
-- The future `frontend/` component will be a React + Vite static single-page application. It will communicate with the API over HTTPS/JSON using an environment-specific public API base URL.
-- Local Docker/Compose operation will be established before cloud release. Google Cloud Run is the default future backend target and standard Firebase Hosting is the future frontend target. No cloud deployment is part of Phase 0.
-- Core Python code will remain provider-neutral. Configuration will use environment variables, CORS will be restricted to the deployed Firebase origin and local development origin, and no credentials will be embedded in the frontend.
-
-```mermaid
-flowchart LR
-    subgraph Local[Local and offline Python workflow]
-        A[Separate immutable raw cohorts] --> B[Audit and deterministic cleaning]
-        B --> C[Point-in-time wallet features<br/>events strictly before as_of]
-        C --> D{Verified labels<br/>and valid split?}
-        D -->|No| E[Supervised training blocked<br/>explicit not-ready state]
-        D -->|Yes| F[Leakage-safe training and<br/>time-ordered evaluation]
-        F --> G[Versioned model, feature schema,<br/>cutoff and provenance metadata]
-    end
-
-    subgraph Backend[Future serving boundary]
-        G --> H[FastAPI inference only<br/>Docker and local Compose]
-        E --> H
-        H -. future deploy .-> I[Google Cloud Run<br/>scale-to-zero target]
-    end
-
-    subgraph Frontend[Future presentation boundary]
-        J[React and Vite static SPA] -. future deploy .-> K[Firebase Hosting]
-        K -->|HTTPS and JSON| I
-    end
-```
-
-The graph above is a design target, not a deployment claim. When no verified model exists, the future backend must report an explicit not-ready state rather than return mock risk scores. A wallet-address-only lookup is also blocked until an authorized, timestamped event source or precomputed index is documented; the first valid inference interface may instead require validated event-history input with an explicit `as_of`.
-
-Cost-conscious defaults for the eventual Cloud Run service are request-based CPU allocation, minimum instances set to zero, conservative maximum instances, CPU-only execution, measured memory, bounded requests, and no always-on database or paid blockchain RPC by default. Current regional pricing and all indirect costs must be checked immediately before any separately approved deployment.
-
-Only the repository foundation exists in Phase 0.
-
-## Repository layout
-
-```text
-README.md                  Project scope, constraints, setup, and milestone plan
-AI_USE.md                  Factual disclosure of AI assistance
-pyproject.toml             Minimal Python package and test configuration
-src/solana_risk/           Importable package scaffold
-tests/                     Scaffold-level tests only
-docs/lab_traceability.md   Verified mapping to lecturer examples
-docs/decision_log.md       Decisions and unresolved evidence requirements
-```
-
-Later approved milestones may add `api/` and `frontend/` as separately understandable components in the same repository. Those directories do not exist yet because neither application is a Phase 0 deliverable.
-
-## Setup and scaffold check
-
-Python 3.11 is the target baseline. Create an isolated environment and install the Phase 0 development dependency:
+Python 3.11 is the baseline. From the repository root:
 
 ```bash
 python3.11 -m venv .venv
@@ -85,53 +22,88 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 pytest -q
+python -m solana_risk.data.audit
 ```
 
-The current test checks only that the package scaffold imports and exposes its initial version. It is not evidence that any data or ML pipeline works.
+The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
+
+```bash
+python -m solana_risk.data.audit --input /path/to/input.csv
+```
+
+It writes deterministic `audit.json` and `audit.md` files to `reports/data_audit/`. That directory and the root dataset are Git-ignored. Reports contain the source SHA-256 but no generation timestamp or absolute source path; wallet, transaction, and token samples are redacted where appropriate. The audit reads only `nft.csv`, never `nft_trades.csv`, and does not modify its input.
+
+For a source checkout that has not yet been installed and a system that exposes only `python3`, the equivalent development invocation is:
+
+```bash
+PYTHONPATH=src python3 -m solana_risk.data.audit
+```
+
+## Scientific and leakage contract
+
+- The raw file is immutable evidence. Missingness and anomalies are reported, not repaired in Phase 1.
+- Repeated transaction hashes are not automatically duplicates: a transaction can contain multiple legitimate instructions.
+- Wallets and transaction hashes are identifiers, not predictors.
+- `prev_event_time`, `seconds_since_prev`, and `source_week` require lineage validation and must not be accepted as leakage-safe merely because they are supplied.
+- Future preprocessing must fit transformations inside training folds and use chronological validation appropriate to the scoring question.
+- No label, counterparty edge, fraudulent behaviour, probability, metric, or model result is fabricated.
+
+## Approved architecture (future milestones)
+
+All assessed components remain in one repository with clear boundaries:
+
+- Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
+- A future lightweight FastAPI backend will load an already-created artifact and eventually run in Docker on Google Cloud Run. It will never train at startup or during prediction.
+- A future React + Vite static frontend will communicate with the API over HTTPS/JSON and eventually use Firebase Hosting.
+- Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
+
+These are architecture decisions, not deployment claims. API, frontend, Docker, Google Cloud Run, and Firebase work require later explicit approval.
+
+## Repository layout
+
+```text
+README.md                       Scope, setup, constraints, and phase status
+pyproject.toml                  Python package and test dependencies
+src/solana_risk/data/audit.py  Deterministic Phase 1 audit and CLI
+tests/                          Scaffold and synthetic audit tests
+docs/data_audit_findings.md     Tracked findings from the immutable root dataset
+docs/lab_traceability.md        Verified lecturer-example mapping
+docs/decision_log.md            Decisions and unresolved evidence requirements
+reports/data_audit/             Generated local reports (Git-ignored)
+```
 
 ## Student-operated Git helper
 
-The executable `commit.sh` helper lets the student review, stage, commit, and push one genuine milestone interactively:
+The executable `commit.sh` lets the student review, stage, commit, and push one genuine milestone interactively:
 
 ```bash
 ./commit.sh
 ```
 
-Before first use, the student must configure their own real Git author identity. Repository-local configuration avoids changing unrelated repositories:
+The student must run it personally. The helper checks the local Git identity, displays pending and staged files, blocks private instructions, secrets, raw datasets, and generated artifacts, and pushes without force. It does not amend, reset, rebase, bypass hooks, rewrite history, delete files, or store credentials.
 
-```bash
-git config --local user.name "Your Name"
-git config --local user.email "you@example.com"
-```
+## Gated milestones
 
-Replace the placeholders with the name and email that should appear in the assessed Git history. The helper checks that both values exist but never sets them itself.
-
-Run it personally from a terminal anywhere inside this repository. It displays the pending files, blocks steering instructions, secrets, raw datasets, and generated model artifacts, then asks before staging and again before committing. It runs Git’s staged-diff check and pushes the current branch without force; when no upstream exists, it sets `origin/<current-branch>` as the upstream.
-
-The script intentionally stages all eligible working-tree changes after confirmation, so review its displayed file list carefully. Cancelling after staging leaves changes staged for the student to inspect. If a commit succeeds but pushing fails, the commit remains local; after resolving network or authentication issues, rerunning the helper detects the clean tree and offers to push the existing local commit. The helper does not amend, reset, rebase, bypass hooks, rewrite history, delete files, or store credentials.
-
-## Planned gated milestones
-
-1. **Phase 0 — foundation:** documentation, package scaffold, lab mapping, and test runner.
-2. **Phase 1 — data integrity:** independently audit each supplied cohort, record hashes/provenance, and enforce label/edge readiness gates.
-3. **Phase 2 — preprocessing:** implement deterministic parsing, ordering, invalid-row handling, and event-grain policy.
-4. **Phase 3 — features:** build and test strict point-in-time wallet features.
-5. **Phase 4 — supervised gate:** validate external labels; train and evaluate only if the gate passes.
-6. **Phase 5 — local serving:** add honest readiness semantics, FastAPI, Docker/Compose, and smoke tests; do not deploy cloud resources.
-7. **Phase 6 — submission evidence:** finalize architecture, model/data cards, report or slides, limitations, and reproducibility evidence.
-
-React/Vite implementation, Firebase Hosting, Cloud Run deployment, and live integration tests are later, separately approved milestones. They will not be silently folded into the academic phases above.
+1. **Phase 0 — foundation:** documentation, package scaffold, lab mapping, and test runner. Complete.
+2. **Phase 1 — data integrity:** audit the single root dataset, record checksum and provenance gaps, and enforce label/edge readiness gates. Implemented; scientific blockers remain documented.
+3. **Phase 2 — preprocessing:** deterministic parsing, ordering, invalid-row handling, and event-grain policy. Not started.
+4. **Phase 3 — features:** strict point-in-time wallet features. Not started.
+5. **Phase 4 — supervised gate:** validate external labels; train and evaluate only if the gate passes. Not started.
+6. **Phase 5 — local serving:** FastAPI, readiness semantics, Docker/Compose, and smoke tests. Not started.
+7. **Phase 6 — submission evidence:** architecture, model/data cards, report or slides, limitations, and reproducibility evidence. Not started.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
-## Course alignment
+## Lecturer alignment
 
-The initial mapping to the lecturer’s Lab 2, end-to-end practical, FastAPI, and MLOps examples is recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md). Adaptations are explicit: the capstone uses wallet-level point-in-time observations, chronological validation, a no-label stop gate, and a fail-closed service rather than copying examples whose targets and deployment assumptions differ.
+The audit follows the verified Lab 2 sequence for shape/schema inspection, missingness, duplicate review, validity checks, and leakage-by-lineage reasoning while adapting it to UTC Solana events and the `(wallet, as_of)` estimand. Exact repository commit, notebook paths, observed principles, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
 
 ## Status
 
-**Current phase:** Phase 0 — repository foundation and class-reference mapping.
+**Current phase:** Phase 1 — dataset inspection and data-quality audit.
 
-**Model readiness:** blocked; no verified wallet-level labels are available in the current repository.
+**Implementation:** complete and tested for the approved Phase 1 scope.
 
-**Next action:** student review and explicit approval are required before Phase 1.
+**Model readiness:** blocked by absent verified wash-trading labels, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
+
+**Next action:** student review and explicit approval are required before Phase 2.

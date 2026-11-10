@@ -1,6 +1,6 @@
 """Solana wallet-risk capstone package.
 
-Phase 0 intentionally exposes metadata only. Data and modelling behaviour belongs to
+Phase 1 adds read-only data inspection. Cleaning and modelling behaviour belongs to
 later, separately approved milestones.
 """
 
