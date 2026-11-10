@@ -1,7 +1,7 @@
 """Solana wallet-risk capstone package.
 
-Phase 1 adds read-only data inspection. Cleaning and modelling behaviour belongs to
-later, separately approved milestones.
+Phases 1 and 2 add read-only inspection and deterministic event preprocessing.
+Feature engineering and modelling belong to later, separately approved milestones.
 """
 
 __version__ = "0.0.0"

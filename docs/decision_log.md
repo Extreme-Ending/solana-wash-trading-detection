@@ -117,3 +117,42 @@ This log records decisions that constrain later implementation. It does not clai
 - **Decision:** Produce strict JSON and human-readable Markdown without generation timestamps or absolute source paths; redact wallet, transaction, and token samples; ignore generated reports in Git.
 - **Reason:** Stable artifacts support reproducibility, while raw identifiers and machine-specific paths do not belong in tracked evidence.
 - **Implementation:** `pandas==3.0.2` is the sole Phase 1 runtime dependency. Synthetic tests cover validation, audit calculations, determinism, path resolution, and input immutability.
+
+## D016 — Quarantine invalid evidence instead of deleting it
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 2
+- **Decision:** Exclude missing/malformed essential identifiers, invalid event timestamps, invalid slots/indices, invalid fees, and missing/nonfinite/nonpositive required amounts from the cleaned table, but retain every excluded row in quarantine with ordered reason codes. Permanently remove zero rows.
+- **Reason:** Invalid essential values make an event unsafe for deterministic downstream processing, while academic traceability requires preserving the original evidence and row reconciliation.
+- **Observed result:** 10,800 input = 10,798 retained + 2 quarantined + 0 removed. Both quarantined rows have zero `amount_in` and `amount_usd`.
+
+## D017 — Preserve transaction evidence at conservative instruction grain
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 2
+- **Decision:** Quarantine only later exact copies of all 18 raw fields. Retain repeated transaction hashes and distinct instruction rows. Flag, rather than discard, collisions on complete `(wallet, tx_hash, outer_instruction_index, inner_instruction_index)` keys.
+- **Reason:** Transaction-hash repetition is expected for multi-instruction swaps and cannot establish duplicate events by itself.
+- **Evidence correction:** Direct recomputation on the approved checksum finds zero complete-key collisions, not the older steering note’s 263. The discrepancy is documented in `docs/preprocessing_findings.md`.
+
+## D018 — Keep missingness and extremes explicit
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 2
+- **Decision:** Retain missing fees, token-pair labels, and source-specific instruction indices with indicators. Do not zero-fill, statistically impute, cap, winsorize, or delete IQR outliers.
+- **Reason:** Missing is not equivalent to zero; missingness mechanisms are unverified; and a heavy-tailed trade amount is not proof of an error.
+- **Constraint:** The full-data IQR flag is review-only and prohibited as a model feature. Any later fitted transform belongs inside chronological training folds.
+
+## D019 — Apply formatting-only DEX normalization
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 2
+- **Decision:** Trim, case-fold, and normalize punctuation/whitespace in DEX strings while preserving raw values. Collapse only labels that become identical under that formatting rule; do not assign protocol families or merge differently named variants.
+- **Observed result:** 48 raw spellings become 41 canonical formatting labels. Raydium AMM/CLMM/CP and comparable named variants remain distinct.
+
+## D020 — Version the deterministic event contract
+
+- **Date:** 2026-11-10
+- **Status:** accepted
+- **Decision:** Use preprocessing rules version `1.0.0`; preserve all original fields under `raw__*`; add source-row and content identities; normalize event time to UTC; and sort by `(block_time, block_slot, tx_hash, outer_instruction_index, inner_instruction_index, source_row_number)`.
+- **Reason:** Stable ordering, immutable-source linkage, report/output hashes, and explicit rules make the cleaned event table reproducible without trusting supplied temporal-history features.
+- **Leakage boundary:** Phase 2 creates no wallet features, labels, graph edges, fitted transforms, model artifacts, or evaluation results.

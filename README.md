@@ -2,13 +2,15 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 1 implements a deterministic, read-only inspection of the single root-level dataset, `nft.csv`. It does not clean or transform data, create features or labels, train a model, expose an API, create a frontend, build containers, or deploy cloud resources.
+Phase 2 implements deterministic validation, cleaning, quarantine, UTC normalization, and event ordering for the single root-level dataset, `nft.csv`. It does not create wallet features or labels, fit statistical transforms, train a model, infer graph edges, expose an API, create a frontend, build containers, or deploy cloud resources.
 
-## Phase 1 evidence and blockers
+## Phase 2 evidence and blockers
 
 The audited file contains 10,800 rows, 18 columns, and 2,312 unique wallets between 1 January and 30 November 2025 UTC. Its columns and source values support DEX/swap-event semantics, not verified NFT marketplace-sale semantics. Despite the filename, no NFT-specific column is present.
 
-There is no verified wash-trading target and no buyer, seller, or wallet-counterparty field. Supervised wash-trading classification and graph-based coordination features therefore remain blocked. The data also has very limited longitudinal wallet coverage: 2,302 wallets occur in one calendar month and only 10 occur in two months. See [`docs/data_audit_findings.md`](docs/data_audit_findings.md) for the verified findings, assumptions, proposal differences, and Phase 2 prerequisites.
+There is no verified wash-trading target and no buyer, seller, or wallet-counterparty field. Supervised wash-trading classification and graph-based coordination features therefore remain blocked. The data also has very limited longitudinal wallet coverage: 2,302 wallets occur in one calendar month and only 10 occur in two months. See [`docs/data_audit_findings.md`](docs/data_audit_findings.md) for the Phase 1 evidence and [`docs/preprocessing_findings.md`](docs/preprocessing_findings.md) for the Phase 2 rules and results.
+
+Phase 2 retains 10,798 events and quarantines 2 records whose `amount_in` and `amount_usd` are both zero. It permanently removes zero records: quarantined source evidence remains in a separate output with explicit reason codes. The 7,303 missing fees remain missing with indicators rather than being replaced with zero. All 1,099 IQR review flags remain uncapped and retained. Formatting-only DEX normalization reduces 48 raw spellings to 41 canonical labels without merging differently named protocol variants.
 
 The primary proposal and capstone-rubric PDFs are not present under a local `references/` directory. The implementation therefore records proposal comparisons only where the local approved specification or steering evidence gives a concrete expectation. Provider/API, extraction query, collection method, licence, source snapshot, and independent provenance remain unresolved.
 
@@ -23,6 +25,7 @@ python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 pytest -q
 python -m solana_risk.data.audit
+python -m solana_risk.data.preprocess
 ```
 
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
@@ -33,10 +36,20 @@ python -m solana_risk.data.audit --input /path/to/input.csv
 
 It writes deterministic `audit.json` and `audit.md` files to `reports/data_audit/`. That directory and the root dataset are Git-ignored. Reports contain the source SHA-256 but no generation timestamp or absolute source path; wallet, transaction, and token samples are redacted where appropriate. The audit reads only `nft.csv`, never `nft_trades.csv`, and does not modify its input.
 
+The preprocessing CLI writes:
+
+- `data/processed/cleaned_events.csv` — retained, typed, UTC-normalized and deterministically sorted events;
+- `data/processed/quarantined_events.csv` — excluded rows with reason codes;
+- `reports/preprocessing/cleaning_report.json` — structured rules, counts, mappings and output hashes; and
+- `reports/preprocessing/preprocessing_summary.md` — concise human-readable evidence.
+
+Both output directories are Git-ignored. Every original source field is retained under a `raw__` prefix, along with its one-based source row and content hash. The default CLI verifies the approved root-file SHA-256 before preprocessing.
+
 For a source checkout that has not yet been installed and a system that exposes only `python3`, the equivalent development invocation is:
 
 ```bash
 PYTHONPATH=src python3 -m solana_risk.data.audit
+PYTHONPATH=src python3 -m solana_risk.data.preprocess
 ```
 
 ## Scientific and leakage contract
@@ -46,6 +59,7 @@ PYTHONPATH=src python3 -m solana_risk.data.audit
 - Wallets and transaction hashes are identifiers, not predictors.
 - `prev_event_time`, `seconds_since_prev`, and `source_week` require lineage validation and must not be accepted as leakage-safe merely because they are supplied.
 - Future preprocessing must fit transformations inside training folds and use chronological validation appropriate to the scoring question.
+- Phase 2 performs no fitted imputation, scaling, encoding, resampling, or feature selection. Missing fees remain unavailable, and the IQR flag is review-only rather than a model input.
 - No label, counterparty edge, fraudulent behaviour, probability, metric, or model result is fabricated.
 
 ## Approved architecture (future milestones)
@@ -65,8 +79,10 @@ These are architecture decisions, not deployment claims. API, frontend, Docker, 
 README.md                       Scope, setup, constraints, and phase status
 pyproject.toml                  Python package and test dependencies
 src/solana_risk/data/audit.py  Deterministic Phase 1 audit and CLI
+src/solana_risk/data/preprocess.py  Deterministic Phase 2 cleaning and CLI
 tests/                          Scaffold and synthetic audit tests
 docs/data_audit_findings.md     Tracked findings from the immutable root dataset
+docs/preprocessing_findings.md  Versioned Phase 2 rules, counts, and limitations
 docs/lab_traceability.md        Verified lecturer-example mapping
 docs/decision_log.md            Decisions and unresolved evidence requirements
 reports/data_audit/             Generated local reports (Git-ignored)
@@ -85,8 +101,8 @@ The student must run it personally. The helper checks the local Git identity, di
 ## Gated milestones
 
 1. **Phase 0 — foundation:** documentation, package scaffold, lab mapping, and test runner. Complete.
-2. **Phase 1 — data integrity:** audit the single root dataset, record checksum and provenance gaps, and enforce label/edge readiness gates. Implemented; scientific blockers remain documented.
-3. **Phase 2 — preprocessing:** deterministic parsing, ordering, invalid-row handling, and event-grain policy. Not started.
+2. **Phase 1 — data integrity:** audit the single root dataset, record checksum and provenance gaps, and enforce label/edge readiness gates. Complete.
+3. **Phase 2 — preprocessing:** deterministic parsing, ordering, invalid-row handling, and event-grain policy. Implemented; scientific blockers remain documented.
 4. **Phase 3 — features:** strict point-in-time wallet features. Not started.
 5. **Phase 4 — supervised gate:** validate external labels; train and evaluate only if the gate passes. Not started.
 6. **Phase 5 — local serving:** FastAPI, readiness semantics, Docker/Compose, and smoke tests. Not started.
@@ -96,14 +112,14 @@ Each phase stops for student review and a student-authored commit before the nex
 
 ## Lecturer alignment
 
-The audit follows the verified Lab 2 sequence for shape/schema inspection, missingness, duplicate review, validity checks, and leakage-by-lineage reasoning while adapting it to UTC Solana events and the `(wallet, as_of)` estimand. Exact repository commit, notebook paths, observed principles, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
+The audit and preprocessing follow the verified Lab 2 sequence for inspection before treatment, exact-duplicate review, explicit parsing, raw-to-clean traceability, and leakage-by-lineage reasoning. They adapt the lab to UTC Solana events, conservative instruction grain, immutable source evidence, and the `(wallet, as_of)` estimand. Exact repository commit, notebook cells, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
 
 ## Status
 
-**Current phase:** Phase 1 — dataset inspection and data-quality audit.
+**Current phase:** Phase 2 — deterministic cleaning and event contracts.
 
-**Implementation:** complete and tested for the approved Phase 1 scope.
+**Implementation:** complete and tested for the approved Phase 2 scope.
 
 **Model readiness:** blocked by absent verified wash-trading labels, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** student review and explicit approval are required before Phase 2.
+**Next action:** student review and explicit approval are required before Phase 3.
