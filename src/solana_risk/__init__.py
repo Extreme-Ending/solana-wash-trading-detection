@@ -1,8 +1,8 @@
 """Solana wallet-risk capstone package.
 
 Phases 1–3 add read-only inspection, deterministic event preprocessing, and
-strict point-in-time wallet features. Modelling belongs to a later, separately
-approved milestone and remains blocked without verified labels.
+strict point-in-time wallet features. Phase 4A adds a fail-closed external-label
+validator, but modelling remains blocked without verified label evidence.
 """
 
 __version__ = "0.0.0"

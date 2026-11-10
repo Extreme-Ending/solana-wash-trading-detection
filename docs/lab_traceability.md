@@ -4,14 +4,16 @@
 
 - Repository: `https://github.com/NUELBUNDI/AML_Book-Data`
 - Branch inspected: `master`
-- Exact commit: `1ad78cc1ccaa6aa92e081893e3ea0cd380a1f950`
-- Commit timestamp: `2026-11-02T20:35:51+03:00`
+- Exact Lab 2 snapshot commit: `1ad78cc1ccaa6aa92e081893e3ea0cd380a1f950`
+- Phase 4A current-checkout commit: `6a0b7e92ab4ffb6f168c08295eb378c19a0109f7`
+- Lab 2 snapshot commit timestamp: `2026-11-02T20:35:51+03:00`
 - Inspected on: `2026-11-07`
 - Snapshot rechecked for Phase 2 on: `2026-11-10`
 - Snapshot rechecked for Phase 3 on: `2026-11-10`
-- Method: temporary read-only reference files under `/tmp` at the exact commit; no course files were copied into or used as a scaffold for this repository.
+- Current checkout rechecked for Phase 4A on: `2026-11-10`
+- Method: temporary read-only Lab 2 reference files under `/tmp` at the exact snapshot plus read-only inspection of the current local lecturer checkout; no course files were copied into or used as a scaffold for this repository.
 
-The paths and observations below were verified from actual files at that commit. They are not inferred solely from directory names.
+The Lab 2 observations below were verified from actual files at the exact snapshot. The end-to-end, Lab 10, fraud-MLOps, and MLflow examples were rechecked at the current-checkout commit shown above. Findings are not inferred solely from directory names.
 
 ## Files actually consulted
 
@@ -19,7 +21,7 @@ The paths and observations below were verified from actual files at that commit.
 |---|---|---|
 | `README.md` | Lab 2 overview: raw audit, mixed-format cleaning, entity resolution, scoring-time features, lineage-based leak review, and a `ColumnTransformer`/`Pipeline`. It also warns that the notebook has a Windows absolute data path. | Retain the scientific sequence, use repository-relative inputs, and avoid claiming the class dataset or result applies to Solana. |
 | `notebook/lab2_solution.ipynb` | Cells 12–14 audit missingness, exact duplicates, mixed types, and parsing needs; cell 22 deduplicates exact copies; cells 24–26 parse amounts and report failures; cells 29–32 parse timestamps and test them against `SCORING_TS`; cell 36 canonicalizes an entity without changing its meaning; cells 44–45 put fitted transforms in a `Pipeline`. Later cells build RFM/ratio/cyclical features and use `GroupKFold`. | Primary conceptual reference. Phase 2 adapts the inspect-then-parse sequence, quarantines exact copies instead of discarding their evidence, uses UTC and conservative Solana instruction grain, and fits no dataset-wide model transform. Future implementation will use `(wallet, as_of)` and `block_time < as_of`; chronological validation replaces blind use of group-only CV. |
-| `notebook/End_to_End_ML_ProcessClass Pratical.ipynb` | Separates target/features, constructs numeric/categorical transforms, compares baseline and ensemble classifiers, reports probability-based metrics, and explores cost-sensitive thresholds. The notebook fits `preprocessor` on all `X` before `train_test_split`. | Model comparison, PR-AUC, and business-cost ideas may inform later labelled work. The demonstrated pre-split fit and random holdout are **not** adopted because they leak fitted preprocessing and conflict with the capstone’s time-based estimand. |
+| `notebook/End_to_End_ML_ProcessClass Pratical.ipynb` | Separates target/features, splits into random train/test partitions before constructing/fitting preprocessing, compares baseline and ensemble classifiers, reports probability-based metrics, and explores cost-sensitive thresholds. | Model comparison, PR-AUC, and business-cost ideas may inform later labelled work. The random holdout and test-set threshold exploration are **not** adopted because they conflict with the capstone's time-based estimand and final-holdout role. |
 | `lab10_fastapi/train_model.py` | Trains a class-weighted random forest, records feature order, and serializes a model bundle. | Later artifacts must preserve feature schema, but training is forbidden until labels pass provenance checks. Random splitting is not suitable here. |
 | `lab10_fastapi/train_mlflow.py` | Uses separate train/validation/test partitions, optimizes PR-AUC on validation, selects a threshold on validation, reports on test, logs metadata, and exports an artifact. | Later labelled work should preserve validation-versus-holdout roles and feature metadata. It must use chronological splitting and a predeclared review-budget policy; MLflow and Optuna are not Phase 0 requirements. |
 | `lab10_fastapi/api/main.py` | Loads a model once, uses a Pydantic request schema, enforces training feature order, and exposes health/prediction routes. | Later API code should retain typed validation and train/serve schema parity. Unlike this example, it must distinguish liveness from readiness and return a clear non-success response when no verified model exists. |
@@ -51,20 +53,22 @@ The paths and observations below were verified from actual files at that commit.
 | Strict pre-cutoff history | Lab 2 solution cells 39–40 filter records before `SCORING_TS` and construct entity-level recency/frequency/monetary summaries from that historical subset. | `build_wallet_snapshots` filters `block_time < as_of` before grouping and calculates activity, USD volume, recency/gaps, and windows for each wallet. | Wallet replaces the lab entity; UTC equality is excluded; lower lookback boundaries are included; supplied gap/history fields are ignored. | Exact-cutoff, future-leakage, prefiltered-equivalence, lookback-boundary, single-event, and incomplete-history tests. |
 | Feature definitions and lineage | Lab 2 builds interpretable RFM/ratio features before model-specific transformation and reviews leakage through meaning and timing. | A 29-field machine-readable registry plus `docs/feature_registry.md`, with category, definition, calculation, units, dtype, missingness, and source lineage. | Token/DEX diversity, fee coverage, multi-instruction transactions, and observable-history indicators reflect the Solana schema. Identifiers remain aggregation keys/metadata rather than direct predictors. | Registry order/completeness, no-target, missing-fee, repeated-hash, and deterministic-output tests. |
 | Notebook-to-module separation | Lab 2 demonstrates feature reasoning in a notebook; cells 44–45 place fitted preprocessing inside the later pipeline. | `notebooks/01_exploratory_data_analysis.ipynb` and `02_feature_engineering.ipynb` import Phase 1–3 modules; executable logic stays under `src/solana_risk/`. | Notebooks are reproducible explanations, not alternate implementations. No fitted preprocessing or model is introduced without labels and chronological folds. | Both notebooks execute top-to-bottom with Jupyter; tracked notebooks retain zero outputs and use repository-relative paths. |
+| Label evidence gate | Lab 2 reviews leakage by feature meaning and lineage; fitted pipelines cannot make an invalid target scientifically valid. | `docs/label_evidence_and_readiness.md` and `src/solana_risk/labels/validate.py` | Phase 4A extends lineage review to the outcome itself: heuristic flags derived from candidate predictors are rejected as circular targets, and independent provenance/timestamps/domain matching are required before fitting. | `tests/test_labels.py` covers exact schema, identity/domain, binary values, provenance, timestamp ordering, and fail-closed behavior using synthetic fixtures only. |
+| Conditional evaluation design | Lab 2 uses entity grouping; `lab10_fastapi/train_mlflow.py` separates train/validation/test, evaluates PR-AUC, selects on validation, and reports final test results. | `docs/modelling_evaluation_plan.md` | The validation/test roles and probability metrics are retained, but random/group-only partitioning is replaced by chronological, wallet-disjoint primary evaluation with mature outcome windows and overlap controls. | Phase 3 overlap is measured explicitly; no metric is computed while verified per-split class support is absent. |
 
-## Future mappings (not implemented in Phase 3)
+## Future mappings (not implemented in Phase 4A)
 
 | Future component | Lecturer source concept | Required Solana adaptation |
 |---|---|---|
-| Leakage-safe modelling | Lab 2 pipeline and grouped CV | Keep transforms inside folds, exclude identifiers/post-outcome fields, and use chronological validation plus overlap/embargo controls appropriate to `(wallet, as_of)`. Training stays blocked without independently verified labels. |
+| Leakage-safe modelling | Lab 2 pipeline and grouped CV; Lab 10 validation/test separation | Keep transforms inside folds, exclude identifiers/post-outcome fields, use chronological wallet-disjoint validation plus overlap/embargo controls, and preserve a final holdout. Training stays blocked without independently verified labels and explicit Phase 4B approval. |
 | Serving | `lab10_fastapi/api/main.py` and `fraud_mlops/api/main.py` | Add separate health/readiness semantics, explicit label/model-not-ready errors, bounded validated event input, UTC cutoffs, and exact train/serve feature parity. |
 | Delivery | `fraud_mlops/Dockerfile` and workflow | Build and smoke-test locally only in Phase 5; never use container or cloud success as evidence that the supervised scientific claim is valid. React/Vite, Firebase Hosting, Cloud Run, and live integration are separate later approvals. |
 
 ## Deliberate non-copying
 
 - The Lab 2 notebook’s absolute Windows path is not reused.
-- The end-to-end practical’s pre-split `fit_transform` is not reused.
-- Random or group-only splitting is not assumed suitable for temporal wallet scoring.
+- The end-to-end practical's random holdout and test-set threshold exploration are not reused.
+- Random, row-level, or group-only splitting is not assumed suitable for temporal repeated-wallet scoring.
 - The lecturer datasets, labels, metrics, thresholds, and model artifacts are not transferred to this capstone.
 - The FastAPI examples’ eager assumption of an available fitted model is not reused for the no-label state.
 - No course notebook outputs or source files are copied into the student repository.

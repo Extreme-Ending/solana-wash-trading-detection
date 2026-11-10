@@ -38,7 +38,7 @@ This log records decisions that constrain later implementation. It does not clai
 - **Date:** 2026-11-07
 - **Status:** approved design constraint
 - **Decision:** Preserve Lab 2’s fitted-pipeline and entity-separation principles but use time-ordered validation for the capstone, adding wallet/event overlap controls where the estimand requires them.
-- **Reason:** Lab 2’s `GroupKFold` answers a different validation question. The separate end-to-end practical also fits preprocessing before splitting, which is unsuitable here.
+- **Reason:** Lab 2’s `GroupKFold` and the separate practical's random holdout answer different validation questions from future point-in-time wallet scoring.
 
 ## D006 — Keep the dependency baseline minimal
 
@@ -195,3 +195,42 @@ This log records decisions that constrain later implementation. It does not clai
 - **Status:** active gate
 - **Decision:** End Phase 3 after descriptive point-in-time features and notebooks. Do not begin label creation, modelling, evaluation, API, frontend, container, or deployment work without explicit approval; supervised work additionally requires verified time-aware labels.
 - **Reason:** Phase boundaries preserve academic review, and implementation progress cannot substitute for missing scientific evidence.
+
+## D026 — Reject historical heuristic flags as supervised ground truth
+
+- **Date:** 2026-11-10
+- **Status:** active blocker
+- **Decision:** Do not use the historical 249-candidate, 18-candidate, or nine-candidate heuristic results as verified binary targets or evidence of predictive performance.
+- **Reason:** Static inspection traces the 249 count to a three-feature weak-supervision rule. A separate four-condition rule produces 18 positives in saved notebook output, despite a roadmap attributing 249 to that rule. Neither has independent adjudication, evidence timestamps, a persisted evidence register, or verified negatives.
+- **Leakage consequence:** The heuristic rules use the same behavioral variables later offered as predictors, making supervised evaluation circular.
+
+## D027 — Enforce a versioned external-label contract
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 4A
+- **Decision:** Require exact binary values, a matching Base58 wallet and event domain, explicit scoring/outcome/evidence/knowledge times, independent verification, source and case references, review method, one target definition, and one label version. Reject unsupported values rather than repairing them.
+- **Reason:** A reproducible schema can prevent accidental ingestion of heuristic flags, domain-mismatched evidence, immature outcomes, identity errors, and temporal leakage.
+- **Implementation boundary:** `validate_label_table` validates synthetic fixtures and any future external input; it does not create, infer, store, or download research labels.
+
+## D028 — Require approval for the NFT-to-DEX methodological mismatch
+
+- **Date:** 2026-11-10
+- **Status:** revision required
+- **Decision:** Do not represent the current DEX swap-event file as NFT marketplace sale data. Do not change the title, target, or methodology to generic DEX manipulation, anomaly detection, positive-unlabelled learning, or weak supervision without student and supervisor approval.
+- **Reason:** The current schema lacks NFT mints/collections, marketplace sales, buyer/seller roles, ownership transfers, and direct counterparties required to support the stated NFT wash-trading interpretation.
+- **Consequence:** The overall readiness decision is **REVISION REQUIRED**; the supervised gate independently remains **BLOCKED** pending verified evidence.
+
+## D029 — Make future evaluation chronological and wallet-aware
+
+- **Date:** 2026-11-10
+- **Status:** approved conditional plan
+- **Decision:** If the label gate later passes, use a chronological, wallet-disjoint primary split with mature nonoverlapping outcome windows, purging/embargo as required, fold-contained fitted transformations, validation-only selection, and a final untouched holdout. Do not randomly split cumulative wallet snapshots.
+- **Reason:** Phase 3 repeats 1,754 wallets across all three cutoffs and 1,930 across the October/December cutoffs. Random rows would share wallet identity and overlapping event history between partitions.
+- **Metric gate:** PR-AUC, MCC, recall at a predeclared review budget, and calibration are reported only when verified per-split class support makes them estimable.
+
+## D030 — Stop after Phase 4A
+
+- **Date:** 2026-11-10
+- **Status:** active gate
+- **Decision:** End Phase 4A after the provenance audit, target/evaluation plan, and label-validator tests. Do not begin classifier training, model interpretation, API, container, frontend, or cloud work without explicit student approval and a passed evidence gate.
+- **Reason:** A documented plan and validation contract do not substitute for the missing labelled evidence.
