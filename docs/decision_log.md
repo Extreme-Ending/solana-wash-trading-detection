@@ -156,3 +156,42 @@ This log records decisions that constrain later implementation. It does not clai
 - **Decision:** Use preprocessing rules version `1.0.0`; preserve all original fields under `raw__*`; add source-row and content identities; normalize event time to UTC; and sort by `(block_time, block_slot, tx_hash, outer_instruction_index, inner_instruction_index, source_row_number)`.
 - **Reason:** Stable ordering, immutable-source linkage, report/output hashes, and explicit rules make the cleaned event table reproducible without trusting supplied temporal-history features.
 - **Leakage boundary:** Phase 2 creates no wallet features, labels, graph edges, fitted transforms, model artifacts, or evaluation results.
+
+## D021 — Version a strict point-in-time feature contract
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 3
+- **Decision:** Emit one row per observed `(wallet, as_of)` only after filtering validated events with `block_time < as_of`; use `as_of - window <= block_time < as_of` for lookbacks and reject timestamps without an explicit timezone.
+- **Reason:** This implements the scoring-time boundary demonstrated by the lecturer's Lab 2 while making equality and multiple snapshot dates explicit for UTC Solana data.
+- **Consequence:** A wallet without a strictly prior event has no row. Events exactly at the cutoff and all future events are excluded. The contract is tested independently of the real-data distribution.
+
+## D022 — Register descriptive behavior and coverage, not labels
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 3
+- **Decision:** Version 29 wallet activity, USD volume, temporal, token/DEX, fee, multi-instruction, and observable-history fields with definitions, calculations, units, missingness rules, and source lineage.
+- **Reason:** Interpretable lineage is required before later model selection, and the present dataset supports behavior summaries but no verified outcome.
+- **Boundary:** Wallet and cutoff are metadata; wallet/transaction/token strings are not direct predictors. No target, probability, verdict, counterparty edge, fitted transform, selection, resampling, model, or metric is created.
+
+## D023 — Recompute event history and retain unavailable values
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 3
+- **Decision:** Derive order, gaps, and lookback counts only from Phase 2 `block_time`. Do not use supplied `prev_event_time`, `seconds_since_prev`, or `source_week`. Leave inter-event statistics missing for a single observed event and distinguish missing fees from zero.
+- **Reason:** Supplied temporal lineage is unverified, and filling unavailable history would create false evidence. Explicit coverage indicators make the observational boundary reviewable.
+- **Observed result:** 3,316 of 5,996 generated snapshots have one observed event; 527 expose fewer than 30 days of history.
+
+## D024 — Keep notebooks as executable explanations
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 3
+- **Decision:** Track one EDA notebook and one feature-engineering notebook with cleared outputs, repository-relative paths, and imports from the reusable Phase 1–3 modules. Execute copies top-to-bottom in a temporary directory during verification.
+- **Reason:** This follows the lecturer's notebook-based AML workflow without creating a second, divergent implementation or committing large generated plots and tables.
+- **Consequence:** The generated snapshot/report artifacts and executed notebooks remain Git-ignored or outside the repository; source notebooks contain no exposed wallet, transaction, or token samples.
+
+## D025 — Stop before supervised or application work
+
+- **Date:** 2026-11-10
+- **Status:** active gate
+- **Decision:** End Phase 3 after descriptive point-in-time features and notebooks. Do not begin label creation, modelling, evaluation, API, frontend, container, or deployment work without explicit approval; supervised work additionally requires verified time-aware labels.
+- **Reason:** Phase boundaries preserve academic review, and implementation progress cannot substitute for missing scientific evidence.

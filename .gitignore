@@ -57,10 +57,12 @@ Thumbs.db
 /nft_trades.csv
 /data/interim/
 /data/processed/
+/data/features/
 /models/
 /model_artifacts/
 /reports/generated/
 /reports/data_audit/
 /reports/preprocessing/
+/reports/features/
 /mlruns/
 /mlflow.db
