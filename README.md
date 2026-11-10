@@ -2,7 +2,7 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 4A audits label provenance, defines the conditional modelling/evaluation plan, and adds a fail-closed validator for externally supplied label evidence. It does not generate labels, fit statistical transforms, train a model, report predictive performance, infer graph edges, expose an API, create a frontend, build containers, or deploy cloud resources.
+Phase 4B adds a **provisional, label-free anomaly-modelling experiment** using the Phase 3 snapshots. The proposed methodological amendment is still not supervisor-approved. The experiment produces relative anomaly scores and stability/drift evidence only; it does not generate labels, claim confirmed wash trading, infer graph edges, expose an API, create a frontend, build containers, or deploy cloud resources.
 
 ## Phase 4A evidence and blockers
 
@@ -15,6 +15,8 @@ Phase 2 retains 10,798 events and quarantines 2 records whose `amount_in` and `a
 Phase 3 produces 29 registered behavioral/data-quality fields for explicit `(wallet, as_of)` cutoffs. At `2025-09-01`, `2025-10-01`, and `2025-12-01` UTC it produces 1,754, 1,930, and 2,312 wallet rows respectively. Strict cutoff, window-boundary, missing-history, determinism, registry, and no-target tests are automated. See [`docs/feature_registry.md`](docs/feature_registry.md) and [`docs/feature_engineering_findings.md`](docs/feature_engineering_findings.md).
 
 Phase 4A traces the historical “249 flagged wallets” to a weak-supervision notebook rule based on `burst_ratio`, `alternation_ratio`, and `mean_time_gap`. A separate four-condition heuristic produces 18 candidates in the saved notebook output, although an old roadmap incorrectly attributes 249 to it. Neither rule is independent evidence, both reuse candidate predictors to create the target, and no persisted wallet evidence register or timestamps exist. See [`docs/label_evidence_and_readiness.md`](docs/label_evidence_and_readiness.md) and [`docs/modelling_evaluation_plan.md`](docs/modelling_evaluation_plan.md).
+
+Phase 4B fits Isolation Forest, novelty-enabled Local Outlier Factor, and a robust median/MAD baseline on the 1 September 2025 reference only. October is exploratory validation and December is final holdout. All 1,754 training wallets recur later, so full-period comparisons are longitudinal rather than independent; the 176 and 382 later entrants are wallet-disjoint diagnostics affected by shorter observed history. See [`docs/experimental_modelling_findings.md`](docs/experimental_modelling_findings.md) and [`docs/anomaly_model_comparison.md`](docs/anomaly_model_comparison.md).
 
 The approved NFT proposal is not present under a local `references/` directory. A local DSA 8401 rubric was reviewed outside the repository, while other locally named proposal files concern a different cross-chain scam-token study. `AI_USE.md` is absent by student decision, although the rubric identifies an AI-use statement as required submission evidence. Provider/API, extraction query, collection method, licence, source snapshot, approved target wording, and independent label provenance remain unresolved.
 
@@ -34,6 +36,8 @@ python -m solana_risk.features.build \
   --as-of 2025-09-01T00:00:00Z \
   --as-of 2025-10-01T00:00:00Z \
   --as-of 2025-12-01T00:00:00Z
+python -m solana_risk.models.train_anomaly
+python -m solana_risk.models.evaluate_anomaly
 ```
 
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
@@ -62,6 +66,8 @@ jupyter nbconvert --to notebook --execute notebooks/01_exploratory_data_analysis
   --output 01_exploratory_data_analysis.executed.ipynb --output-dir /tmp/solana-risk-notebooks
 jupyter nbconvert --to notebook --execute notebooks/02_feature_engineering.ipynb \
   --output 02_feature_engineering.executed.ipynb --output-dir /tmp/solana-risk-notebooks
+jupyter nbconvert --to notebook --execute notebooks/03_unsupervised_anomaly_modelling.ipynb \
+  --output 03_unsupervised_anomaly_modelling.executed.ipynb --output-dir /tmp/solana-risk-notebooks
 ```
 
 Using a temporary output directory keeps generated plots and tables out of the assessed source notebook files.
@@ -88,6 +94,8 @@ PYTHONPATH=src python3 -m solana_risk.features.build --as-of 2025-12-01T00:00:00
 - The historical 249 and 18 heuristic candidates are not ground truth and must not be used for supervised evaluation.
 - Random row-level splitting of repeated wallet snapshots is prohibited; a future primary evaluation must be chronological and wallet-disjoint unless a different estimand is explicitly approved.
 - No label, counterparty edge, fraudulent behaviour, probability, metric, or model result is fabricated.
+- Phase 4B fits every imputer, scaler and detector on the earliest cutoff only. Later full-cutoff scores are dependent longitudinal diagnostics, and wallet-disjoint entrant cohorts are reported separately.
+- Phase 4B model scores and top-budget lists are unverified anomaly-screening outputs, never confirmed fraud, wash-trading outcomes or calibrated probabilities.
 
 ## Approved architecture (future milestones)
 
@@ -109,8 +117,10 @@ src/solana_risk/data/audit.py  Deterministic Phase 1 audit and CLI
 src/solana_risk/data/preprocess.py  Deterministic Phase 2 cleaning and CLI
 src/solana_risk/features/build.py  Point-in-time feature registry, builder, reports, and CLI
 src/solana_risk/labels/validate.py  Fail-closed external-label evidence contract
+src/solana_risk/models/          Provisional anomaly training, evaluation, and robust baseline
 notebooks/01_exploratory_data_analysis.ipynb  Reproducible descriptive EDA
 notebooks/02_feature_engineering.ipynb  Reusable-module feature analysis and leakage check
+notebooks/03_unsupervised_anomaly_modelling.ipynb  Provisional anomaly experiment
 tests/                          Scaffold, audit, preprocessing, feature, and label-contract tests
 docs/data_audit_findings.md     Tracked findings from the immutable root dataset
 docs/preprocessing_findings.md  Versioned Phase 2 rules, counts, and limitations
@@ -118,6 +128,8 @@ docs/feature_registry.md        Versioned feature definitions, units, missingnes
 docs/feature_engineering_findings.md  Phase 3 results, controls, and blockers
 docs/label_evidence_and_readiness.md  Phase 4A provenance findings and readiness decision
 docs/modelling_evaluation_plan.md  Conditional target, split, and metric plan
+docs/experimental_modelling_findings.md  Phase 4B evidence and limitations
+docs/anomaly_model_comparison.md  Detector configuration and stability comparison
 docs/lab_traceability.md        Verified lecturer-example mapping
 docs/decision_log.md            Decisions and unresolved evidence requirements
 reports/data_audit/             Generated local reports (Git-ignored)
@@ -140,7 +152,7 @@ The student must run it personally. The helper checks the local Git identity, di
 3. **Phase 2 — preprocessing:** deterministic parsing, ordering, invalid-row handling, and event-grain policy. Implemented; scientific blockers remain documented.
 4. **Phase 3 — features:** strict point-in-time wallet features and reproducible notebooks. Complete.
 5. **Phase 4A — label evidence/readiness:** trace candidate-label provenance, define the target/evaluation contract, and validate external evidence fail-closed. Complete; decision is **REVISION REQUIRED** and supervised training remains **BLOCKED**.
-6. **Phase 4B — supervised modelling:** train and evaluate only after verified evidence passes the Phase 4A gate and the student explicitly approves the phase. Not started.
+6. **Phase 4B — provisional unsupervised experiment:** reproducible label-free detectors, chronological diagnostics, sensitivity, drift, and notebook. Implemented experimentally; methodology remains **NOT SUPERVISOR-APPROVED** and no model is production-approved.
 7. **Phase 5 — local serving:** FastAPI, readiness semantics, Docker/Compose, and smoke tests. Not started.
 8. **Phase 6 — submission evidence:** architecture, model/data cards, report or slides, limitations, and reproducibility evidence. Not started.
 
@@ -148,14 +160,14 @@ Each phase stops for student review and a student-authored commit before the nex
 
 ## Lecturer alignment
 
-The audit, preprocessing, EDA, feature implementation, and Phase 4A plan follow the verified lab sequence for inspection before treatment, explicit parsing, strict `SCORING_TS` filtering, point-in-time entity aggregation, leakage-by-lineage reasoning, fitted transformations inside pipelines, and validation/test separation. They adapt the labs to UTC Solana events, immutable source evidence, label-provenance gating, repeated wallet observations, outcome maturity, and chronological wallet-disjoint evaluation. Exact repository commits, notebook cells, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
+The audit, preprocessing, EDA, feature implementation, Phase 4A gate, and Phase 4B experiment follow the verified lab sequence for inspection before treatment, explicit parsing, strict `SCORING_TS` filtering, point-in-time entity aggregation, leakage-by-lineage reasoning, fitted transformations inside pipelines, validation/test separation, wallet-level unsupervised analysis, anomaly-score interpretation, and serialization. They adapt the labs to UTC Solana events, immutable source evidence, label-provenance gating, repeated wallet observations, and chronological evaluation. Exact repository commits, notebook cells, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
 
 ## Status
 
-**Current phase:** Phase 4A — label evidence and modelling readiness.
+**Current phase:** Phase 4B — provisional unsupervised anomaly-modelling experiment.
 
-**Implementation:** complete and tested for the approved Phase 4A scope; no model was trained.
+**Implementation:** experimental detectors, evaluation modules, tests, and notebook implemented. The proposed methodology remains **NOT SUPERVISOR-APPROVED** and artifacts remain local/Git-ignored.
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** obtain the approved target wording and matching independently verified label evidence, or seek supervisor approval for a methodological/domain revision. Phase 4B cannot begin until the gate passes and the student explicitly approves it.
+**Next action:** submit the methodology decision package and provisional findings for supervisor review. Do not promote a detector, alter the approved title, or begin API/frontend/deployment work without the next explicit instruction and required approval.

@@ -64,7 +64,8 @@ is_private_path() {
         raw_data|raw_data/*|*/raw_data|*/raw_data/*|\
         raw-data|raw-data/*|*/raw-data|*/raw-data/*|\
         nft.csv|*/nft.csv|nft_trades.csv|*/nft_trades.csv|\
-        models|models/*|*/models|*/models/*|\
+        models|models/*|\
+        artifacts/experimental|artifacts/experimental/*|\
         model_artifacts|model_artifacts/*|*/model_artifacts|*/model_artifacts/*)
             return 0
             ;;

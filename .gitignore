@@ -64,5 +64,7 @@ Thumbs.db
 /reports/data_audit/
 /reports/preprocessing/
 /reports/features/
+/reports/modelling/
+/artifacts/experimental/
 /mlruns/
 /mlflow.db

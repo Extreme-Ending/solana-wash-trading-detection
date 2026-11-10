@@ -243,3 +243,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Claim boundary:** Any future output would be a relative anomaly score/rank, not a wash-trading classification, fraud probability, or evidence of guilt.
 - **Alternative paths:** Preserve the original supervised NFT study if authentic NFT events and independently verified labels are supplied; consider supervised DEX detection only if matching independently verified timestamped labels become available.
 - **Gate:** No supervised or unsupervised model implementation begins until the student records supervisor direction and explicitly approves the next milestone.
+
+## D032 — Authorize a provisional unsupervised experiment without changing methodology status
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 4B experiment only — methodology not approved
+- **Decision:** Following explicit student authorization, implement Isolation Forest, novelty-enabled LOF, and robust MAD scoring on the existing DEX snapshots as a provisional experiment. Keep the approved title and the proposed amendment's `DRAFT — NOT APPROVED` status unchanged.
+- **Temporal boundary:** Fit all learned preprocessing and detectors on the 1 September reference, use October for exploratory sensitivity, and preserve December for final aggregate diagnostics. Report repeated-wallet longitudinal evidence separately from later wallet entrants; do not use a random row split.
+- **Claim boundary:** Scores and top-budget ranks are unverified anomaly-screening candidates, not labels, probabilities, wash-trading detections, or evidence of guilt. Detector agreement is not ground truth.
+- **Observed limitation:** All 1,754 training wallets recur in validation and holdout. Later entrants are wallet-disjoint but have shorter observable histories and material coverage shift. No independent outcome performance can be estimated.
+- **Next gate:** Stop after Phase 4B. No model promotion, API, frontend, container, cloud deployment, title change, or methodology-approval claim without a later explicit instruction and the required supervisor decision.
