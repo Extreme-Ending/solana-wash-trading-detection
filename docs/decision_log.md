@@ -234,3 +234,12 @@ This log records decisions that constrain later implementation. It does not clai
 - **Status:** active gate
 - **Decision:** End Phase 4A after the provenance audit, target/evaluation plan, and label-validator tests. Do not begin classifier training, model interpretation, API, container, frontend, or cloud work without explicit student approval and a passed evidence gate.
 - **Reason:** A documented plan and validation contract do not substitute for the missing labelled evidence.
+
+## D031 — Recommend an unsupervised DEX amendment for supervisor review
+
+- **Date:** 2026-11-10
+- **Status:** proposed — not approved
+- **Decision:** Recommend, but do not implement, a revised unsupervised study of anomalous `(wallet, scoring_time)` observations in the existing DEX data because it is the only option currently supportable without manufactured labels.
+- **Claim boundary:** Any future output would be a relative anomaly score/rank, not a wash-trading classification, fraud probability, or evidence of guilt.
+- **Alternative paths:** Preserve the original supervised NFT study if authentic NFT events and independently verified labels are supplied; consider supervised DEX detection only if matching independently verified timestamped labels become available.
+- **Gate:** No supervised or unsupervised model implementation begins until the student records supervisor direction and explicitly approves the next milestone.
