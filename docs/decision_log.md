@@ -253,3 +253,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Claim boundary:** Scores and top-budget ranks are unverified anomaly-screening candidates, not labels, probabilities, wash-trading detections, or evidence of guilt. Detector agreement is not ground truth.
 - **Observed limitation:** All 1,754 training wallets recur in validation and holdout. Later entrants are wallet-disjoint but have shorter observable histories and material coverage shift. No independent outcome performance can be estimated.
 - **Next gate:** Stop after Phase 4B. No model promotion, API, frontend, container, cloud deployment, title change, or methodology-approval claim without a later explicit instruction and the required supervisor decision.
+
+## D033 — Separate descriptive feature serving from unavailable prediction
+
+- **Date:** 2026-11-10
+- **Status:** accepted for Phase 5A
+- **Decision:** Expose process health, prediction readiness, and shared-code descriptive feature preview as separate contracts. Keep `/v1/score` at HTTP 503 `MODEL_NOT_APPROVED`; do not deserialize or serve the Phase 4B experimental artifacts.
+- **Feature boundary:** Require complete user-supplied event records for one wallet and an explicit UTC `as_of`; call the existing Phase 3 builder and retain the strict `block_time < as_of` rule. Reject requests with no prior event rather than generating history.
+- **Security boundary:** Use typed closed schemas, bounded event/body sizes, exact configurable CORS origins, non-secret environment configuration, sanitized errors, and no client-supplied file path, external lookup, credential or raw-payload logging.
+- **Reason:** A healthy API and reproducible feature preview are valid engineering deliverables, while neither establishes model readiness or verified fraud detection.
+- **Next gate:** Stop after the local service foundation. Docker/Compose, React, Firebase, Cloud Run, artifact promotion and live integration require later explicit approval.

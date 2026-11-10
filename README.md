@@ -2,7 +2,7 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 4B adds a **provisional, label-free anomaly-modelling experiment** using the Phase 3 snapshots. The proposed methodological amendment is still not supervisor-approved. The experiment produces relative anomaly scores and stability/drift evidence only; it does not generate labels, claim confirmed wash trading, infer graph edges, expose an API, create a frontend, build containers, or deploy cloud resources.
+Phase 5A adds a local FastAPI foundation with process health, explicit prediction-readiness failure, and descriptive feature previews from bounded user-supplied event history. It does not load the Phase 4B experimental artifacts or return anomaly, fraud, wash-trading, or probability outputs. React, Docker and cloud resources remain outside this phase.
 
 ## Phase 4A evidence and blockers
 
@@ -39,6 +39,25 @@ python -m solana_risk.features.build \
 python -m solana_risk.models.train_anomaly
 python -m solana_risk.models.evaluate_anomaly
 ```
+
+Start the local API after installation:
+
+```bash
+uvicorn solana_risk.api.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` for generated OpenAPI documentation. Optional non-secret configuration is shown in `.env.example`; export values into the process environment before starting Uvicorn.
+
+## Phase 5A API foundation
+
+| Endpoint | Current behavior |
+|---|---|
+| `GET /healthz` | HTTP 200 when the process is responsive; no model-readiness claim |
+| `GET /readyz` | HTTP 503 `MODEL_NOT_APPROVED` while prediction is unavailable |
+| `POST /v1/features/preview` | Descriptive 29-feature snapshot from one wallet's validated user-supplied events using `block_time < as_of` |
+| `POST /v1/score` | HTTP 503 `MODEL_NOT_APPROVED`; no artifact load or fabricated score |
+
+Feature preview uses the same `build_wallet_snapshots` implementation as offline Phase 3. Wallet identifiers remain metadata, at-cutoff and future events are excluded, and unavailable single-event gap features remain null. The endpoint does not verify that submitted events are authentic or complete and does not fetch blockchain history from a wallet address. See [`docs/api_contract.md`](docs/api_contract.md) and [`docs/api_implementation_findings.md`](docs/api_implementation_findings.md).
 
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
 
@@ -102,11 +121,11 @@ PYTHONPATH=src python3 -m solana_risk.features.build --as-of 2025-12-01T00:00:00
 All assessed components remain in one repository with clear boundaries:
 
 - Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
-- A future lightweight FastAPI backend will load an already-created artifact and eventually run in Docker on Google Cloud Run. It will never train at startup or during prediction.
+- The Phase 5A FastAPI foundation imports the shared feature builder and loads no model artifact. A later, explicitly approved scoring extension may load an already-created artifact and eventually run in Docker on Google Cloud Run; it will never train at startup or during prediction.
 - A future React + Vite static frontend will communicate with the API over HTTPS/JSON and eventually use Firebase Hosting.
 - Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
 
-These are architecture decisions, not deployment claims. API, frontend, Docker, Google Cloud Run, and Firebase work require later explicit approval.
+These are architecture decisions, not deployment claims. Frontend, Docker, Google Cloud Run, Firebase, and promotion of predictive scoring require later explicit approval.
 
 ## Repository layout
 
@@ -118,6 +137,7 @@ src/solana_risk/data/preprocess.py  Deterministic Phase 2 cleaning and CLI
 src/solana_risk/features/build.py  Point-in-time feature registry, builder, reports, and CLI
 src/solana_risk/labels/validate.py  Fail-closed external-label evidence contract
 src/solana_risk/models/          Provisional anomaly training, evaluation, and robust baseline
+src/solana_risk/api/             FastAPI schemas, configuration, feature adapter, routes, and app factory
 notebooks/01_exploratory_data_analysis.ipynb  Reproducible descriptive EDA
 notebooks/02_feature_engineering.ipynb  Reusable-module feature analysis and leakage check
 notebooks/03_unsupervised_anomaly_modelling.ipynb  Provisional anomaly experiment
@@ -130,6 +150,8 @@ docs/label_evidence_and_readiness.md  Phase 4A provenance findings and readiness
 docs/modelling_evaluation_plan.md  Conditional target, split, and metric plan
 docs/experimental_modelling_findings.md  Phase 4B evidence and limitations
 docs/anomaly_model_comparison.md  Detector configuration and stability comparison
+docs/api_contract.md              Phase 5A endpoints, validation, examples, and errors
+docs/api_implementation_findings.md  Feature parity, security decisions, and limitations
 docs/lab_traceability.md        Verified lecturer-example mapping
 docs/decision_log.md            Decisions and unresolved evidence requirements
 reports/data_audit/             Generated local reports (Git-ignored)
@@ -153,8 +175,9 @@ The student must run it personally. The helper checks the local Git identity, di
 4. **Phase 3 — features:** strict point-in-time wallet features and reproducible notebooks. Complete.
 5. **Phase 4A — label evidence/readiness:** trace candidate-label provenance, define the target/evaluation contract, and validate external evidence fail-closed. Complete; decision is **REVISION REQUIRED** and supervised training remains **BLOCKED**.
 6. **Phase 4B — provisional unsupervised experiment:** reproducible label-free detectors, chronological diagnostics, sensitivity, drift, and notebook. Implemented experimentally; methodology remains **NOT SUPERVISOR-APPROVED** and no model is production-approved.
-7. **Phase 5 — local serving:** FastAPI, readiness semantics, Docker/Compose, and smoke tests. Not started.
-8. **Phase 6 — submission evidence:** architecture, model/data cards, report or slides, limitations, and reproducibility evidence. Not started.
+7. **Phase 5A — service foundation:** FastAPI health/readiness gates, descriptive shared-code feature preview, bounded validation, OpenAPI, and HTTP tests. Complete; prediction remains unavailable and no model artifact is loaded.
+8. **Phase 5B — container delivery:** Docker/Compose and container smoke tests. Not started and requires explicit approval.
+9. **Phase 6 — submission evidence:** architecture, model/data cards, report or slides, limitations, and reproducibility evidence. Not started.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
@@ -164,10 +187,10 @@ The audit, preprocessing, EDA, feature implementation, Phase 4A gate, and Phase 
 
 ## Status
 
-**Current phase:** Phase 4B — provisional unsupervised anomaly-modelling experiment.
+**Current phase:** Phase 5A — FastAPI service foundation.
 
-**Implementation:** experimental detectors, evaluation modules, tests, and notebook implemented. The proposed methodology remains **NOT SUPERVISOR-APPROVED** and artifacts remain local/Git-ignored.
+**Implementation:** modular API, typed request/response schemas, shared-code feature preview, request limits, restricted CORS, structured errors, and not-ready scoring semantics implemented locally. No model artifact is loaded.
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** submit the methodology decision package and provisional findings for supervisor review. Do not promote a detector, alter the approved title, or begin API/frontend/deployment work without the next explicit instruction and required approval.
+**Next action:** review and test Phase 5A locally. Do not begin Docker, React, Firebase, Cloud Run, or other deployment work without explicit approval.
