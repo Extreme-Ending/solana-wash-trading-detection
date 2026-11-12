@@ -273,3 +273,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Runtime boundary:** Bind to `0.0.0.0`, validate the platform `PORT` with default 8080, disable reload, log to stdout/stderr, retain API request/CORS limits, use a read-only Compose filesystem and drop all capabilities.
 - **Observed evidence:** The final local image is 345,274,935 bytes uncompressed. Direct-image and Compose tests returned 200/503/200/503/200 for health, readiness, feature preview, score, and OpenAPI; custom port, non-root execution, content exclusions, Docker health, and graceful exit code 0 passed.
 - **Next gate:** Stop after local container validation. React, Firebase, live Google Cloud resources, automated deployment, authentication, and model-artifact promotion require separate explicit approval.
+
+## D035 — Keep the browser descriptive, typed, and ephemeral
+
+- **Date:** 2026-11-12
+- **Status:** accepted for Phase 6
+- **Decision:** Implement a React, TypeScript, and Vite research dashboard that accepts bounded user-supplied event history, calls the Phase 5A API, and displays all 29 descriptive features. Keep readiness and scoring unavailable; reject schema drift and any unexpected successful scoring response.
+- **Data boundary:** Apply one wallet identifier to each event, require explicit UTC timestamps, enforce the API's 100-event and 256 KiB limits, and hold values only in React memory. A local JSON import is read only after the user selects it and is not submitted until an explicit form action.
+- **Presentation boundary:** Distinguish null from zero, derive accessible charts only from returned feature values, disclose the DEX-versus-NFT mismatch and unverified-event limitation, and never turn unusual activity into a fraud or wash-trading claim.
+- **Runtime boundary:** Default to a same-origin `/api` path with a loopback Vite proxy for local Docker integration. Add no credentials, persistence, telemetry, external runtime dependency, Firebase resource, Cloud Run resource, wallet provider, or model artifact.
+- **Next gate:** Stop after local Phase 6 validation. Cloud hosting, authentication, provider-backed data retrieval, scoring enablement, and model promotion require a separately approved implementation milestone.

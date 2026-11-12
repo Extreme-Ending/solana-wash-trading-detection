@@ -27,10 +27,12 @@ __pycache__/
 *.swp
 *~
 
-# Future frontend build outputs (no frontend is implemented in Phase 0)
+# Frontend dependency, build, test, and local-hosting outputs
 **/node_modules/
 /frontend/dist/
 /frontend/.vite/
+/frontend/coverage/
+/frontend/*.tsbuildinfo
 /.firebase/
 firebase-debug.log*
 

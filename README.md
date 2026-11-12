@@ -2,7 +2,7 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 5B packages the Phase 5A FastAPI foundation in a locally validated, non-root Docker image and a locked-down one-service Compose configuration. The container does not include or load Phase 4B experimental artifacts and returns no anomaly, fraud, wash-trading, or probability output. React and live cloud resources remain outside this phase.
+Phase 6 adds a locally validated React, TypeScript, and Vite research dashboard over the Phase 5A descriptive-feature API. It accepts bounded user-supplied DEX events, displays the 29 registered point-in-time features, and preserves the unavailable model gate. It provides no anomaly, fraud, wash-trading, or probability output and creates no cloud resources.
 
 ## Phase 4A evidence and blockers
 
@@ -84,6 +84,29 @@ python3 scripts/container_smoke_test.py
 
 The image uses the official digest-pinned Python 3.11 slim base, installs the `api` dependency extra from `pyproject.toml`, runs as UID/GID 10001, honors `PORT`, and contains no research dataset or experimental artifact. See [`docs/containerization_and_local_deployment.md`](docs/containerization_and_local_deployment.md) and [`docs/container_validation_results.md`](docs/container_validation_results.md).
 
+## Phase 6 local frontend
+
+Install the locked frontend dependencies and start the Vite development server:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. By default, Vite proxies `/api` to the loopback-only Docker API at `http://127.0.0.1:8080`, so start the Phase 5B service with `docker compose up --detach --wait` first. `.env.example` documents the non-secret `VITE_API_BASE_URL`; browser-visible environment variables must never contain credentials.
+
+The dashboard reports API health separately from unavailable scoring, validates one wallet's event payload before submission, offers a clearly synthetic example and local JSON import, and renders all 29 returned features with accessible charts. Input is not stored in browser storage. No wallet history is fetched and no HTTP 503 model response is treated as a failure of descriptive preview. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md) and [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md).
+
+Frontend verification commands are:
+
+```bash
+cd frontend
+npm run typecheck
+npm test
+npm run build
+```
+
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
 
 ```bash
@@ -147,10 +170,10 @@ All assessed components remain in one repository with clear boundaries:
 
 - Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
 - The Phase 5A FastAPI foundation imports the shared feature builder and loads no model artifact. Phase 5B packages it for local Docker/Compose use. A later, explicitly approved scoring extension may load an already-created artifact; it will never train at startup or during prediction.
-- A future React + Vite static frontend will communicate with the API over HTTPS/JSON and eventually use Firebase Hosting.
+- The Phase 6 React + Vite frontend communicates only through the typed HTTP/JSON API and contains no model logic or credentials. Static hosting remains future work.
 - Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
 
-Local Docker/Compose validation is complete. Frontend, Google Cloud Run, Firebase, and promotion of predictive scoring require later explicit approval and are not deployment claims.
+Local Docker/Compose and frontend validation are complete. Google Cloud Run, Firebase, authentication, provider-backed wallet retrieval, and promotion of predictive scoring remain outside this phase and are not deployment claims.
 
 ## Repository layout
 
@@ -167,6 +190,7 @@ Dockerfile                       Multi-stage non-root API image
 docker-compose.yml               One-service local deployment with health and security controls
 .dockerignore                    Private/generated build-context exclusions
 scripts/container_smoke_test.py  Synthetic image/runtime/endpoint validation
+frontend/                       React/TypeScript/Vite descriptive-feature dashboard and tests
 notebooks/01_exploratory_data_analysis.ipynb  Reproducible descriptive EDA
 notebooks/02_feature_engineering.ipynb  Reusable-module feature analysis and leakage check
 notebooks/03_unsupervised_anomaly_modelling.ipynb  Provisional anomaly experiment
@@ -183,6 +207,8 @@ docs/api_contract.md              Phase 5A endpoints, validation, examples, and 
 docs/api_implementation_findings.md  Feature parity, security decisions, and limitations
 docs/containerization_and_local_deployment.md  Build, Compose, and future Cloud Run compatibility
 docs/container_validation_results.md  Observed local image and endpoint evidence
+docs/frontend_architecture.md   Phase 6 component, API, privacy, and accessibility design
+docs/frontend_validation_results.md  Frontend test, build, and local integration evidence
 docs/lab_traceability.md        Verified lecturer-example mapping
 docs/decision_log.md            Decisions and unresolved evidence requirements
 reports/data_audit/             Generated local reports (Git-ignored)
@@ -208,20 +234,20 @@ The student must run it personally. The helper checks the local Git identity, di
 6. **Phase 4B — provisional unsupervised experiment:** reproducible label-free detectors, chronological diagnostics, sensitivity, drift, and notebook. Implemented experimentally; methodology remains **NOT SUPERVISOR-APPROVED** and no model is production-approved.
 7. **Phase 5A — service foundation:** FastAPI health/readiness gates, descriptive shared-code feature preview, bounded validation, OpenAPI, and HTTP tests. Complete; prediction remains unavailable and no model artifact is loaded.
 8. **Phase 5B — container delivery:** non-root Docker image, restricted Compose service, content checks, endpoint smoke tests, configurable port, and graceful shutdown. Complete locally; no cloud deployment was performed.
-9. **Phase 6 — submission evidence:** architecture, model/data cards, report or slides, limitations, and reproducibility evidence. Not started.
+9. **Phase 6 — React frontend:** typed event entry, descriptive 29-feature output, status/model gates, accessible charts, responsive layout, tests, and local API integration. Complete locally; no hosting or model scoring was enabled.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
 ## Lecturer alignment
 
-The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B experiment, API, and local container follow the verified lab sequence for inspection before treatment, explicit parsing, strict `SCORING_TS` filtering, point-in-time entity aggregation, leakage-by-lineage reasoning, fitted transformations inside pipelines, validation/test separation, typed serving, runtime-only packaging, endpoint smoke testing, and cautious anomaly-score interpretation. They adapt the labs to UTC Solana events, immutable source evidence, label-provenance gating, repeated wallet observations, chronological evaluation, and an explicit no-model readiness gate. Exact repository commits, notebook cells, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
+The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B experiment, API, local container, and frontend follow the verified lab sequence for inspection before treatment, explicit parsing, strict `SCORING_TS` filtering, point-in-time entity aggregation, leakage-by-lineage reasoning, fitted transformations inside pipelines, validation/test separation, typed serving, runtime-only packaging, endpoint smoke testing, and cautious anomaly-score interpretation. The frontend extends the labs' schema/order and validation discipline to the browser without transferring lecturer data, results, or model assumptions. Exact repository commits, notebook cells, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
 
 ## Status
 
-**Current phase:** Phase 5B — Docker containerization and local deployment.
+**Current phase:** Phase 6 — React frontend development.
 
-**Implementation:** the modular API is installed from packaged source in a digest-pinned Python 3.11 slim image, runs non-root, supports environment-based port/configuration, and is validated directly and through restricted Docker Compose. No model artifact is copied or loaded.
+**Implementation:** the responsive React/TypeScript dashboard validates bounded event input, consumes the typed descriptive API, renders every registered feature and accessible comparison charts, and handles expected model unavailability without fabricating output. The locked dependency tree, type checks, component tests, production build, Python regression suite, and local Vite-to-container path are validated. No model artifact is copied or loaded.
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** review and test Phase 5B locally. Do not begin React, Firebase, Google Cloud Run, CI/CD deployment, authentication, or model promotion without explicit approval.
+**Next action:** review Phase 6 locally. Do not begin Firebase, Google Cloud Run, CI/CD deployment, authentication, provider integration, or model promotion without explicit approval.
