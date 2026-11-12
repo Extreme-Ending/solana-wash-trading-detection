@@ -65,6 +65,9 @@ frontend/.vite/
 node_modules/
 .firebase/
 firebase-debug.log*
+deployment/
+firebase.json
+.firebaserc*
 .DS_Store
 Thumbs.db
 

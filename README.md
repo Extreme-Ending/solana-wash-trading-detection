@@ -2,7 +2,7 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 6 adds a locally validated React, TypeScript, and Vite research dashboard over the Phase 5A descriptive-feature API. It accepts bounded user-supplied DEX events, displays the 29 registered point-in-time features, and preserves the unavailable model gate. It provides no anomaly, fraud, wash-trading, or probability output and creates no cloud resources.
+Phase 7A prepares the locally validated React/Vite dashboard for Firebase Hosting and the existing non-root FastAPI image for private Google Cloud Run deployment through Artifact Registry. Configuration, guarded student-operated commands and local contract tests are included, but no cloud resource was created or changed. The API still provides descriptive feature preview only: no anomaly, fraud, wash-trading or probability output is enabled.
 
 ## Phase 4A evidence and blockers
 
@@ -82,6 +82,8 @@ Run the complete direct-image smoke suite when port 8080 is free:
 python3 scripts/container_smoke_test.py
 ```
 
+If an existing local service owns port 8080, preserve it and select unused loopback ports for the smoke containers, for example `--host-port 18080 --custom-host-port 18082`.
+
 The image uses the official digest-pinned Python 3.11 slim base, installs the `api` dependency extra from `pyproject.toml`, runs as UID/GID 10001, honors `PORT`, and contains no research dataset or experimental artifact. See [`docs/containerization_and_local_deployment.md`](docs/containerization_and_local_deployment.md) and [`docs/container_validation_results.md`](docs/container_validation_results.md).
 
 ## Phase 6 local frontend
@@ -106,6 +108,21 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## Phase 7A deployment preparation
+
+Inspect the non-destructive deployment plan from the repository root:
+
+```bash
+./scripts/deployment.sh prerequisites
+./scripts/deployment.sh plan
+```
+
+`firebase.json` publishes only `frontend/dist` as a static SPA. The proposed backend image uses an Artifact Registry URI in `africa-south1`, tagged by the full Git commit SHA. The proposed Cloud Run service uses request-based billing, scales from 0 to at most 2 instances, runs with 1 CPU/512 MiB and a dedicated no-role runtime identity, and remains private through `--no-allow-unauthenticated`.
+
+Future mutating actions require both `--execute` and an interactive exact confirmation showing the project, region and effect. Phase 7A did not execute them. Copy `deployment/deployment.env.example` to the Git-ignored `deployment/deployment.env.local` and replace every placeholder before any later use; browser-visible Vite variables must contain only the exact HTTPS API origin, never a credential.
+
+Direct production API-origin routing preserves `/healthz`, `/readyz`, `/v1/features/preview`, and `/v1/score` without a duplicate `/api`. The local Vite proxy remains unchanged. A hosted static SPA cannot invoke the private IAM-protected API without a separate access design, so end-to-end public deployment remains blocked; exact CORS is not authentication. See [`docs/google_cloud_deployment_plan.md`](docs/google_cloud_deployment_plan.md) and [`docs/deployment_readiness_checklist.md`](docs/deployment_readiness_checklist.md).
 
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
 
@@ -170,10 +187,10 @@ All assessed components remain in one repository with clear boundaries:
 
 - Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
 - The Phase 5A FastAPI foundation imports the shared feature builder and loads no model artifact. Phase 5B packages it for local Docker/Compose use. A later, explicitly approved scoring extension may load an already-created artifact; it will never train at startup or during prediction.
-- The Phase 6 React + Vite frontend communicates only through the typed HTTP/JSON API and contains no model logic or credentials. Static hosting remains future work.
+- The Phase 6 React + Vite frontend communicates only through the typed HTTP/JSON API and contains no model logic or credentials. Phase 7A prepares its static Firebase Hosting bundle and a direct environment-configured HTTPS API origin without deploying either component.
 - Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
 
-Local Docker/Compose and frontend validation are complete. Google Cloud Run, Firebase, authentication, provider-backed wallet retrieval, and promotion of predictive scoring remain outside this phase and are not deployment claims.
+Local Docker/Compose, frontend and deployment-configuration validation are complete. Google Cloud Run and Firebase configuration is prepared but no live deployment is claimed. Authentication, public access, provider-backed wallet retrieval and promotion of predictive scoring remain unresolved or out of scope.
 
 ## Repository layout
 
@@ -190,7 +207,12 @@ Dockerfile                       Multi-stage non-root API image
 docker-compose.yml               One-service local deployment with health and security controls
 .dockerignore                    Private/generated build-context exclusions
 scripts/container_smoke_test.py  Synthetic image/runtime/endpoint validation
+scripts/deployment.sh           Dry-run-first student deployment lifecycle helper
+scripts/deployment_smoke_test.py  Authenticated synthetic Cloud Run contract check
+scripts/validate_deployment_bundle.py  Static bundle privacy/security gate
 frontend/                       React/TypeScript/Vite descriptive-feature dashboard and tests
+firebase.json                   Firebase static SPA, cache, and security-header configuration
+deployment/                     Placeholder settings and Artifact Registry cleanup policy
 notebooks/01_exploratory_data_analysis.ipynb  Reproducible descriptive EDA
 notebooks/02_feature_engineering.ipynb  Reusable-module feature analysis and leakage check
 notebooks/03_unsupervised_anomaly_modelling.ipynb  Provisional anomaly experiment
@@ -209,6 +231,11 @@ docs/containerization_and_local_deployment.md  Build, Compose, and future Cloud 
 docs/container_validation_results.md  Observed local image and endpoint evidence
 docs/frontend_architecture.md   Phase 6 component, API, privacy, and accessibility design
 docs/frontend_validation_results.md  Frontend test, build, and local integration evidence
+docs/google_cloud_deployment_plan.md  Prepared architecture, routing, and access blocker
+docs/firebase_hosting_configuration.md  Static hosting configuration and student workflow
+docs/cloud_run_configuration.md  Region, image, IAM, runtime, rollout, and rollback plan
+docs/cloud_cost_and_security_controls.md  Cost, logging, bundle, and cleanup controls
+docs/deployment_readiness_checklist.md  Preflight, release, access, rollback, and cleanup gates
 docs/lab_traceability.md        Verified lecturer-example mapping
 docs/decision_log.md            Decisions and unresolved evidence requirements
 reports/data_audit/             Generated local reports (Git-ignored)
@@ -235,6 +262,7 @@ The student must run it personally. The helper checks the local Git identity, di
 7. **Phase 5A — service foundation:** FastAPI health/readiness gates, descriptive shared-code feature preview, bounded validation, OpenAPI, and HTTP tests. Complete; prediction remains unavailable and no model artifact is loaded.
 8. **Phase 5B — container delivery:** non-root Docker image, restricted Compose service, content checks, endpoint smoke tests, configurable port, and graceful shutdown. Complete locally; no cloud deployment was performed.
 9. **Phase 6 — React frontend:** typed event entry, descriptive 29-feature output, status/model gates, accessible charts, responsive layout, tests, and local API integration. Complete locally; no hosting or model scoring was enabled.
+10. **Phase 7A — Google Cloud deployment preparation:** Firebase static SPA configuration, private Cloud Run/Artifact Registry plan, SHA-tagged guarded commands, exact CORS/HTTPS contracts, cost/security controls, and local deployment tests. Preparation complete; no resource was created and public browser-to-private-API access remains blocked.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
@@ -250,4 +278,4 @@ The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B e
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** review Phase 6 locally. Do not begin Firebase, Google Cloud Run, CI/CD deployment, authentication, provider integration, or model promotion without explicit approval.
+**Next action:** review the Phase 7A plan and access blocker. Do not execute a live cloud action, enable anonymous invocation, add authentication/infrastructure, or begin model promotion without explicit student approval.

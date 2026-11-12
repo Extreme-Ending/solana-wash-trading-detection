@@ -49,7 +49,8 @@ is_private_path() {
     case "$base_name" in
         .env|.env.*)
             case "$base_name" in
-                .env.example|.env.sample|.env.template) ;;
+                .env.example|.env.sample|.env.template|\
+                .env.*.example|.env.*.sample|.env.*.template) ;;
                 *) return 0 ;;
             esac
             ;;

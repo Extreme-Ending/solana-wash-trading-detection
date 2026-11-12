@@ -10,8 +10,12 @@ describe("API client", () => {
   it("normalizes safe API base URLs and rejects credentialed or protocol-relative values", () => {
     expect(resolveApiBaseUrl(undefined)).toBe("/api");
     expect(resolveApiBaseUrl("http://127.0.0.1:8080/")).toBe("http://127.0.0.1:8080");
+    expect(resolveApiBaseUrl("https://service.example.run.app/", true)).toBe("https://service.example.run.app");
+    expect(() => resolveApiBaseUrl(undefined, true)).toThrow(/explicit HTTPS origin/);
     expect(() => resolveApiBaseUrl("//untrusted.example")).toThrow();
     expect(() => resolveApiBaseUrl("https://user:pass@example.test")).toThrow();
+    expect(() => resolveApiBaseUrl("https://service.example.run.app/api", true)).toThrow(/without a path/);
+    expect(() => resolveApiBaseUrl("http://service.example.run.app", true)).toThrow(/HTTPS/);
   });
 
   it("accepts the expected readiness 503 as an unavailable capability", async () => {

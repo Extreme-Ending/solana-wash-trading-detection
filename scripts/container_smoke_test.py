@@ -185,9 +185,14 @@ print('installed API import and image-content checks: PASS')
     }
 
 
-def validate_default_runtime(image: str, name: str) -> dict[str, Any]:
-    base_url = "http://127.0.0.1:8080"
-    _start_container(name=name, image=image, host_port=8080, container_port=8080)
+def validate_default_runtime(
+    image: str,
+    name: str,
+    *,
+    host_port: int = 8080,
+) -> dict[str, Any]:
+    base_url = f"http://127.0.0.1:{host_port}"
+    _start_container(name=name, image=image, host_port=host_port, container_port=8080)
     _wait_for_health(base_url)
 
     status, health = _request("GET", f"{base_url}/healthz")
@@ -227,10 +232,16 @@ def validate_default_runtime(image: str, name: str) -> dict[str, Any]:
     }
 
 
-def validate_custom_port(image: str, name: str) -> dict[str, int]:
-    _start_container(name=name, image=image, host_port=18081, container_port=9090)
-    _wait_for_health("http://127.0.0.1:18081")
-    status, _ = _request("GET", "http://127.0.0.1:18081/healthz")
+def validate_custom_port(
+    image: str,
+    name: str,
+    *,
+    host_port: int = 18081,
+) -> dict[str, int]:
+    base_url = f"http://127.0.0.1:{host_port}"
+    _start_container(name=name, image=image, host_port=host_port, container_port=9090)
+    _wait_for_health(base_url)
+    status, _ = _request("GET", f"{base_url}/healthz")
     assert status == 200
     _run("docker", "stop", "--timeout", "10", name)
     return {"configured_container_port": 9090, "healthz": status}
@@ -240,7 +251,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--skip-build", action="store_true")
+    parser.add_argument("--host-port", type=int, default=8080)
+    parser.add_argument("--custom-host-port", type=int, default=18081)
     args = parser.parse_args()
+    port_arguments = (
+        ("--host-port", args.host_port),
+        ("--custom-host-port", args.custom_host_port),
+    )
+    for name, value in port_arguments:
+        if not 1 <= value <= 65535:
+            parser.error(f"{name} must be between 1 and 65535")
+    if args.host_port == args.custom_host_port:
+        parser.error("--host-port and --custom-host-port must differ")
 
     suffix = uuid.uuid4().hex[:10]
     default_name = f"solana-risk-smoke-{suffix}"
@@ -250,8 +272,16 @@ def main() -> None:
         if not args.skip_build:
             _run("docker", "build", "--tag", args.image, ".")
         results["image"] = validate_image(args.image)
-        results["default_runtime"] = validate_default_runtime(args.image, default_name)
-        results["custom_port"] = validate_custom_port(args.image, custom_name)
+        results["default_runtime"] = validate_default_runtime(
+            args.image,
+            default_name,
+            host_port=args.host_port,
+        )
+        results["custom_port"] = validate_custom_port(
+            args.image,
+            custom_name,
+            host_port=args.custom_host_port,
+        )
     finally:
         _remove_container(default_name)
         _remove_container(custom_name)

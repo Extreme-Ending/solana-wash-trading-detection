@@ -1,10 +1,16 @@
 const DEFAULT_API_BASE_URL = "/api";
 
-export function resolveApiBaseUrl(rawValue: string | undefined): string {
+export function resolveApiBaseUrl(
+  rawValue: string | undefined,
+  production = false,
+): string {
   const value = rawValue?.trim() || DEFAULT_API_BASE_URL;
   if (value.startsWith("/")) {
     if (value.startsWith("//") || value.includes("?") || value.includes("#")) {
       throw new Error("VITE_API_BASE_URL must be a simple root-relative path or HTTP(S) origin");
+    }
+    if (production) {
+      throw new Error("VITE_API_BASE_URL must be an explicit HTTPS origin in a production build");
     }
     return value.length > 1 ? value.replace(/\/+$/, "") : value;
   }
@@ -14,12 +20,19 @@ export function resolveApiBaseUrl(rawValue: string | undefined): string {
     !["http:", "https:"].includes(parsed.protocol) ||
     parsed.username ||
     parsed.password ||
+    !["", "/"].includes(parsed.pathname) ||
     parsed.search ||
     parsed.hash
   ) {
-    throw new Error("VITE_API_BASE_URL must be a simple root-relative path or HTTP(S) origin");
+    throw new Error("VITE_API_BASE_URL must be a simple root-relative path or an HTTP(S) origin without a path");
+  }
+  if (production && parsed.protocol !== "https:") {
+    throw new Error("VITE_API_BASE_URL must use HTTPS in a production build");
   }
   return value.replace(/\/+$/, "");
 }
 
-export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
+export const API_BASE_URL = resolveApiBaseUrl(
+  import.meta.env.VITE_API_BASE_URL,
+  import.meta.env.PROD,
+);

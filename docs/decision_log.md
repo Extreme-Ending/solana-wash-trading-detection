@@ -283,3 +283,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Presentation boundary:** Distinguish null from zero, derive accessible charts only from returned feature values, disclose the DEX-versus-NFT mismatch and unverified-event limitation, and never turn unusual activity into a fraud or wash-trading claim.
 - **Runtime boundary:** Default to a same-origin `/api` path with a loopback Vite proxy for local Docker integration. Add no credentials, persistence, telemetry, external runtime dependency, Firebase resource, Cloud Run resource, wallet provider, or model artifact.
 - **Next gate:** Stop after local Phase 6 validation. Cloud hosting, authentication, provider-backed data retrieval, scoring enablement, and model promotion require a separately approved implementation milestone.
+
+## D036 — Prepare a private, bounded cloud deployment without executing it
+
+- **Date:** 2026-11-12
+- **Status:** accepted for Phase 7A preparation
+- **Decision:** Prepare Firebase Hosting for the static `frontend/dist` SPA and the existing API image for Artifact Registry and private Cloud Run in `africa-south1`. Tag images by full Git commit SHA; use request-based billing, min 0/max 2 instances, 1 CPU, 512 MiB, concurrency 20, timeout 30 seconds, and a user-managed runtime identity with no project role.
+- **Routing boundary:** Preserve the local `/api` Vite proxy, but configure a production build with the exact bare Cloud Run HTTPS origin. Do not adopt a Firebase rewrite because its preserved `/api/*` path does not match the API's existing unprefixed routes. Restrict CORS to the two exact Firebase Hosting origins.
+- **Access boundary:** Keep `--no-allow-unauthenticated`. A static SPA cannot invoke the private IAM-protected API without an approved access design; CORS is not authentication. Treat public browser integration as blocked rather than embedding credentials or silently enabling anonymous access.
+- **Operational boundary:** Deployment scripts default to planning and require `--execute`, an interactive terminal and an exact project/region/action confirmation for every mutating action. No project, billing service, API, repository, identity, IAM binding, Firebase site or deployment was created in Phase 7A.
+- **Next gate:** Stop after configuration, documentation and local verification. Live resource creation/deployment, access-control changes, CI/CD and model promotion require explicit student approval.
