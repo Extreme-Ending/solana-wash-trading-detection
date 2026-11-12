@@ -1,0 +1,38 @@
+name: solana-wallet-risk
+
+services:
+  api:
+    image: solana-wallet-risk-api:phase5b
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8080}:${PORT:-8080}"
+    environment:
+      PORT: "${PORT:-8080}"
+      SOLANA_RISK_ENVIRONMENT: "${SOLANA_RISK_ENVIRONMENT:-development}"
+      SOLANA_RISK_CORS_ORIGINS: "${SOLANA_RISK_CORS_ORIGINS:-http://localhost:5173}"
+      SOLANA_RISK_MAX_EVENTS: "${SOLANA_RISK_MAX_EVENTS:-100}"
+      SOLANA_RISK_MAX_REQUEST_BYTES: "${SOLANA_RISK_MAX_REQUEST_BYTES:-262144}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8080') + '/healthz', timeout=3)
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    stop_grace_period: 15s
+    restart: "no"

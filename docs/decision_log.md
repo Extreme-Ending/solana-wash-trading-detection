@@ -263,3 +263,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Security boundary:** Use typed closed schemas, bounded event/body sizes, exact configurable CORS origins, non-secret environment configuration, sanitized errors, and no client-supplied file path, external lookup, credential or raw-payload logging.
 - **Reason:** A healthy API and reproducible feature preview are valid engineering deliverables, while neither establishes model readiness or verified fraud detection.
 - **Next gate:** Stop after the local service foundation. Docker/Compose, React, Firebase, Cloud Run, artifact promotion and live integration require later explicit approval.
+
+## D034 — Package only the descriptive API and preserve the readiness gate
+
+- **Date:** 2026-11-12
+- **Status:** accepted for Phase 5B
+- **Decision:** Build a digest-pinned, multi-stage Python 3.11 slim image from the `pyproject.toml` `api` extra, run it as UID/GID 10001, and expose `/healthz` as container health while leaving `/readyz` and `/v1/score` at HTTP 503 `MODEL_NOT_APPROVED`.
+- **Content boundary:** Use explicit Docker copies and a deny-oriented `.dockerignore`. Do not include raw/processed data, reports, notebooks, private steering, secrets, tests, joblib/scikit-learn, or experimental model artifacts. Compose mounts no data, artifact, host path, or Docker socket.
+- **Runtime boundary:** Bind to `0.0.0.0`, validate the platform `PORT` with default 8080, disable reload, log to stdout/stderr, retain API request/CORS limits, use a read-only Compose filesystem and drop all capabilities.
+- **Observed evidence:** The final local image is 345,274,935 bytes uncompressed. Direct-image and Compose tests returned 200/503/200/503/200 for health, readiness, feature preview, score, and OpenAPI; custom port, non-root execution, content exclusions, Docker health, and graceful exit code 0 passed.
+- **Next gate:** Stop after local container validation. React, Firebase, live Google Cloud resources, automated deployment, authentication, and model-artifact promotion require separate explicit approval.

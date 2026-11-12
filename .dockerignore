@@ -1,0 +1,75 @@
+# Version control and private project instructions
+.git/
+.gitignore
+.agents/
+.codex/
+AGENTS.md
+CODEX_IMPLEMENTATION_PROMPT.md
+CODEX_PHASE_PROMPTS.md
+CODEX_*PROMPT*.md
+
+# Credentials and local configuration (keep only the non-secret example)
+.env
+.env.*
+!.env.example
+.aws/
+.ssh/
+.secrets/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python environments, caches, tests and local builds
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+htmlcov/
+build/
+dist/
+tmp/
+*.tmp
+tests/
+
+# Raw, processed and generated research material
+nft.csv
+nft_trades.csv
+data/
+reports/
+artifacts/
+models/
+model_artifacts/
+mlruns/
+mlflow.db
+
+# Notebooks and editor state
+notebooks/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+*.swp
+*~
+
+# Frontend outputs and unrelated local files
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+node_modules/
+.firebase/
+firebase-debug.log*
+.DS_Store
+Thumbs.db
+
+# Student-only workflow helper and documentation not used by the image build
+commit.sh
+docs/
+docker-compose.yml
+scripts/
