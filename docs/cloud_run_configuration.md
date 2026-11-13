@@ -112,3 +112,8 @@ gcloud run revisions list --service solana-wallet-risk-api \
 ```
 
 Rollback changes traffic only; it does not rewrite Git history. A hosted browser remains blocked while the service is private because Firebase ID tokens do not satisfy Cloud Run IAM invocation.
+## Phase 7C.0 production boundary
+
+The prepared service remains private (`--no-allow-unauthenticated`) with no Invoker-check bypass and no `allUsers` binding. Production environment values now explicitly include revocation checking and the per-instance rate window in addition to exact CORS, byte/event limits, Firebase project and UID allowlist. Production startup fails if revocation checking is disabled.
+
+For a later static-browser deployment, the recommended architecture is platform-public Cloud Run plus FastAPI Firebase/UID enforcement. Public invocation must be reviewed and approved separately after the private revision passes smoke testing; it must never be bundled silently with deployment or resource creation. When accepted, the prepared `smoke-public-candidate` action can test the already-public URL with a Firebase token without changing IAM. Current status remains **private and not deployed**.

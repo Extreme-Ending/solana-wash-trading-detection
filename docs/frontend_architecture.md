@@ -82,9 +82,11 @@ The visual hierarchy separates evidence from capability: project scope, process 
 
 The available records are DEX swap events, not authenticated NFT marketplace sales. The preview is derived from user-supplied, unverified event history and is only as complete as that history. Feature magnitude, concentration, recency, or unusualness cannot establish wash trading or fraud. The interface preserves this boundary in the overview, results, model gate, charts, and methodology section.
 
-## Deployment limitation
+## Deployment limitation and reviewed future path
 
 Firebase authentication is application-layer authorization, not Cloud Run IAM authorization. The reviewed Cloud Run service remains private. A normal Firebase-hosted browser cannot supply the separate Google-signed Cloud Run invocation credential required by the platform, even though it can supply a Firebase end-user ID token to FastAPI. Phase 7B therefore does not claim a working hosted end-to-end path and does not enable public invocation.
+
+Phase 7C.0 recommends, but does not activate, a future platform-public Cloud Run endpoint so the static browser can reach FastAPI. Protected calls would still require the Firebase token and UID allowlist. This exposes the application boundary and public health routes to untrusted traffic and can create request, verification and logging cost. App Check and distributed rate limiting are not enabled; the backend's limiter is per instance only. Public invocation therefore requires separate risk acceptance, IAM review, cost controls and a hosted one-token acceptance test.
 
 ## Deferred work
 

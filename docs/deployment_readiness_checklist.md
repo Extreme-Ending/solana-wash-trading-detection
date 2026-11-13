@@ -77,3 +77,26 @@ Do not put Google identity tokens or service-account keys in Vite/Firebase files
 - The safe default Cloud Run service is private, so a static browser cannot invoke it directly even after Firebase sign-in.
 - Firebase application authentication exists, but App Check and distributed rate limiting do not; public platform invocation is not approved by Phase 7B.
 - The API intentionally has no available model and makes no fraud/wash-trading prediction.
+## Phase 7C.0 security gate — all unchecked items block GO
+
+- [x] Production docs, ReDoc and OpenAPI schema are disabled.
+- [x] Protected paths reject missing/invalid credentials before body/schema processing.
+- [x] Production requires Firebase token-revocation checks and an explicit UID allowlist.
+- [x] Exact CORS, request-byte/event limits, UTC validation and model-unavailable behavior are preserved.
+- [x] Per-instance authorized-UID limiting is implemented and labelled non-distributed.
+- [x] Deployment defaults to dry-run/private and contains no public invocation or `allUsers` mutation.
+- [x] Private and future public-platform smoke modes are prepared without accepting tokens as CLI arguments.
+- [ ] Exact project, region, runtime identity, Firebase app/site/origins and approved UIDs verified by the student.
+- [ ] Billing ownership and USD 10 monthly 50/80/100% alerts configured and tested.
+- [ ] Spend-cap eligibility/coverage checked; if unavailable, alerts explicitly acknowledged as non-enforcing.
+- [ ] Artifact Registry repository exists and cleanup policy has been previewed before enablement.
+- [ ] Firebase Google provider/domains configured without a downloaded service-account key.
+- [ ] App Check monitoring/enforcement implemented, or its absence and associated risk explicitly accepted.
+- [ ] Distributed/unauthenticated-request protection implemented, or its absence and associated risk explicitly accepted.
+- [ ] Complete local tests, production bundle scan and Docker runtime checks pass on the release commit.
+- [ ] Private Cloud Run deployment inspected and two-token operator smoke passes.
+- [ ] Separate explicit approval obtained before any platform-public invocation change.
+- [ ] Hosted one-token Firebase-to-Cloud-Run smoke passes, including 401/403/429/503, exact CORS and production-docs 404.
+- [ ] Firebase Hosting release, post-deployment observation and rollback identifiers recorded.
+
+**Current result: NO-GO.** Phase 7C.0 performed no live check, resource creation, IAM change, billing change or deployment. See [`phase_7c_deployment_security_review.md`](phase_7c_deployment_security_review.md) for the exact ordered actions and public-access risk acceptance.

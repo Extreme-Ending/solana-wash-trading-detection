@@ -79,6 +79,9 @@ def test_cloud_defaults_are_private_bounded_and_exact_origin_only() -> None:
     assert "YOUR_GCP_PROJECT_ID" in values["PROJECT_ID"]
     assert values["FIREBASE_PROJECT_ID"] == "YOUR_GCP_PROJECT_ID"
     assert values["ALLOWED_USER_UIDS"] == "YOUR_APPROVED_FIREBASE_UIDS"
+    assert values["CHECK_REVOKED_TOKENS"] == "true"
+    assert values["RATE_LIMIT_REQUESTS"] == "30"
+    assert values["RATE_LIMIT_WINDOW_SECONDS"] == "60"
 
 
 def test_api_accepts_exact_firebase_origins_and_rejects_wildcard() -> None:
@@ -104,6 +107,8 @@ def test_deployment_script_is_dry_run_by_default_and_never_enables_public_access
     assert "ACTION=\"${1:-plan}\"" in script
     assert "--no-allow-unauthenticated" in script
     assert not re.search(r"(?<!no-)--allow-unauthenticated", script)
+    assert "--no-invoker-iam-check" not in script
+    assert "allUsers" not in script
     for control in (
         "--cpu-throttling",
         "--min 0",
@@ -113,6 +118,9 @@ def test_deployment_script_is_dry_run_by_default_and_never_enables_public_access
         "SOLANA_RISK_MAX_REQUEST_BYTES=262144",
         "SOLANA_RISK_FIREBASE_PROJECT_ID=",
         "SOLANA_RISK_ALLOWED_UIDS=",
+        "SOLANA_RISK_CHECK_REVOKED_TOKENS=",
+        "SOLANA_RISK_RATE_LIMIT_REQUESTS=",
+        "SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS=",
     ):
         assert control in script
     assert "Live actions require an interactive terminal" in script
@@ -253,12 +261,28 @@ def test_required_deployment_runbooks_exist_and_do_not_claim_a_live_deployment()
         "cloud_run_configuration.md",
         "cloud_cost_and_security_controls.md",
         "deployment_readiness_checklist.md",
+        "phase_7c_deployment_security_review.md",
     )
     for name in required:
         text = (ROOT / "docs" / name).read_text(encoding="utf-8")
         assert len(text.strip()) > 500
-        assert any(phase in text.casefold() for phase in ("phase 7a", "phase 7b"))
+        assert any(phase in text.casefold() for phase in ("phase 7a", "phase 7b", "phase 7c"))
     combined = "\n".join((ROOT / "docs" / name).read_text(encoding="utf-8") for name in required)
     assert "No Google Cloud/Firebase resource" in combined
     assert "hosted browser" in combined
     assert "not a deployment record" in combined.casefold()
+
+
+def test_future_public_smoke_is_separate_and_never_changes_iam() -> None:
+    deployment = (ROOT / "scripts" / "deployment.sh").read_text(encoding="utf-8")
+    smoke = (ROOT / "scripts" / "deployment_smoke_test.py").read_text(encoding="utf-8")
+    assert "smoke-public-candidate" in deployment
+    assert "--firebase-token-stdin" in deployment
+    assert "--firebase-token-stdin" in smoke
+    assert "mutually_exclusive_group(required=True)" in smoke
+    assert all(fragment not in deployment for fragment in (
+        "--no-invoker-iam-check",
+        "allUsers",
+        "roles/run.invoker",
+    ))
+    assert not re.search(r"(?<!no-)--allow-unauthenticated", deployment)

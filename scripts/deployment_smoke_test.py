@@ -1,4 +1,4 @@
-"""Smoke-test a deployed private API with synthetic data and no token logging."""
+"""Smoke-test private or future public-platform API paths without token logging."""
 
 from __future__ import annotations
 
@@ -37,23 +37,25 @@ def _payload() -> dict[str, Any]:
 
 def _request(
     base_url: str,
-    cloud_run_token: str,
+    cloud_run_token: str | None,
     firebase_token: str,
     method: str,
     path: str,
     payload: dict[str, Any] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {firebase_token}",
+    }
+    if cloud_run_token is not None:
+        headers["X-Serverless-Authorization"] = f"Bearer {cloud_run_token}"
     request = urllib.request.Request(
         f"{base_url}{path}",
         data=data,
         method=method,
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {firebase_token}",
-            "X-Serverless-Authorization": f"Bearer {cloud_run_token}",
-        },
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
@@ -80,26 +82,32 @@ def _validate_base_url(value: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
-    parser.add_argument(
+    token_mode = parser.add_mutually_exclusive_group(required=True)
+    token_mode.add_argument(
         "--tokens-stdin",
         action="store_true",
         help="read Cloud Run then Firebase short-lived tokens from stdin without command arguments",
+    )
+    token_mode.add_argument(
+        "--firebase-token-stdin",
+        action="store_true",
+        help="read one Firebase token for an already-public platform endpoint",
     )
     args = parser.parse_args()
     try:
         base_url = _validate_base_url(args.base_url)
     except ValueError as exc:
         parser.error(str(exc))
-    if not args.tokens_stdin:
-        parser.error("--tokens-stdin is required; tokens are never accepted as command arguments")
     if sys.stdin.isatty():
-        cloud_run_token = getpass.getpass("Cloud Run identity token: ")
+        cloud_run_token = (
+            getpass.getpass("Cloud Run identity token: ") if args.tokens_stdin else None
+        )
         firebase_token = getpass.getpass("Firebase ID token: ")
     else:
-        cloud_run_token = sys.stdin.readline().strip()
+        cloud_run_token = sys.stdin.readline().strip() if args.tokens_stdin else None
         firebase_token = sys.stdin.readline().strip()
-    if not cloud_run_token or not firebase_token:
-        parser.error("non-empty short-lived Cloud Run and Firebase tokens are required")
+    if (args.tokens_stdin and not cloud_run_token) or not firebase_token:
+        parser.error("the selected mode requires non-empty short-lived tokens")
 
     payload = _payload()
     health_status, health = _request(base_url, cloud_run_token, firebase_token, "GET", "/healthz")

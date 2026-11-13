@@ -37,16 +37,22 @@ def _payload(error: ApiError) -> dict[str, Any]:
     }
 
 
+def api_error_response(error: ApiError) -> JSONResponse:
+    """Render an API error for handlers and boundary middleware."""
+
+    return JSONResponse(
+        status_code=error.status_code,
+        content=_payload(error),
+        headers=error.headers,
+    )
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Install deterministic handlers that never echo submitted values."""
 
     @app.exception_handler(ApiError)
     async def handle_api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=_payload(exc),
-            headers=exc.headers,
-        )
+        return api_error_response(exc)
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation(

@@ -33,6 +33,8 @@ export function ModelStatus({ request }: ModelStatusProps) {
             ? "Your sign-in session is missing or expired. Sign in again."
             : error.status === 403
               ? "Your account is authenticated but is not approved for this API."
+              : error.status === 429
+                ? "Too many requests reached this service instance. Wait before trying again."
               : error.message
           : "The scoring gate could not be checked.",
       );

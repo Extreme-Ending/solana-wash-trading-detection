@@ -21,6 +21,9 @@ RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-solana-wallet-risk-runtime@$
 FIREBASE_ORIGINS="${FIREBASE_ORIGINS:-https://${PROJECT_ID}.web.app,https://${PROJECT_ID}.firebaseapp.com}"
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-$PROJECT_ID}"
 ALLOWED_USER_UIDS="${ALLOWED_USER_UIDS:-YOUR_APPROVED_FIREBASE_UIDS}"
+CHECK_REVOKED_TOKENS="${CHECK_REVOKED_TOKENS:-true}"
+RATE_LIMIT_REQUESTS="${RATE_LIMIT_REQUESTS:-30}"
+RATE_LIMIT_WINDOW_SECONDS="${RATE_LIMIT_WINDOW_SECONDS:-60}"
 FIREBASE_WEB_API_KEY="${FIREBASE_WEB_API_KEY:-YOUR_FIREBASE_WEB_API_KEY}"
 FIREBASE_AUTH_DOMAIN="${FIREBASE_AUTH_DOMAIN:-${PROJECT_ID}.firebaseapp.com}"
 FIREBASE_APP_ID="${FIREBASE_APP_ID:-YOUR_FIREBASE_WEB_APP_ID}"
@@ -43,6 +46,9 @@ Safe/read-only actions:
   prerequisites     Check required local tools and authenticated account state.
   verify-local      Run local Python/frontend/configuration checks.
   smoke             Test a private service using Cloud Run and Firebase tokens from stdin.
+  smoke-public-candidate
+                    Test the future app-authenticated public-platform path with a Firebase
+                    token from stdin. This does not change IAM or deploy resources.
 
 Student-confirmed actions (require --execute and an interactive exact confirmation):
   build-image       Build and validate a commit-SHA-tagged image locally.
@@ -100,6 +106,10 @@ require_live_config() {
   fi
   if [[ "$MAX_INSTANCES" != "2" || "$CPU" != "1" || "$MEMORY" != "512Mi" || "$CONCURRENCY" != "20" || "$TIMEOUT" != "30s" ]]; then
     printf 'Resource controls differ from the reviewed Phase 7A defaults; update the documented review before deployment.\n' >&2
+    exit 1
+  fi
+  if [[ "$CHECK_REVOKED_TOKENS" != "true" || "$RATE_LIMIT_REQUESTS" != "30" || "$RATE_LIMIT_WINDOW_SECONDS" != "60" ]]; then
+    printf 'Authentication/rate controls differ from the reviewed Phase 7C.0 defaults.\n' >&2
     exit 1
   fi
   IFS=',' read -r web_origin firebaseapp_origin extra_origin <<< "$FIREBASE_ORIGINS"
@@ -177,7 +187,7 @@ plan() {
   print_command docker tag "${IMAGE_NAME}:${sha}" "$uri"
   print_command docker push "$uri"
   printf 'Future private Cloud Run deployment:\n'
-  print_command gcloud run deploy "$CLOUD_RUN_SERVICE" --project "$PROJECT_ID" --region "$REGION" --image "$uri" --platform managed --no-allow-unauthenticated --cpu-throttling --min 0 --max "$MAX_INSTANCES" --cpu "$CPU" --memory "$MEMORY" --concurrency "$CONCURRENCY" --timeout "$TIMEOUT" --port 8080 --service-account "$RUNTIME_SERVICE_ACCOUNT" --set-env-vars "^@^SOLANA_RISK_ENVIRONMENT=production@SOLANA_RISK_CORS_ORIGINS=${FIREBASE_ORIGINS}@SOLANA_RISK_MAX_EVENTS=100@SOLANA_RISK_MAX_REQUEST_BYTES=262144@SOLANA_RISK_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}@SOLANA_RISK_ALLOWED_UIDS=${ALLOWED_USER_UIDS}"
+  print_command gcloud run deploy "$CLOUD_RUN_SERVICE" --project "$PROJECT_ID" --region "$REGION" --image "$uri" --platform managed --no-allow-unauthenticated --cpu-throttling --min 0 --max "$MAX_INSTANCES" --cpu "$CPU" --memory "$MEMORY" --concurrency "$CONCURRENCY" --timeout "$TIMEOUT" --port 8080 --service-account "$RUNTIME_SERVICE_ACCOUNT" --set-env-vars "^@^SOLANA_RISK_ENVIRONMENT=production@SOLANA_RISK_CORS_ORIGINS=${FIREBASE_ORIGINS}@SOLANA_RISK_MAX_EVENTS=100@SOLANA_RISK_MAX_REQUEST_BYTES=262144@SOLANA_RISK_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}@SOLANA_RISK_ALLOWED_UIDS=${ALLOWED_USER_UIDS}@SOLANA_RISK_CHECK_REVOKED_TOKENS=${CHECK_REVOKED_TOKENS}@SOLANA_RISK_RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS}@SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS}"
   printf 'Future frontend build/deploy (CLOUD_RUN_URL must be the exact HTTPS service origin):\n'
   print_command env "VITE_API_BASE_URL=${CLOUD_RUN_URL:-https://YOUR_CLOUD_RUN_SERVICE_HOST}" "VITE_FIREBASE_API_KEY=${FIREBASE_WEB_API_KEY}" "VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}" "VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}" "VITE_FIREBASE_APP_ID=${FIREBASE_APP_ID}" npm --prefix frontend run build
   print_command firebase deploy --only hosting --project "$PROJECT_ID"
@@ -281,7 +291,7 @@ case "$ACTION" in
       --timeout "$TIMEOUT" \
       --port 8080 \
       --service-account "$RUNTIME_SERVICE_ACCOUNT" \
-      --set-env-vars "^@^SOLANA_RISK_ENVIRONMENT=production@SOLANA_RISK_CORS_ORIGINS=${FIREBASE_ORIGINS}@SOLANA_RISK_MAX_EVENTS=100@SOLANA_RISK_MAX_REQUEST_BYTES=262144@SOLANA_RISK_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}@SOLANA_RISK_ALLOWED_UIDS=${ALLOWED_USER_UIDS}"
+      --set-env-vars "^@^SOLANA_RISK_ENVIRONMENT=production@SOLANA_RISK_CORS_ORIGINS=${FIREBASE_ORIGINS}@SOLANA_RISK_MAX_EVENTS=100@SOLANA_RISK_MAX_REQUEST_BYTES=262144@SOLANA_RISK_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}@SOLANA_RISK_ALLOWED_UIDS=${ALLOWED_USER_UIDS}@SOLANA_RISK_CHECK_REVOKED_TOKENS=${CHECK_REVOKED_TOKENS}@SOLANA_RISK_RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS}@SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS}"
     ;;
   build-frontend)
     confirm_live "perform a clean production frontend build against CLOUD_RUN_URL and scan the static bundle; no upload"
@@ -314,6 +324,16 @@ case "$ACTION" in
     fi
     printf 'Paste a short-lived Cloud Run identity token, then an approved-user Firebase ID token. Neither is displayed or stored.\n' >&2
     python3 "$ROOT_DIR/scripts/deployment_smoke_test.py" --base-url "${CLOUD_RUN_URL%/}" --tokens-stdin
+    ;;
+  smoke-public-candidate)
+    require_command python3
+    if [[ ! "$CLOUD_RUN_URL" =~ ^https://[a-z0-9][a-z0-9.-]*[a-z0-9]/?$ ]]; then
+      printf 'Set CLOUD_RUN_URL to the exact HTTPS Cloud Run origin.\n' >&2
+      exit 1
+    fi
+    printf 'This only tests an already-reviewed endpoint; it does not change public invocation or IAM.\n' >&2
+    printf 'Paste an approved-user Firebase ID token. It is neither displayed nor stored.\n' >&2
+    python3 "$ROOT_DIR/scripts/deployment_smoke_test.py" --base-url "${CLOUD_RUN_URL%/}" --firebase-token-stdin
     ;;
   rollback)
     confirm_live "route 100% of service traffic to the named prior revision; no history is rewritten"

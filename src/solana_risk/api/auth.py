@@ -8,8 +8,8 @@ from typing import Any, Protocol
 
 import firebase_admin
 from fastapi import Request
-from fastapi.security import HTTPBearer
 from firebase_admin import auth, credentials, exceptions
+from starlette.concurrency import run_in_threadpool
 
 from solana_risk.api.errors import ApiError
 
@@ -35,7 +35,8 @@ class TokenVerificationUnavailableError(Exception):
 class FirebaseTokenVerifier:
     """Verify Firebase ID tokens with ADC and a fixed Firebase project identity."""
 
-    def __init__(self, project_id: str) -> None:
+    def __init__(self, project_id: str, *, check_revoked: bool) -> None:
+        self._check_revoked = check_revoked
         app_name = f"solana-risk-{project_id}"
         try:
             self._app = firebase_admin.get_app(app_name)
@@ -48,7 +49,11 @@ class FirebaseTokenVerifier:
 
     def verify(self, token: str) -> Mapping[str, Any]:
         try:
-            return auth.verify_id_token(token, app=self._app, check_revoked=False)
+            return auth.verify_id_token(
+                token,
+                app=self._app,
+                check_revoked=self._check_revoked,
+            )
         except auth.ExpiredIdTokenError as exc:
             raise TokenExpiredError from exc
         except (
@@ -61,9 +66,6 @@ class FirebaseTokenVerifier:
             raise TokenVerificationUnavailableError from exc
 
 
-_bearer = HTTPBearer(auto_error=False)
-
-
 def _unauthenticated(code: str, message: str) -> ApiError:
     return ApiError(
         status_code=401,
@@ -73,18 +75,19 @@ def _unauthenticated(code: str, message: str) -> ApiError:
     )
 
 
-async def require_authorized_user(
+async def authenticate_authorization_header(
     request: Request,
+    authorization: str | None,
 ) -> Mapping[str, Any]:
-    """Authenticate a Firebase user, then enforce the email and UID policies."""
+    """Authenticate and authorize one header before a protected body is parsed."""
 
-    credential = await _bearer(request)
-    if credential is None or credential.scheme.lower() != "bearer":
+    if authorization is None:
         raise _unauthenticated(
             "AUTHENTICATION_REQUIRED",
             "A Firebase Bearer token is required.",
         )
-    if not credential.credentials.strip():
+    scheme, separator, token = authorization.partition(" ")
+    if separator != " " or scheme.lower() != "bearer" or not token.strip():
         raise _unauthenticated("INVALID_TOKEN", "The authentication token is invalid.")
 
     settings = request.app.state.settings
@@ -97,7 +100,10 @@ async def require_authorized_user(
         )
 
     try:
-        claims = verifier.verify(credential.credentials)
+        if isinstance(verifier, FirebaseTokenVerifier):
+            claims = await run_in_threadpool(verifier.verify, token.strip())
+        else:
+            claims = verifier.verify(token.strip())
     except TokenExpiredError:
         raise _unauthenticated("TOKEN_EXPIRED", "The authentication token has expired.")
     except TokenInvalidError:
@@ -149,5 +155,18 @@ async def require_authorized_user(
             status_code=403,
             code="USER_NOT_ALLOWED",
             message="This account is not authorized to use the protected API.",
+        )
+    return claims
+
+
+async def require_authorized_user(request: Request) -> Mapping[str, Any]:
+    """Return claims established by the protected-route boundary middleware."""
+
+    claims = getattr(request.state, "authorized_user", None)
+    if not isinstance(claims, Mapping):
+        raise ApiError(
+            status_code=503,
+            code="AUTH_MIDDLEWARE_UNAVAILABLE",
+            message="Protected-route authentication is unavailable.",
         )
     return claims

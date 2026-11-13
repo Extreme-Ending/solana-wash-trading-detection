@@ -66,3 +66,8 @@ firebase hosting:disable --project YOUR_GCP_PROJECT_ID
 ```
 
 This is included in the guarded `cleanup` action. Hosting usage and quotas must be reviewed before deployment; the [Firebase Hosting usage page](https://firebase.google.com/docs/hosting/usage-quotas-pricing) describes current no-cost allowances and paid-plan behavior. No zero-cost outcome is guaranteed.
+## Phase 7C.0 authentication/cost gate
+
+The production Vite build still points directly to the exact HTTPS Cloud Run origin and includes only public Firebase web identifiers. A hosted static browser cannot call the currently private platform endpoint. The recommended later resolution is platform-public Cloud Run while FastAPI requires the Firebase ID token and UID allowlist on protected routes; this has not been enabled.
+
+Before Hosting publication, verify the exact API origin, Firebase authorized domains, Google provider, approved UID and CORS pair. Decide whether to implement App Check with the web reCAPTCHA Enterprise provider, including production-domain registration, quota/cost review and monitored rollout; do not place debug tokens or credentials in the bundle. Monitor Hosting storage and project-level transfer against the budget. Current status remains **not deployed / NO-GO**.

@@ -4,6 +4,8 @@ This repository supports the DSA 8401 Applied Machine Learning capstone **“Det
 
 Phase 7B adds Google sign-in with Firebase Authentication and verifies Firebase ID tokens in FastAPI before descriptive preview or scoring-gate requests. The backend also requires a verified Google email and an explicit Firebase UID allowlist. Health and readiness remain public, and authorized scoring still returns `MODEL_NOT_APPROVED`; no model is loaded. Deployment remains preparation only: no cloud or Firebase resource, public invocation, or IAM policy was created or changed.
 
+Phase 7C.0 hardens that boundary locally: production disables API documentation/schema routes, revocation checks are mandatory, protected authentication occurs before body parsing, and approved UIDs receive a per-instance 30-request/60-second limit. The reviewed future static-browser architecture requires platform-public Cloud Run plus application-layer Firebase authorization, but public invocation is **not enabled** and the deployment verdict remains **NO-GO**. See [`docs/phase_7c_deployment_security_review.md`](docs/phase_7c_deployment_security_review.md).
+
 ## Phase 4A evidence and blockers
 
 The audited file contains 10,800 rows, 18 columns, and 2,312 unique wallets between 1 January and 30 November 2025 UTC. Its columns and source values support DEX/swap-event semantics, not verified NFT marketplace-sale semantics. Despite the filename, no NFT-specific column is present.
@@ -132,6 +134,12 @@ The React application uses the official Firebase Web SDK with `GoogleAuthProvide
 
 The private Cloud Run design remains unchanged. Firebase end-user tokens authenticate to the application, but they do not grant Cloud Run IAM invocation. The guarded deployment smoke utility therefore supports separate `X-Serverless-Authorization` (Cloud Run caller token) and `Authorization` (Firebase user token) headers for an authorized operator. A normal hosted browser cannot obtain the Cloud Run IAM credential, so Phase 7C still needs an explicit access architecture decision; Phase 7B does not enable anonymous invocation or alter IAM.
 
+## Phase 7C.0 security readiness
+
+The recommended future hosted path is Firebase Hosting to a platform-public Cloud Run URL, with FastAPI continuing to require Firebase ID tokens and the server-side UID allowlist on both protected endpoints. This is a recommendation for a later explicitly approved deployment action, not current public access. `scripts/deployment.sh` still deploys privately, contains no public-IAM command, and requires dry-run review plus exact interactive confirmation for existing mutations.
+
+Production configuration must keep token revocation checks enabled and uses a local per-instance limiter. That limiter is not a distributed quota and cannot stop invalid-token traffic before Firebase verification. Firebase App Check was evaluated but not enabled because it requires live project/domain/key setup, cost/quota acceptance and observe-before-enforce validation. The proposed academic budget is USD 10/month with 50/80/100% alerts; alerts are not a spending cap, and any enforced spend-cap feature must be confirmed as eligible and covering all used services. Live deployment remains **NO-GO** pending the checklist in the Phase 7C.0 review.
+
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
 
 ```bash
@@ -198,7 +206,7 @@ All assessed components remain in one repository with clear boundaries:
 - The React + Vite frontend communicates only through the typed HTTP/JSON API, uses Firebase Google sign-in for end-user identity, and contains no model logic or Admin credentials. Phase 7A prepares hosting; Phase 7B adds token-bearing protected calls without deploying either component.
 - Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
 
-Local Docker/Compose, frontend, authentication-contract and deployment-configuration validation are complete. Google Cloud Run and Firebase configuration is prepared but no live deployment is claimed. Cloud Run browser access, App Check/rate controls, provider-backed wallet retrieval and promotion of predictive scoring remain unresolved or out of scope.
+Local Docker/Compose, frontend, authentication-contract and deployment-configuration validation are complete. Google Cloud Run and Firebase configuration is prepared but no live deployment is claimed. Public-invocation approval, App Check/distributed abuse controls, provider-backed wallet retrieval and promotion of predictive scoring remain unresolved or out of scope; the implemented request limiter is per instance only.
 
 ## Repository layout
 

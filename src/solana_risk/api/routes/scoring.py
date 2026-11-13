@@ -17,6 +17,7 @@ router = APIRouter(prefix="/v1", tags=["scoring"])
     responses={
         401: {"model": ErrorResponse},
         403: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },
     summary="Unavailable wallet scoring",

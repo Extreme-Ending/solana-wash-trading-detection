@@ -103,6 +103,8 @@ export function EventWorkbench({ onPreview, onClear }: EventWorkbenchProps) {
             ? "Your account is authenticated but is not approved for this API."
             : error.status === 503 && error.code.startsWith("AUTH_")
               ? "Authentication verification is temporarily unavailable."
+              : error.status === 429
+                ? "Too many requests reached this service instance. Wait before trying again."
               : error.message
         : "The preview request failed.";
       setMessage(`Preview unavailable: ${detail}`);

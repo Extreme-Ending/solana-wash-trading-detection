@@ -67,6 +67,7 @@ describe("event workbench", () => {
   it.each([
     [401, "INVALID_TOKEN", "sign-in session is missing or expired"],
     [403, "USER_NOT_ALLOWED", "not approved for this API"],
+    [429, "RATE_LIMIT_EXCEEDED", "Too many requests reached this service instance"],
   ])("renders an accessible message for HTTP %i", async (status, code, expected) => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({

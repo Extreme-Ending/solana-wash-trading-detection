@@ -4,7 +4,7 @@
 
 The FastAPI service provides process health, prediction-readiness status, and descriptive point-in-time feature previews from user-supplied events. It does not load the Phase 4B experimental artifacts, train a model, call a blockchain provider, or return anomaly, fraud, wash-trading, or probability outputs.
 
-Interactive OpenAPI documentation is available at `/docs` while the service is running. The machine-readable schema is at `/openapi.json`.
+Interactive OpenAPI documentation is available at `/docs` in development, with the machine-readable schema at `/openapi.json`. `/docs`, `/redoc` and `/openapi.json` return 404 when `SOLANA_RISK_ENVIRONMENT=production`.
 
 ## Configuration
 
@@ -18,12 +18,17 @@ Configuration is read from environment variables. The tracked `.env.example` con
 | `SOLANA_RISK_MAX_REQUEST_BYTES` | `262144` | Integer from 1 byte to 10 MiB |
 | `SOLANA_RISK_FIREBASE_PROJECT_ID` | unset | Firebase/Google Cloud project ID; mandatory in production |
 | `SOLANA_RISK_ALLOWED_UIDS` | unset | Comma-separated approved Firebase UIDs; mandatory and nonempty in production |
+| `SOLANA_RISK_CHECK_REVOKED_TOKENS` | `true` | Strict boolean; must remain true in production |
+| `SOLANA_RISK_RATE_LIMIT_REQUESTS` | `30` | Per-process protected requests per UID, 1–10,000 |
+| `SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS` | `60` | Per-process window, 1–3,600 seconds |
 
 Firebase Admin uses Google Cloud Application Default Credentials. No service-account key path, model path, API key, RPC endpoint, or client-supplied server path is accepted. Development may start without Firebase settings so public health can be checked, but protected endpoints then fail closed with HTTP 503.
 
 ## Authentication and authorization
 
-`/v1/features/preview` and `/v1/score` require `Authorization: Bearer FIREBASE_ID_TOKEN`. The Firebase Admin SDK verifies the signature, expiration, issuer, and audience against the configured project. The application additionally requires matching `sub`/`uid`, a verified email, `google.com` as the sign-in provider, and membership in `SOLANA_RISK_ALLOWED_UIDS`. Tokens are never logged or returned.
+`/v1/features/preview` and `/v1/score` require `Authorization: Bearer FIREBASE_ID_TOKEN`. Authentication is rejected at the protected-route boundary before JSON/schema processing. The Firebase Admin SDK verifies the signature, expiration, revocation/disabled-user state, issuer, and audience against the configured project. The application additionally requires matching `sub`/`uid`, a verified email, `google.com` as the sign-in provider, and membership in `SOLANA_RISK_ALLOWED_UIDS`. Tokens are never logged or returned.
+
+The 30-request/60-second default is per UID **within one process**. It resets on restart and is not shared across Cloud Run instances, so it is a bounded application safeguard rather than a global quota or complete abuse control.
 
 Missing, malformed, expired, wrong-project, wrong-issuer, or otherwise invalid credentials return HTTP 401 with `WWW-Authenticate: Bearer`. Authenticated users who fail the verified-email, Google-provider, or UID-allowlist policy receive HTTP 403. Missing server configuration or temporarily unavailable certificate verification returns HTTP 503. `/healthz` and `/readyz` remain public.
 
@@ -157,6 +162,7 @@ The request shape is reserved for future interface stability, but no model is lo
 | 403 | Verified-email, Google-provider, or UID-allowlist authorization policy failed |
 | 413 | Raw request byte limit or event-count limit exceeded |
 | 422 | Malformed schema, unsafe value, incompatible event set, or insufficient pre-cutoff history |
+| 429 | Per-instance authorized-UID request limit exceeded; response includes `Retry-After` |
 | 503 | Prediction unavailable, or authentication configuration/verification unavailable |
 
 ## Local startup

@@ -23,6 +23,7 @@ router = APIRouter(prefix="/v1/features", tags=["descriptive features"])
         401: {"model": ErrorResponse},
         403: {"model": ErrorResponse},
         413: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },

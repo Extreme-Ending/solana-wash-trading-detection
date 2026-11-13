@@ -31,6 +31,15 @@ def _parse_positive_int(
     return parsed
 
 
+def _parse_bool(value: str, *, name: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ConfigurationError(f"{name} must be true or false")
+
+
 def _validate_origin(origin: str) -> str:
     if origin == "*":
         raise ConfigurationError("Wildcard CORS origins are not permitted")
@@ -83,6 +92,9 @@ class Settings:
     max_request_bytes: int = 262_144
     firebase_project_id: str | None = None
     allowed_user_uids: frozenset[str] = frozenset()
+    check_revoked_tokens: bool = True
+    rate_limit_requests: int = 30
+    rate_limit_window_seconds: int = 60
 
     def __post_init__(self) -> None:
         if not self.service_name.strip() or not self.api_version.strip():
@@ -93,6 +105,10 @@ class Settings:
             raise ConfigurationError("max_events must be between 1 and 10000")
         if not 1 <= self.max_request_bytes <= 10_485_760:
             raise ConfigurationError("max_request_bytes must be between 1 and 10485760")
+        if not 1 <= self.rate_limit_requests <= 10_000:
+            raise ConfigurationError("rate_limit_requests must be between 1 and 10000")
+        if not 1 <= self.rate_limit_window_seconds <= 3_600:
+            raise ConfigurationError("rate_limit_window_seconds must be between 1 and 3600")
         if not self.cors_origins:
             raise ConfigurationError("At least one explicit CORS origin is required")
         normalized = tuple(_validate_origin(origin) for origin in self.cors_origins)
@@ -116,6 +132,10 @@ class Settings:
                 )
             if not self.allowed_user_uids:
                 raise ConfigurationError("SOLANA_RISK_ALLOWED_UIDS is required in production")
+            if not self.check_revoked_tokens:
+                raise ConfigurationError(
+                    "SOLANA_RISK_CHECK_REVOKED_TOKENS must be true in production"
+                )
 
     @property
     def authentication_configured(self) -> bool:
@@ -147,4 +167,18 @@ class Settings:
             ),
             firebase_project_id=values.get("SOLANA_RISK_FIREBASE_PROJECT_ID"),
             allowed_user_uids=uids,
+            check_revoked_tokens=_parse_bool(
+                values.get("SOLANA_RISK_CHECK_REVOKED_TOKENS", "true"),
+                name="SOLANA_RISK_CHECK_REVOKED_TOKENS",
+            ),
+            rate_limit_requests=_parse_positive_int(
+                values.get("SOLANA_RISK_RATE_LIMIT_REQUESTS", "30"),
+                name="SOLANA_RISK_RATE_LIMIT_REQUESTS",
+                maximum=10_000,
+            ),
+            rate_limit_window_seconds=_parse_positive_int(
+                values.get("SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS", "60"),
+                name="SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS",
+                maximum=3_600,
+            ),
         )

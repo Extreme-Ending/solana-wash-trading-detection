@@ -47,3 +47,8 @@ Consequently, the hosted browser-to-API path remains **blocked** until the stude
 9. Review cost/logging dashboards and use rollback or cleanup commands if needed.
 
 The helper never creates a project, billing account, repository, service account or IAM binding. Its cloud-changing actions require both `--execute` and an interactive exact confirmation. Full commands and prerequisites are in the deployment documents. Phase 7B ran none of them.
+## Phase 7C.0 gate (2026-11-13)
+
+The recommended eventual browser architecture is direct Firebase Hosting to a platform-public Cloud Run service, with Firebase ID-token verification and UID authorization remaining inside FastAPI. This resolves the private-IAM credential mismatch for a static browser but exposes the application boundary to untrusted traffic and possible cost. It is **not active**: every prepared Cloud Run deployment remains private, and the script contains no command to disable the Invoker IAM check or grant `allUsers` access.
+
+Deployment must proceed privately first. Public platform invocation is a separate later action requiring explicit student approval, recorded abuse/cost acceptance, a decision on App Check or its documented absence, budget controls, and the one-token hosted acceptance smoke. The complete controls, ordered student actions and rollback plan are in [`phase_7c_deployment_security_review.md`](phase_7c_deployment_security_review.md). Current verdict: **NO-GO**.

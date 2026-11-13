@@ -111,6 +111,33 @@ def test_missing_token_returns_401_without_invoking_protected_logic() -> None:
     assert response.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
 
 
+def test_missing_auth_is_rejected_before_malformed_json_is_parsed() -> None:
+    app = _app(_claims())
+
+    async def run() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=True)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.post(
+                "/v1/features/preview",
+                content=b"{not-json",
+                headers={"content-type": "application/json"},
+            )
+
+    response = asyncio.run(run())
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
+
+
+def test_invalid_token_is_not_echoed_in_error_response() -> None:
+    response = _request(
+        _app(TokenInvalidError()),
+        "/v1/features/preview",
+        token="sensitive-submitted-token",
+    )
+    assert response.status_code == 401
+    assert "sensitive-submitted-token" not in response.text
+
+
 @pytest.mark.parametrize(
     ("claims", "expected_code"),
     [
@@ -163,6 +190,47 @@ def test_production_requires_project_and_uid_allowlist() -> None:
         Settings(environment="production")
     with pytest.raises(ConfigurationError, match="ALLOWED_UIDS"):
         Settings(environment="production", firebase_project_id=PROJECT_ID)
+    with pytest.raises(ConfigurationError, match="CHECK_REVOKED_TOKENS"):
+        Settings(
+            environment="production",
+            firebase_project_id=PROJECT_ID,
+            allowed_user_uids=frozenset({APPROVED_UID}),
+            check_revoked_tokens=False,
+        )
+
+
+def test_production_docs_and_schema_are_not_exposed() -> None:
+    app = _app(_claims(), environment="production")
+
+    async def run() -> list[httpx.Response]:
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=True)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return [await client.get(path) for path in ("/docs", "/redoc", "/openapi.json")]
+
+    assert [response.status_code for response in asyncio.run(run())] == [404, 404, 404]
+
+
+def test_development_docs_remain_available() -> None:
+    app = _app(_claims())
+
+    async def run() -> tuple[httpx.Response, httpx.Response]:
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=True)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/docs"), await client.get("/openapi.json")
+
+    docs, schema = asyncio.run(run())
+    assert docs.status_code == 200
+    assert schema.status_code == 200
+
+
+def test_per_instance_rate_limit_returns_429_with_retry_after() -> None:
+    app = _app(_claims(), rate_limit_requests=1, rate_limit_window_seconds=60)
+    first = _request(app, "/v1/features/preview")
+    second = _request(app, "/v1/features/preview")
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
+    assert int(second.headers["retry-after"]) >= 1
 
 
 def test_health_and_readiness_remain_public() -> None:
@@ -182,6 +250,7 @@ def test_firebase_verifier_delegates_signature_and_claim_checks_to_admin_sdk(
 ) -> None:
     verifier = FirebaseTokenVerifier.__new__(FirebaseTokenVerifier)
     verifier._app = object()  # type: ignore[attr-defined]
+    verifier._check_revoked = True  # type: ignore[attr-defined]
     monkeypatch.setattr(
         firebase_auth,
         "verify_id_token",
@@ -194,5 +263,5 @@ def test_firebase_verifier_delegates_signature_and_claim_checks_to_admin_sdk(
     assert verifier.verify("signed-token") == {
         "token": "signed-token",
         "same_app": True,
-        "check_revoked": False,
+        "check_revoked": True,
     }
