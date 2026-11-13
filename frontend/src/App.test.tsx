@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FEATURE_NAMES } from "./api/types";
 import { App } from "./App";
 import { jsonResponse, MODEL_NOT_APPROVED, VALID_PREVIEW } from "./test/fixtures";
+import { renderWithAuth } from "./test/auth";
 
 function installApiMock() {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -26,7 +27,7 @@ describe("application", () => {
 
   it("renders the research boundary, navigation, and independent service states", async () => {
     installApiMock();
-    render(<App />);
+    renderWithAuth(<App />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Inspect wallet behaviour");
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
     expect(screen.getByText("No verified wash-trading labels")).toBeInTheDocument();
@@ -38,7 +39,8 @@ describe("application", () => {
   it("completes the synthetic preview flow and displays the exact feature registry", async () => {
     const user = userEvent.setup();
     installApiMock();
-    render(<App />);
+    renderWithAuth(<App />);
+    await screen.findByText("Approved Researcher");
     await user.click(screen.getByRole("button", { name: "Load synthetic example" }));
     await user.click(screen.getByRole("button", { name: "Generate feature preview" }));
     expect(await screen.findByRole("heading", { name: "All 29 descriptive wallet features" })).toBeInTheDocument();

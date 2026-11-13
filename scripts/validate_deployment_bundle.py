@@ -17,8 +17,8 @@ FORBIDDEN_NAMES = {
 FORBIDDEN_SUFFIXES = {".csv", ".joblib", ".pem", ".p12", ".pfx"}
 SECRET_PATTERNS = {
     "private key": re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
-    "Google API key": re.compile(rb"AIza[0-9A-Za-z_-]{35}"),
     "GitHub token": re.compile(rb"gh[opsu]_[0-9A-Za-z]{20,}"),
+    "Google service-account credential": re.compile(rb'"private_key_id"\s*:\s*"'),
 }
 
 

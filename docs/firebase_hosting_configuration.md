@@ -2,7 +2,7 @@
 
 ## Prepared static site
 
-`firebase.json` publishes `frontend/dist`, which is Vite's actual production output. It provides a catch-all rewrite to `/index.html` for client-side SPA routes and does not configure Cloud Run rewrites, Functions, Firestore, Authentication, an SDK, or automatic deployment.
+`firebase.json` publishes `frontend/dist`, which is Vite's actual production output. It provides a catch-all rewrite to `/index.html` for client-side SPA routes and does not configure Cloud Run rewrites, Functions, Firestore, or automatic deployment. Phase 7B adds the official Firebase Web SDK in source for Authentication, but creates or enables no Firebase resource.
 
 Caching is split by mutability:
 
@@ -14,7 +14,7 @@ The repository contains `.firebaserc.example` with only `YOUR_GCP_PROJECT_ID`. A
 
 ## Production build
 
-The browser-visible `VITE_API_BASE_URL` is configuration, never a secret. It must be the exact HTTPS Cloud Run origin without a path:
+The browser-visible API origin and Firebase Web values are configuration, never Admin credentials. `VITE_API_BASE_URL` must be the exact HTTPS Cloud Run origin without a path. The Web API key identifies the Firebase project and should have appropriate API restrictions, but it cannot authorize protected API access; the signed ID token and backend allowlist do that.
 
 ```bash
 cp frontend/.env.production.example frontend/.env.production.local
@@ -49,13 +49,13 @@ firebase hosting:sites:list --project YOUR_GCP_PROJECT_ID
 ./scripts/deployment.sh deploy-firebase --execute
 ```
 
-The project must already have a Firebase Hosting site associated with it. Verify its actual site ID with `firebase hosting:sites:list`; if it differs from the project ID, set `FIREBASE_ORIGINS` to that site's matching `https://SITE_ID.web.app,https://SITE_ID.firebaseapp.com` origins before backend deployment. The deployment action validates `frontend/dist`, displays the project/region/effect, and runs `firebase deploy --only hosting --project PROJECT_ID` only after the exact confirmation. The deployer needs the predefined Firebase Hosting Admin role only for the deployment task; do not grant it to the Cloud Run runtime identity.
+The project must already have a Firebase Hosting site and Web app with Google sign-in configured. Verify its actual site ID and authorized authentication domains before building. If the site ID differs from the project ID, set `FIREBASE_ORIGINS` to that site's matching `https://SITE_ID.web.app,https://SITE_ID.firebaseapp.com` origins before backend deployment. Add only reviewed Google-account UIDs to the backend allowlist. The deployment action validates `frontend/dist`, displays the project/region/effect, and runs `firebase deploy --only hosting --project PROJECT_ID` only after the exact confirmation. The deployer needs the predefined Firebase Hosting Admin role only for the deployment task; do not grant it to the Cloud Run runtime identity.
 
 ## Routing and access limitation
 
 Direct API-origin routing preserves the existing paths and avoids a duplicate `/api`. The local proxy still converts local `/api/*` calls to the loopback API. In production, the build uses the bare API origin and the client calls the native paths directly.
 
-A private Cloud Run API cannot be invoked by an unauthenticated static site merely because CORS permits the Firebase origin. Therefore a successful static deployment would show the frontend but not make its API calls usable until an approved authentication/public-access design exists. This is an explicit deployment blocker, not an error to bypass with `--allow-unauthenticated`.
+A Firebase ID token authenticates the end user to FastAPI but does not grant `roles/run.invoker` or satisfy Cloud Run's platform IAM check. A successful static deployment would therefore show sign-in controls, but protected API calls would still be blocked at private Cloud Run before reaching FastAPI. This remains an explicit deployment blocker, not an error to bypass with anonymous invocation without a separately approved access design.
 
 ## Hosting cleanup
 

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FeaturePreviewRequest, FeaturePreviewResponse } from "./api/types";
+import { useAuth } from "./auth/AuthContext";
 import { EventWorkbench } from "./components/EventWorkbench";
 import { FeatureCharts } from "./components/FeatureCharts";
 import { FeatureResults } from "./components/FeatureResults";
@@ -10,6 +11,7 @@ import { ProjectOverview } from "./components/ProjectOverview";
 import { ServiceStatus } from "./components/ServiceStatus";
 
 export function App() {
+  const { user } = useAuth();
   const [preview, setPreview] = useState<FeaturePreviewResponse | null>(null);
   const [lastRequest, setLastRequest] = useState<FeaturePreviewRequest | null>(null);
 
@@ -25,6 +27,10 @@ export function App() {
     setPreview(null);
     setLastRequest(null);
   };
+
+  useEffect(() => {
+    clearPreview();
+  }, [user?.uid]);
 
   return (
     <>

@@ -16,8 +16,16 @@ Configuration is read from environment variables. The tracked `.env.example` con
 | `SOLANA_RISK_CORS_ORIGINS` | `http://localhost:5173` | Comma-separated exact HTTP(S) origins; wildcard, paths, credentials, query and fragments are rejected |
 | `SOLANA_RISK_MAX_EVENTS` | `100` | Integer from 1 to 10,000 |
 | `SOLANA_RISK_MAX_REQUEST_BYTES` | `262144` | Integer from 1 byte to 10 MiB |
+| `SOLANA_RISK_FIREBASE_PROJECT_ID` | unset | Firebase/Google Cloud project ID; mandatory in production |
+| `SOLANA_RISK_ALLOWED_UIDS` | unset | Comma-separated approved Firebase UIDs; mandatory and nonempty in production |
 
-No model path, credential, API key, RPC endpoint, or client-supplied server path is accepted.
+Firebase Admin uses Google Cloud Application Default Credentials. No service-account key path, model path, API key, RPC endpoint, or client-supplied server path is accepted. Development may start without Firebase settings so public health can be checked, but protected endpoints then fail closed with HTTP 503.
+
+## Authentication and authorization
+
+`/v1/features/preview` and `/v1/score` require `Authorization: Bearer FIREBASE_ID_TOKEN`. The Firebase Admin SDK verifies the signature, expiration, issuer, and audience against the configured project. The application additionally requires matching `sub`/`uid`, a verified email, `google.com` as the sign-in provider, and membership in `SOLANA_RISK_ALLOWED_UIDS`. Tokens are never logged or returned.
+
+Missing, malformed, expired, wrong-project, wrong-issuer, or otherwise invalid credentials return HTTP 401 with `WWW-Authenticate: Bearer`. Authenticated users who fail the verified-email, Google-provider, or UID-allowlist policy receive HTTP 403. Missing server configuration or temporarily unavailable certificate verification returns HTTP 503. `/healthz` and `/readyz` remain public.
 
 ## Error envelope
 
@@ -75,6 +83,7 @@ Reports whether prediction capability is available. Phase 5A always returns HTTP
 
 Builds the registered Phase 3 wallet snapshot from complete user-supplied event records. The endpoint:
 
+- requires an authorized Firebase user as described above;
 - accepts exactly one wallet per request;
 - requires explicit UTC `block_time` and `as_of` strings using `Z` or `+00:00`;
 - requires unique positive `source_row_number` values;
@@ -137,16 +146,18 @@ The real response contains all 29 registered feature names. Missing inter-event 
 
 ## `POST /v1/score`
 
-The request shape is reserved for future interface stability, but Phase 5A never loads a model or returns a score. A valid request returns HTTP 503 with `MODEL_NOT_APPROVED`, using the same body as `/readyz`. Invalid request bodies may first return the normal HTTP 422 validation envelope.
+The request shape is reserved for future interface stability, but no model is loaded and no score is returned. An authenticated, authorized request returns HTTP 503 with `MODEL_NOT_APPROVED`, using the same body as `/readyz`. Missing authentication returns 401 and an authenticated user outside the allowlist returns 403.
 
 ## Status codes
 
 | Status | Meaning |
 |---:|---|
 | 200 | Process health or successfully computed descriptive features |
+| 401 | Firebase Bearer token missing, expired, malformed, or for the wrong project |
+| 403 | Verified-email, Google-provider, or UID-allowlist authorization policy failed |
 | 413 | Raw request byte limit or event-count limit exceeded |
 | 422 | Malformed schema, unsafe value, incompatible event set, or insufficient pre-cutoff history |
-| 503 | Prediction capability unavailable |
+| 503 | Prediction unavailable, or authentication configuration/verification unavailable |
 
 ## Local startup
 
@@ -155,4 +166,4 @@ python -m pip install -e '.[dev]'
 uvicorn solana_risk.api.main:app --reload
 ```
 
-Then open `http://127.0.0.1:8000/docs`. The service performs no wallet-address lookup and makes no external network request.
+Then open `http://127.0.0.1:8000/docs`. Token verification may fetch Google's public signing certificates and uses ADC; feature computation performs no wallet-address lookup or external provider call.

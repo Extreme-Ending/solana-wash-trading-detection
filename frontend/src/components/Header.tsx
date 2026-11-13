@@ -1,4 +1,8 @@
+import { useAuth } from "../auth/AuthContext";
+
 export function Header() {
+  const { user, loading, busy, error, signIn, signOut } = useAuth();
+
   return (
     <header className="site-header">
       <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -16,6 +20,25 @@ export function Header() {
           <a href="#results">Results</a>
           <a href="#methodology">Methodology</a>
         </nav>
+        <div className="auth-control" aria-live="polite">
+          {loading ? (
+            <span className="auth-state">Checking sign-in…</span>
+          ) : user ? (
+            <>
+              <span className="auth-identity" title={user.email ?? undefined}>
+                {user.displayName || user.email || "Approved user"}
+              </span>
+              <button className="button secondary auth-button" type="button" onClick={() => void signOut()} disabled={busy}>
+                {busy ? "Signing out…" : "Sign out"}
+              </button>
+            </>
+          ) : (
+            <button className="button primary auth-button" type="button" onClick={() => void signIn()} disabled={busy}>
+              {busy ? "Signing in…" : "Sign in with Google"}
+            </button>
+          )}
+          {error && <span className="auth-error" role="alert">{error}</span>}
+        </div>
       </div>
     </header>
   );

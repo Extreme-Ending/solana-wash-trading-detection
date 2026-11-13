@@ -8,13 +8,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from solana_risk.api.auth import FirebaseTokenVerifier, TokenVerifier
 from solana_risk.api.config import Settings
 from solana_risk.api.errors import install_error_handlers
 from solana_risk.api.middleware import RequestSizeLimitMiddleware
 from solana_risk.api.routes import features, health, scoring
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    token_verifier: TokenVerifier | None = None,
+) -> FastAPI:
     """Create an app with no model deserialization or training side effects."""
 
     selected = settings or Settings.from_env()
@@ -35,13 +40,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     application.state.settings = selected
+    application.state.token_verifier = token_verifier
+    if application.state.token_verifier is None and selected.firebase_project_id is not None:
+        application.state.token_verifier = FirebaseTokenVerifier(selected.firebase_project_id)
     application.state.prediction_available = False
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(selected.cors_origins),
         allow_credentials=False,
         allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Content-Type", "Accept"],
+        allow_headers=["Content-Type", "Accept", "Authorization"],
     )
     application.add_middleware(
         RequestSizeLimitMiddleware,

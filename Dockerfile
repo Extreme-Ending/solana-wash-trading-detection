@@ -23,7 +23,7 @@ RUN python -m pip install --no-cache-dir --no-compile --no-index \
 FROM ${PYTHON_IMAGE} AS runtime
 
 LABEL org.opencontainers.image.title="Solana wallet feature API" \
-      org.opencontainers.image.description="Phase 5B descriptive FastAPI service with scoring disabled" \
+      org.opencontainers.image.description="Firebase-authenticated descriptive FastAPI service with scoring disabled" \
       org.opencontainers.image.source="https://github.com/Extreme-Ending/solana-wash-trading-detection"
 
 ENV PYTHONUNBUFFERED=1 \

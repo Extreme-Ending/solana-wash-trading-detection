@@ -37,7 +37,8 @@ def _payload() -> dict[str, Any]:
 
 def _request(
     base_url: str,
-    token: str,
+    cloud_run_token: str,
+    firebase_token: str,
     method: str,
     path: str,
     payload: dict[str, Any] | None = None,
@@ -50,7 +51,8 @@ def _request(
         headers={
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {firebase_token}",
+            "X-Serverless-Authorization": f"Bearer {cloud_run_token}",
         },
     )
     try:
@@ -79,26 +81,31 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
     parser.add_argument(
-        "--token-stdin",
+        "--tokens-stdin",
         action="store_true",
-        help="read one short-lived identity token from stdin without echo when interactive",
+        help="read Cloud Run then Firebase short-lived tokens from stdin without command arguments",
     )
     args = parser.parse_args()
     try:
         base_url = _validate_base_url(args.base_url)
     except ValueError as exc:
         parser.error(str(exc))
-    if not args.token_stdin:
-        parser.error("--token-stdin is required; tokens are never accepted as command arguments")
-    token = getpass.getpass("Identity token: ") if sys.stdin.isatty() else sys.stdin.readline().strip()
-    if not token:
-        parser.error("a non-empty short-lived identity token is required")
+    if not args.tokens_stdin:
+        parser.error("--tokens-stdin is required; tokens are never accepted as command arguments")
+    if sys.stdin.isatty():
+        cloud_run_token = getpass.getpass("Cloud Run identity token: ")
+        firebase_token = getpass.getpass("Firebase ID token: ")
+    else:
+        cloud_run_token = sys.stdin.readline().strip()
+        firebase_token = sys.stdin.readline().strip()
+    if not cloud_run_token or not firebase_token:
+        parser.error("non-empty short-lived Cloud Run and Firebase tokens are required")
 
     payload = _payload()
-    health_status, health = _request(base_url, token, "GET", "/healthz")
-    ready_status, ready = _request(base_url, token, "GET", "/readyz")
-    preview_status, preview = _request(base_url, token, "POST", "/v1/features/preview", payload)
-    score_status, score = _request(base_url, token, "POST", "/v1/score", payload)
+    health_status, health = _request(base_url, cloud_run_token, firebase_token, "GET", "/healthz")
+    ready_status, ready = _request(base_url, cloud_run_token, firebase_token, "GET", "/readyz")
+    preview_status, preview = _request(base_url, cloud_run_token, firebase_token, "POST", "/v1/features/preview", payload)
+    score_status, score = _request(base_url, cloud_run_token, firebase_token, "POST", "/v1/score", payload)
 
     assert health_status == 200 and health.get("status") == "ok"
     assert ready_status == 503 and ready["error"]["code"] == "MODEL_NOT_APPROVED"

@@ -105,6 +105,11 @@ nav { display: flex; gap: 1.4rem; }
 nav a { text-decoration: none; font-size: 0.83rem; font-weight: 700; color: #3f5048; }
 nav a:hover { color: var(--forest); }
 
+.auth-control { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; min-width: 12rem; }
+.auth-button { min-height: 2.35rem; padding: 0.5rem 0.75rem; white-space: nowrap; }
+.auth-state, .auth-identity { color: var(--muted); font-size: 0.75rem; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-error { color: #8a3327; font-size: 0.72rem; max-width: 15rem; }
+
 main {
   max-width: 1240px;
   margin: 0 auto;
@@ -253,6 +258,8 @@ h1 {
   line-height: 1.6;
 }
 
+.auth-required { margin: -0.5rem 0 1.5rem; padding: 0.85rem 1rem; border: 1px solid #e4c98f; border-radius: 0.55rem; background: #fff8e8; color: #67522b; font-size: 0.84rem; }
+
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 label > span, .json-field > span { display: block; margin-bottom: 0.45rem; font-size: 0.78rem; font-weight: 800; }
 input, textarea {
@@ -345,6 +352,8 @@ footer { padding: 2.5rem 1.5rem; border-top: 1px solid var(--line); text-align: 
 footer p { margin: 0.35rem; }
 
 @media (max-width: 900px) {
+  .header-inner { flex-wrap: wrap; }
+  .auth-control { margin-left: auto; }
   .hero { min-height: auto; grid-template-columns: 1fr; padding: 5rem 0 3rem; }
   .scope-card { max-width: 640px; }
   .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -355,6 +364,8 @@ footer p { margin: 0.35rem; }
 @media (max-width: 680px) {
   .header-inner { padding: 0.75rem 1rem; }
   nav { display: none; }
+  .auth-control { width: 100%; justify-content: flex-start; }
+  .auth-error { max-width: none; }
   main { padding-inline: 1rem; }
   .hero { padding-top: 4rem; }
   h1 { font-size: clamp(2.6rem, 14vw, 4rem); }

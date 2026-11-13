@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_IMAGE = "solana-wallet-risk-api:phase5b"
+DEFAULT_IMAGE = "solana-wallet-risk-api:phase7b"
 
 
 def _run(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -177,7 +177,11 @@ for forbidden in (
     assert not Path(forbidden).exists(), forbidden
 print('installed API import and image-content checks: PASS')
 """
-    _run("docker", "run", "--rm", "--entrypoint", "python", image, "-c", check_code)
+    _run(
+        "docker", "run", "--rm", "--entrypoint", "python",
+        "--env", "SOLANA_RISK_ENVIRONMENT=container-test",
+        image, "-c", check_code,
+    )
     return {
         "image_id": inspection["Id"],
         "size_bytes": inspection["Size"],
@@ -200,9 +204,9 @@ def validate_default_runtime(
     status, readiness = _request("GET", f"{base_url}/readyz")
     assert status == 503 and readiness["error"]["code"] == "MODEL_NOT_APPROVED"
     status, preview = _request("POST", f"{base_url}/v1/features/preview", _synthetic_payload())
-    assert status == 200 and len(preview["feature_order"]) == 29
+    assert status == 401 and preview["error"]["code"] == "AUTHENTICATION_REQUIRED"
     status, scoring = _request("POST", f"{base_url}/v1/score", _synthetic_payload())
-    assert status == 503 and scoring["error"]["code"] == "MODEL_NOT_APPROVED"
+    assert status == 401 and scoring["error"]["code"] == "AUTHENTICATION_REQUIRED"
     status, openapi = _request("GET", f"{base_url}/openapi.json")
     assert status == 200 and "/healthz" in openapi["paths"]
 
@@ -223,10 +227,9 @@ def validate_default_runtime(
     return {
         "healthz": 200,
         "readyz": 503,
-        "feature_preview": 200,
-        "score": 503,
+        "feature_preview": 401,
+        "score": 401,
         "openapi": 200,
-        "feature_count": len(preview["feature_order"]),
         "runtime_uid": int(runtime_uid),
         "graceful_exit_code": exit_code,
     }

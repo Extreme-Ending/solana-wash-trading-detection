@@ -293,3 +293,14 @@ This log records decisions that constrain later implementation. It does not clai
 - **Access boundary:** Keep `--no-allow-unauthenticated`. A static SPA cannot invoke the private IAM-protected API without an approved access design; CORS is not authentication. Treat public browser integration as blocked rather than embedding credentials or silently enabling anonymous access.
 - **Operational boundary:** Deployment scripts default to planning and require `--execute`, an interactive terminal and an exact project/region/action confirmation for every mutating action. No project, billing service, API, repository, identity, IAM binding, Firebase site or deployment was created in Phase 7A.
 - **Next gate:** Stop after configuration, documentation and local verification. Live resource creation/deployment, access-control changes, CI/CD and model promotion require explicit student approval.
+
+## D037 — Add Firebase end-user authentication without weakening private Cloud Run IAM
+
+- **Date:** 2026-11-12
+- **Status:** accepted for Phase 7B implementation
+- **Decision:** Use the official Firebase Web SDK for Google popup sign-in and attach current Firebase ID tokens only to protected requests. Verify tokens with Firebase Admin and Application Default Credentials, then enforce project/issuer/subject/expiration checks, verified Google email, and a server-side Firebase UID allowlist.
+- **Endpoint boundary:** Keep `/healthz` and `/readyz` public for process and capability monitoring. Protect `/v1/features/preview` and `/v1/score`; an authorized score request still returns HTTP 503 `MODEL_NOT_APPROVED`, with no experimental artifact loaded.
+- **Configuration boundary:** Treat Firebase Web API key/domain/project/app ID as public build configuration, never as authorization. Require the backend Firebase project and UID allowlist in production. Do not accept service-account key files; local and Cloud Run verification use ADC.
+- **Cloud boundary:** Preserve `--no-allow-unauthenticated` and make no IAM change. Firebase user authentication does not satisfy private Cloud Run platform IAM, so a Firebase-hosted browser remains blocked. Operator smoke tests may use separate `X-Serverless-Authorization` and application `Authorization` headers, but this is not a browser deployment solution.
+- **Operational limitations:** Token revocation is not checked on every request; otherwise valid tokens remain usable until expiry. UID membership is manually administered. App Check, distributed rate limiting and a final private-service browser access design remain Phase 7C prerequisites.
+- **Next gate:** Stop after Phase 7B code, tests and documentation. Do not create resources, deploy, change IAM, enable model scoring, or begin Phase 7C without explicit student approval.

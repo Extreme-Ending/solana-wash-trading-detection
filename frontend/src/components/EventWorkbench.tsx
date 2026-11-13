@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { ApiClientError, apiClient } from "../api/client";
 import type { FeaturePreviewRequest, FeaturePreviewResponse } from "../api/types";
+import { useAuth } from "../auth/AuthContext";
 import {
   SYNTHETIC_AS_OF,
   SYNTHETIC_EVENTS_JSON,
@@ -20,6 +21,7 @@ interface EventWorkbenchProps {
 }
 
 export function EventWorkbench({ onPreview, onClear }: EventWorkbenchProps) {
+  const { user, loading } = useAuth();
   const [wallet, setWallet] = useState("");
   const [asOf, setAsOf] = useState("");
   const [eventsJson, setEventsJson] = useState("[]");
@@ -70,6 +72,10 @@ export function EventWorkbench({ onPreview, onClear }: EventWorkbenchProps) {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!user) {
+      setMessage("Authentication required: sign in with an approved Google account.");
+      return;
+    }
     requestController.current?.abort();
     let request: FeaturePreviewRequest;
     try {
@@ -90,7 +96,15 @@ export function EventWorkbench({ onPreview, onClear }: EventWorkbenchProps) {
       setMessage(`Preview generated from ${response.included_historical_event_count} historical event(s).`);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      const detail = error instanceof ApiClientError ? error.message : "The preview request failed.";
+      const detail = error instanceof ApiClientError
+        ? error.status === 401
+          ? "Your sign-in session is missing or expired. Sign in again."
+          : error.status === 403
+            ? "Your account is authenticated but is not approved for this API."
+            : error.status === 503 && error.code.startsWith("AUTH_")
+              ? "Authentication verification is temporarily unavailable."
+              : error.message
+        : "The preview request failed.";
       setMessage(`Preview unavailable: ${detail}`);
       onClear();
     } finally {
@@ -115,6 +129,11 @@ export function EventWorkbench({ onPreview, onClear }: EventWorkbenchProps) {
         <strong>Privacy boundary:</strong> input is held only in page memory and sent to the configured
         API when you submit. Use synthetic or appropriately authorised research data.
       </div>
+      {!loading && !user && (
+        <div className="auth-required" role="status">
+          Sign in with an approved Google account to submit events. Local editing and JSON import remain available.
+        </div>
+      )}
 
       <form onSubmit={submit} noValidate>
         <div className="form-grid">
@@ -160,7 +179,7 @@ export function EventWorkbench({ onPreview, onClear }: EventWorkbenchProps) {
         </p>
 
         <div className="form-actions">
-          <button className="button primary" type="submit" disabled={submitting}>
+          <button className="button primary" type="submit" disabled={submitting || loading || !user}>
             {submitting ? "Generating preview…" : "Generate feature preview"}
           </button>
           <button className="button secondary" type="button" onClick={loadSynthetic} disabled={submitting}>

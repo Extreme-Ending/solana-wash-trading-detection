@@ -57,3 +57,9 @@ The final command results are recorded here after execution:
 The tests establish frontend behavior and contract compatibility, not the authenticity or completeness of user-supplied events and not the correctness of any fraud claim. Browser/device usability beyond the tested responsive CSS and jsdom interaction suite remains a manual review activity. No hosted Firebase or Cloud Run environment was created or tested.
 
 The temporary Vite server, Docker container, and Compose network used for the real HTTP check were stopped and removed after validation. The local image cache was not pushed or published.
+
+## Phase 7B authentication revalidation
+
+Phase 7B expands the suite to 35 tests in 8 files. New coverage includes missing production Firebase Web configuration, malformed project/domain configuration, auth-state sign-in/sign-out transitions, safe accessible popup errors, no-token local rejection, Bearer-header attachment only on protected requests, 401/403/authentication-503 handling, and signed-out control states. TypeScript checking and the production build pass with the pinned Firebase Web SDK; the resulting bundle contains 0.62 kB HTML, 12.16 kB CSS, and 355.25 kB JavaScript before gzip. The static bundle validator passes with public Firebase configuration and rejects service-account credential signatures. `npm audit --omit=dev` reports zero production vulnerabilities.
+
+No live Google popup or Firebase project was used. Browser SDK integration is established by deterministic gateway tests; real authorized-domain, popup, token refresh, and hosted-device behavior remain Phase 7C/manual prerequisites.

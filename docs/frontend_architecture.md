@@ -10,15 +10,16 @@ The interface does not fetch wallet history, persist input, call a blockchain pr
 
 ```text
 Browser (React + TypeScript)
+  ├─ Firebase Web SDK: Google popup, auth-state observer, current ID token
   ├─ local state: wallet, UTC cutoff, event JSON, latest preview
   ├─ client validation: closed schema, 1–100 events, 256 KiB limit
   └─ typed fetch client
        └─ /api/* during development
             └─ Vite loopback proxy
-                 └─ http://127.0.0.1:8080/* (FastAPI container)
+                 └─ http://127.0.0.1:8080/* (Firebase-verifying FastAPI container)
 ```
 
-The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin and lets the Vite development proxy reach the loopback-only Compose service. A simple root-relative path or an HTTP(S) base URL can be supplied at build time. Protocol-relative URLs, credentials, query strings, and fragments are rejected. No credential belongs in a `VITE_*` variable because Vite exposes such values to the browser.
+The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin and lets the Vite development proxy reach the loopback-only Compose service. A simple root-relative path or an HTTP(S) base URL can be supplied at build time. Protocol-relative URLs, credentials, query strings, and fragments are rejected. The Firebase Web API key, auth domain, project ID, and app ID are intentionally public project configuration. ID tokens, service-account keys, Admin credentials, and other secrets never belong in a `VITE_*` variable because Vite exposes such values to the browser.
 
 ## Source responsibilities
 
@@ -27,6 +28,8 @@ The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin an
 | `src/api/types.ts` | Exact request, health, availability, and 29-feature response types |
 | `src/api/config.ts` | Safe API-base resolution with `/api` as the local default |
 | `src/api/client.ts` | Fetch calls, structured errors, response-schema and feature-order checks |
+| `src/auth/firebase.ts` | Validated public Firebase configuration, Google provider and ID-token access |
+| `src/auth/AuthContext.tsx` | Auth-state subscription, sign-in/out actions, loading and safe error state |
 | `src/utils/validation.ts` | Fail-closed local input/import validation and request-size enforcement |
 | `src/data/featureRegistry.ts` | Human-readable definitions and grouping for the 29 existing features |
 | `src/data/syntheticExample.ts` | Clearly synthetic, deterministic demonstration input |
@@ -37,6 +40,14 @@ The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin an
 | `src/components/ModelStatus.tsx` | Explicit unavailable-scoring gate; never renders model output |
 
 `App.tsx` retains only the most recent response and its validated request in component memory. Reloading or clearing the page removes them. A local JSON file is read with the browser file API, limited to 256 KiB, and is not uploaded until the student explicitly submits the form.
+
+## Authentication flow
+
+1. `AuthProvider` initializes the official modular Firebase Web SDK from four environment-provided public identifiers and subscribes with `onAuthStateChanged`.
+2. The header offers Google popup sign-in, sign-out, an initial loading state, the current display identity, and an accessible safe error message.
+3. The API client requests a current Firebase ID token immediately before preview or scoring-gate requests and sets `Authorization: Bearer <token>`. It does not send the token on health/readiness requests and does not persist or log it.
+4. A missing local user blocks submission. Backend 401 prompts reauthentication, 403 explains that the account is not approved, and authentication-related 503 reports temporary verification/configuration unavailability. `MODEL_NOT_APPROVED` remains the expected scoring 503.
+5. Signing out clears the rendered feature preview and last scoring request from React state.
 
 ## API contract and fail-closed behavior
 
@@ -59,10 +70,11 @@ The visual hierarchy separates evidence from capability: project scope, process 
 
 ## Security and privacy
 
-- No credentials, analytics, telemetry, external fonts, remote scripts, or third-party runtime APIs are used.
+- No Admin credentials, analytics, telemetry, external fonts, or remote scripts are used. Firebase Authentication is the sole added third-party runtime API.
 - No `dangerouslySetInnerHTML`, browser storage, cookies, service worker, or raw-event logging is used.
 - React escapes displayed wallet and metadata strings.
 - Requests are explicit and are not retried automatically.
+- Firebase ID tokens remain in Firebase SDK/browser memory and request headers; they are not written to application storage or displayed.
 - In-flight preview and model-gate requests are cancellable on replacement or unmount.
 - Production CORS remains the backend's exact-origin responsibility; the local proxy does not justify a wildcard origin.
 
@@ -70,8 +82,12 @@ The visual hierarchy separates evidence from capability: project scope, process 
 
 The available records are DEX swap events, not authenticated NFT marketplace sales. The preview is derived from user-supplied, unverified event history and is only as complete as that history. Feature magnitude, concentration, recency, or unusualness cannot establish wash trading or fraud. The interface preserves this boundary in the overview, results, model gate, charts, and methodology section.
 
+## Deployment limitation
+
+Firebase authentication is application-layer authorization, not Cloud Run IAM authorization. The reviewed Cloud Run service remains private. A normal Firebase-hosted browser cannot supply the separate Google-signed Cloud Run invocation credential required by the platform, even though it can supply a Firebase end-user ID token to FastAPI. Phase 7B therefore does not claim a working hosted end-to-end path and does not enable public invocation.
+
 ## Deferred work
 
-Firebase Hosting, Google Cloud Run, authentication, provider-backed wallet lookup, telemetry, model-artifact promotion, anomaly scoring, and live cloud configuration are not part of Phase 6. Any such change requires a separate milestone and continued exact-origin, privacy, cost, provenance, and scientific-readiness review.
+Live Firebase/Google Cloud resource configuration, the Cloud Run browser-access architecture, rate limiting/App Check, provider-backed wallet lookup, telemetry, model-artifact promotion, and anomaly scoring remain outside Phase 7B.
 
 The intended later deployment shape is a Vite production build published from `frontend/dist/` to standard Firebase Hosting with a single-page-app rewrite, while the existing container runs independently on Cloud Run. That phase would need an owned Google Cloud/Firebase project, billing and budget controls, an Artifact Registry/image release process, Cloud Run service identity and resource limits, HTTPS API configuration, the exact Firebase origin in backend CORS, environment-specific `VITE_API_BASE_URL`, access/log-retention review, and post-deployment health/readiness/preview tests. It must not place a credential in the static bundle or enable scoring merely because hosting exists.

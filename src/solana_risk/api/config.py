@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from urllib.parse import urlsplit
@@ -10,6 +11,9 @@ from urllib.parse import urlsplit
 
 class ConfigurationError(ValueError):
     """Raised when service configuration is unsafe or malformed."""
+
+
+_PROJECT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
 
 def _parse_positive_int(
@@ -46,6 +50,27 @@ def _validate_origin(origin: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
+def _validate_project_id(project_id: str | None) -> str | None:
+    if project_id is None or not project_id.strip():
+        return None
+    normalized = project_id.strip()
+    if not _PROJECT_ID_PATTERN.fullmatch(normalized):
+        raise ConfigurationError("SOLANA_RISK_FIREBASE_PROJECT_ID is malformed")
+    return normalized
+
+
+def _validate_uids(uids: frozenset[str]) -> frozenset[str]:
+    for uid in uids:
+        if not uid or len(uid) > 128 or any(character.isspace() for character in uid):
+            raise ConfigurationError(
+                "SOLANA_RISK_ALLOWED_UIDS must contain nonempty UIDs of at most 128 "
+                "characters without whitespace"
+            )
+        if any(ord(character) < 33 or ord(character) == 127 for character in uid):
+            raise ConfigurationError("SOLANA_RISK_ALLOWED_UIDS contains an unsafe character")
+    return uids
+
+
 @dataclass(frozen=True)
 class Settings:
     """Validated service settings with conservative local defaults."""
@@ -56,6 +81,8 @@ class Settings:
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
     max_events: int = 100
     max_request_bytes: int = 262_144
+    firebase_project_id: str | None = None
+    allowed_user_uids: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         if not self.service_name.strip() or not self.api_version.strip():
@@ -72,6 +99,29 @@ class Settings:
         if len(set(normalized)) != len(normalized):
             raise ConfigurationError("CORS origins must be unique")
         object.__setattr__(self, "cors_origins", normalized)
+        object.__setattr__(
+            self,
+            "firebase_project_id",
+            _validate_project_id(self.firebase_project_id),
+        )
+        object.__setattr__(
+            self,
+            "allowed_user_uids",
+            _validate_uids(self.allowed_user_uids),
+        )
+        if self.environment.strip().lower() == "production":
+            if self.firebase_project_id is None:
+                raise ConfigurationError(
+                    "SOLANA_RISK_FIREBASE_PROJECT_ID is required in production"
+                )
+            if not self.allowed_user_uids:
+                raise ConfigurationError("SOLANA_RISK_ALLOWED_UIDS is required in production")
+
+    @property
+    def authentication_configured(self) -> bool:
+        """Return whether protected endpoints can attempt token verification."""
+
+        return self.firebase_project_id is not None and bool(self.allowed_user_uids)
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
@@ -80,6 +130,8 @@ class Settings:
         values = os.environ if environ is None else environ
         origins_text = values.get("SOLANA_RISK_CORS_ORIGINS", "http://localhost:5173")
         origins = tuple(item.strip() for item in origins_text.split(",") if item.strip())
+        uids_text = values.get("SOLANA_RISK_ALLOWED_UIDS", "")
+        uids = frozenset(item.strip() for item in uids_text.split(",") if item.strip())
         return cls(
             environment=values.get("SOLANA_RISK_ENVIRONMENT", "development"),
             cors_origins=origins,
@@ -93,4 +145,6 @@ class Settings:
                 name="SOLANA_RISK_MAX_REQUEST_BYTES",
                 maximum=10_485_760,
             ),
+            firebase_project_id=values.get("SOLANA_RISK_FIREBASE_PROJECT_ID"),
+            allowed_user_uids=uids,
         )

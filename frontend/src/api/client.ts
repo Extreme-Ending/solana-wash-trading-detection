@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { firebaseIdTokenProvider } from "../auth/firebase";
 import {
   FEATURE_NAMES,
   type AvailabilityResponse,
@@ -103,7 +104,10 @@ function assertFeaturePreview(payload: unknown): FeaturePreviewResponse {
 }
 
 export class ApiClient {
-  constructor(private readonly baseUrl = API_BASE_URL) {}
+  constructor(
+    private readonly baseUrl = API_BASE_URL,
+    private readonly idTokenProvider: () => Promise<string | null> = firebaseIdTokenProvider,
+  ) {}
 
   private async request(path: string, init: RequestInit = {}): Promise<Response> {
     try {
@@ -125,6 +129,30 @@ export class ApiClient {
         "BACKEND_UNAVAILABLE",
       );
     }
+  }
+
+  private async authorizedRequest(path: string, init: RequestInit): Promise<Response> {
+    let token: string | null;
+    try {
+      token = await this.idTokenProvider();
+    } catch {
+      throw new ApiClientError(
+        "Authentication is not configured for this environment.",
+        503,
+        "AUTH_CONFIGURATION_UNAVAILABLE",
+      );
+    }
+    if (token === null || !token.trim()) {
+      throw new ApiClientError(
+        "Sign in with an approved Google account before using this feature.",
+        401,
+        "AUTHENTICATION_REQUIRED",
+      );
+    }
+    return this.request(path, {
+      ...init,
+      headers: { ...init.headers, Authorization: `Bearer ${token}` },
+    });
   }
 
   async health(signal?: AbortSignal): Promise<HealthResponse> {
@@ -160,7 +188,7 @@ export class ApiClient {
     request: FeaturePreviewRequest,
     signal?: AbortSignal,
   ): Promise<FeaturePreviewResponse> {
-    const response = await this.request("/v1/features/preview", {
+    const response = await this.authorizedRequest("/v1/features/preview", {
       method: "POST",
       body: JSON.stringify(request),
       signal,
@@ -174,7 +202,7 @@ export class ApiClient {
     request: FeaturePreviewRequest,
     signal?: AbortSignal,
   ): Promise<AvailabilityResponse> {
-    const response = await this.request("/v1/score", {
+    const response = await this.authorizedRequest("/v1/score", {
       method: "POST",
       body: JSON.stringify(request),
       signal,

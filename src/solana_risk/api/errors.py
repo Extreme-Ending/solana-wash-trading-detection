@@ -17,12 +17,14 @@ class ApiError(Exception):
         code: str,
         message: str,
         details: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details
+        self.headers = headers
 
 
 def _payload(error: ApiError) -> dict[str, Any]:
@@ -40,7 +42,11 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ApiError)
     async def handle_api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content=_payload(exc))
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_payload(exc),
+            headers=exc.headers,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation(

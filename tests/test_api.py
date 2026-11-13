@@ -15,6 +15,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 
 from solana_risk.api.config import ConfigurationError, Settings
+from solana_risk.api.auth import TokenInvalidError
 from solana_risk.api.main import create_app
 from solana_risk.features.build import (
     FEATURE_RULES_VERSION,
@@ -59,6 +60,11 @@ def _request(
     path: str,
     **kwargs: Any,
 ) -> httpx.Response:
+    authenticated = kwargs.pop("authenticated", True)
+    if authenticated and path in {"/v1/features/preview", "/v1/score"}:
+        headers = dict(kwargs.get("headers", {}))
+        headers.setdefault("Authorization", "Bearer valid-test-token")
+        kwargs["headers"] = headers
     async def run() -> httpx.Response:
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=True)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -67,15 +73,44 @@ def _request(
     return asyncio.run(run())
 
 
+class _ValidTestVerifier:
+    def verify(self, token: str) -> Mapping[str, Any]:
+        if token != "valid-test-token":
+            raise TokenInvalidError
+        return {
+            "aud": "test-project-123",
+            "iss": "https://securetoken.google.com/test-project-123",
+            "sub": "approved-test-uid",
+            "uid": "approved-test-uid",
+            "exp": 4_102_444_800,
+            "email": "approved@example.test",
+            "email_verified": True,
+            "firebase": {"sign_in_provider": "google.com"},
+        }
+
+
+def _test_settings(**overrides: Any) -> Settings:
+    values: dict[str, Any] = {
+        "cors_origins": ("http://localhost:5173",),
+        "max_events": 10,
+        "max_request_bytes": 100_000,
+        "firebase_project_id": "test-project-123",
+        "allowed_user_uids": frozenset({"approved-test-uid"}),
+    }
+    values.update(overrides)
+    return Settings(**values)
+
+
+def _test_app(**settings_overrides: Any) -> Any:
+    return create_app(
+        _test_settings(**settings_overrides),
+        token_verifier=_ValidTestVerifier(),
+    )
+
+
 @pytest.fixture
 def app() -> Any:
-    return create_app(
-        Settings(
-            cors_origins=("http://localhost:5173",),
-            max_events=10,
-            max_request_bytes=100_000,
-        )
-    )
+    return _test_app()
 
 
 def test_health_is_independent_of_prediction_readiness(app: Any) -> None:
@@ -264,7 +299,7 @@ def test_missing_required_field_and_extra_field_are_rejected(app: Any) -> None:
 
 
 def test_event_count_limit_is_configurable() -> None:
-    limited_app = create_app(Settings(max_events=2, max_request_bytes=100_000))
+    limited_app = _test_app(max_events=2)
     response = _request(
         limited_app,
         "POST",
@@ -280,7 +315,7 @@ def test_event_count_limit_is_configurable() -> None:
 
 
 def test_raw_request_byte_limit_is_enforced_before_validation() -> None:
-    limited_app = create_app(Settings(max_events=10, max_request_bytes=100))
+    limited_app = _test_app(max_request_bytes=100)
     response = _request(
         limited_app,
         "POST",
@@ -300,10 +335,12 @@ def test_cors_allows_only_configured_origin(app: Any) -> None:
         headers={
             "Origin": "http://localhost:5173",
             "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
         },
     )
     assert allowed.status_code == 200
     assert allowed.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "authorization" in allowed.headers["access-control-allow-headers"].casefold()
     denied = _request(
         app,
         "OPTIONS",
@@ -343,7 +380,7 @@ def test_startup_and_requests_never_load_or_fit_models(
     monkeypatch.setattr(IsolationForest, "fit", forbidden)
     monkeypatch.setattr(LocalOutlierFactor, "fit", forbidden)
     monkeypatch.setattr(RobustMADDetector, "fit", forbidden)
-    guarded_app = create_app(Settings())
+    guarded_app = _test_app()
     assert _request(guarded_app, "GET", "/healthz").status_code == 200
     assert _request(guarded_app, "GET", "/readyz").status_code == 503
     assert _request(

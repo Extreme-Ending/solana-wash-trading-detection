@@ -25,7 +25,7 @@ def test_runtime_dependency_extra_excludes_model_and_development_tools() -> None
     ]
     assert project["dependencies"] == ["pandas==3.0.2"]
     api_names = _dependency_names(project["optional-dependencies"]["api"])
-    assert api_names == {"fastapi", "pydantic", "uvicorn"}
+    assert api_names == {"fastapi", "firebase-admin", "pydantic", "uvicorn"}
     assert api_names.isdisjoint({"joblib", "scikit-learn", "pytest", "jupyter"})
 
 

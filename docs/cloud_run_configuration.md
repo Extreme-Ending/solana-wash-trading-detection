@@ -24,14 +24,14 @@ The SHA is read with `git rev-parse --verify HEAD`; the deployment helper perfor
 | Concurrency | `20` | modest bounded concurrency for a CPU/dataframe endpoint |
 | Timeout | `30s` | bounds individual requests |
 | Port | `8080` | matches the tested image default; Cloud Run still supplies `PORT` |
-| Service identity | `solana-wallet-risk-runtime@PROJECT_ID.iam.gserviceaccount.com` | user-managed, no project roles for the current API |
+| Service identity | `solana-wallet-risk-runtime@PROJECT_ID.iam.gserviceaccount.com` | user-managed identity; supplies ADC for Firebase verification without a key file |
 | Invocation | private | anonymous access is not enabled by default |
 
 Google documents [request-based billing](https://cloud.google.com/run/docs/configuring/billing-settings), [minimum instances](https://cloud.google.com/run/docs/configuring/min-instances), and the [`gcloud run deploy` flags](https://cloud.google.com/sdk/gcloud/reference/run/deploy). The settings must be revalidated against current product limits immediately before deployment.
 
 ## Least-privilege setup
 
-Separate the human/deployer, Cloud Run service agent and runtime identity. The current application calls no Google Cloud APIs, so its runtime service account requires no project role. Do not attach Owner, Editor, Artifact Registry writer or Firebase roles to it.
+Separate the human/deployer, Cloud Run service agent and runtime identity. Firebase Admin uses Application Default Credentials and the configured project identity to verify ID tokens. On Cloud Run, ADC comes from the runtime service identity; do not download a service-account JSON key. Public-certificate verification does not justify Owner, Editor, Artifact Registry writer or broad Firebase roles on that identity. Required permissions must be checked immediately before deployment, and Phase 7B changes no IAM binding.
 
 Minimum task-scoped roles for future setup are:
 
@@ -80,7 +80,7 @@ source deployment/deployment.env.local
 set +a
 ```
 
-The local file is Git-ignored and must not contain credentials; it holds identifiers, origins and resource limits only. Then inspect the plan and run each separately confirmed step:
+The local file is Git-ignored and must not contain credentials; it holds identifiers, the Firebase UID allowlist, public Firebase Web configuration, origins and resource limits only. Then inspect the plan and run each separately confirmed step:
 
 ```bash
 ./scripts/deployment.sh plan
@@ -90,18 +90,20 @@ The local file is Git-ignored and must not contain credentials; it holds identif
 ./scripts/deployment.sh deploy-cloud-run --execute
 ```
 
-Each action prints the target and effect, and requires the exact interactive phrase `PROJECT_ID/africa-south1/ACTION`. The deployment uses `--no-allow-unauthenticated`, request-based billing, min 0/max 2, the controlled identity and the actual Hosting site's matching `web.app`/`firebaseapp.com` CORS origins. It sets existing request/event limits explicitly and does not load or promote a model.
+Each action prints the target and effect, and requires the exact interactive phrase `PROJECT_ID/africa-south1/ACTION`. The deployment uses `--no-allow-unauthenticated`, request-based billing, min 0/max 2, the controlled identity and the actual Hosting site's matching `web.app`/`firebaseapp.com` CORS origins. It sets existing request/event limits, the matching Firebase project and the approved UID allowlist explicitly and does not load or promote a model.
 
 ## Authenticated verification and rollback
 
-An authorized student can obtain a short-lived identity token and pipe it without placing it in the process arguments:
+The private service has two independent authentication layers. Cloud Run IAM evaluates `X-Serverless-Authorization`, while FastAPI evaluates the Firebase ID token in `Authorization`. An authorized operator may supply both short-lived tokens without placing either in process arguments:
 
 ```bash
-gcloud auth print-identity-token | \
-  CLOUD_RUN_URL=https://YOUR_CLOUD_RUN_SERVICE_HOST ./scripts/deployment.sh smoke
+{
+  gcloud auth print-identity-token
+  printf '%s\n' "$FIREBASE_ID_TOKEN"
+} | CLOUD_RUN_URL=https://YOUR_CLOUD_RUN_SERVICE_HOST ./scripts/deployment.sh smoke
 ```
 
-The test expects health 200, readiness 503, synthetic feature preview 200 with 29 fields, and score 503. It never prints the token. For a faulty new revision, inspect available revisions, export a reviewed `ROLLBACK_REVISION`, then run:
+`FIREBASE_ID_TOKEN` must be current and belong to a UID already in the server allowlist; it must not be stored in a tracked file or shell history. The test expects health 200, readiness 503, synthetic feature preview 200 with 29 fields, and authorized score 503. It never prints either token. For a faulty new revision, inspect available revisions, export a reviewed `ROLLBACK_REVISION`, then run:
 
 ```bash
 gcloud run revisions list --service solana-wallet-risk-api \
@@ -109,4 +111,4 @@ gcloud run revisions list --service solana-wallet-risk-api \
 ./scripts/deployment.sh rollback --execute
 ```
 
-Rollback changes traffic only; it does not rewrite Git history. A hosted browser remains blocked while the service is private.
+Rollback changes traffic only; it does not rewrite Git history. A hosted browser remains blocked while the service is private because Firebase ID tokens do not satisfy Cloud Run IAM invocation.

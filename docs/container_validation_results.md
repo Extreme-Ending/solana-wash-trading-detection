@@ -98,5 +98,11 @@ The build is reproducible at the pinned base-image and direct-dependency level. 
 - Container success does not validate an anomaly detector or supervised classifier.
 - The Phase 4B artifacts are absent from the image and remain unserved.
 - No fraud probability, wash-trading verdict, or model score is returned.
-- No authentication or distributed rate limiter is implemented; do not expose this image publicly yet.
+- The historical Phase 5B image had no authentication; the Phase 7B revalidation below supersedes that application-security statement.
 - Cloud Run behavior, memory under load, concurrency, cold-start latency, vulnerability scanning, and regional cost were not tested because live cloud deployment is outside Phase 5B.
+
+## Phase 7B authentication revalidation
+
+The updated image `solana-wallet-risk-api:phase7b` was built and tested locally on 12 November 2026. The final uncompressed image size is `415,688,542` bytes; the increase reflects the pinned official Firebase Admin and Google verification dependencies. The image still excludes joblib, scikit-learn, datasets, notebooks, reports, private steering and experimental artifacts, and still runs as UID/GID `10001:10001`.
+
+Port 8080 was already allocated, so the complete smoke suite was rerun with `--host-port 18080 --custom-host-port 18082` without stopping the existing service. Results were health 200, readiness 503 `MODEL_NOT_APPROVED`, unauthenticated preview 401, unauthenticated score 401, OpenAPI 200, custom internal `PORT=9090` health 200, Docker health `healthy`, and graceful exit 0. The Python authorization tests separately establish authorized preview 200 and authorized score 503. This split keeps the container smoke test independent of live Firebase credentials.

@@ -14,8 +14,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "firebase": "12.19.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
+  },
+  "overrides": {
+    "@firebase/app": "0.16.2",
+    "@firebase/app-compat": "0.5.18",
+    "@grpc/grpc-js": "1.14.7"
   },
   "devDependencies": {
     "@testing-library/dom": "10.4.2",

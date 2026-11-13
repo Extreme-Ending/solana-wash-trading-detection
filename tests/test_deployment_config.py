@@ -51,8 +51,14 @@ def test_project_and_production_environment_examples_are_placeholders_only() -> 
     assignments = [
         line for line in frontend_example.splitlines() if line and not line.startswith("#")
     ]
-    assert assignments == ["VITE_API_BASE_URL=https://YOUR_CLOUD_RUN_SERVICE_HOST"]
-    assert all(term not in frontend_example.casefold() for term in ("secret", "token", "password", "api_key"))
+    assert assignments == [
+        "VITE_API_BASE_URL=https://YOUR_CLOUD_RUN_SERVICE_HOST",
+        "VITE_FIREBASE_API_KEY=YOUR_FIREBASE_WEB_API_KEY",
+        "VITE_FIREBASE_AUTH_DOMAIN=YOUR_GCP_PROJECT_ID.firebaseapp.com",
+        "VITE_FIREBASE_PROJECT_ID=YOUR_GCP_PROJECT_ID",
+        "VITE_FIREBASE_APP_ID=YOUR_FIREBASE_WEB_APP_ID",
+    ]
+    assert all(term not in frontend_example.casefold() for term in ("private_key", "password"))
     ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "/deployment/deployment.env.local" in ignore_rules
 
@@ -71,6 +77,8 @@ def test_cloud_defaults_are_private_bounded_and_exact_origin_only() -> None:
     assert values["TIMEOUT"] == "30s"
     assert values["FIREBASE_ORIGINS"] == "https://YOUR_GCP_PROJECT_ID.web.app,https://YOUR_GCP_PROJECT_ID.firebaseapp.com"
     assert "YOUR_GCP_PROJECT_ID" in values["PROJECT_ID"]
+    assert values["FIREBASE_PROJECT_ID"] == "YOUR_GCP_PROJECT_ID"
+    assert values["ALLOWED_USER_UIDS"] == "YOUR_APPROVED_FIREBASE_UIDS"
 
 
 def test_api_accepts_exact_firebase_origins_and_rejects_wildcard() -> None:
@@ -103,6 +111,8 @@ def test_deployment_script_is_dry_run_by_default_and_never_enables_public_access
         "--port 8080",
         "SOLANA_RISK_MAX_EVENTS=100",
         "SOLANA_RISK_MAX_REQUEST_BYTES=262144",
+        "SOLANA_RISK_FIREBASE_PROJECT_ID=",
+        "SOLANA_RISK_ALLOWED_UIDS=",
     ):
         assert control in script
     assert "Live actions require an interactive terminal" in script
@@ -142,6 +152,13 @@ def test_mutating_action_without_execute_only_prints_dry_run() -> None:
         "FIREBASE_ORIGINS",
     }}
     env["PROJECT_ID"] = "example-project-123"
+    env.update({
+        "FIREBASE_PROJECT_ID": "example-project-123",
+        "ALLOWED_USER_UIDS": "approved-user-uid",
+        "FIREBASE_WEB_API_KEY": "public-web-api-key",
+        "FIREBASE_AUTH_DOMAIN": "example-project-123.firebaseapp.com",
+        "FIREBASE_APP_ID": "1:123:web:abc",
+    })
     result = subprocess.run(
         ["bash", str(ROOT / "scripts" / "deployment.sh"), "deploy-cloud-run"],
         cwd=ROOT,
@@ -175,6 +192,19 @@ def test_bundle_validator_accepts_static_files_and_rejects_private_content(tmp_p
     (assets / "app.js").write_text("console.log('safe synthetic bundle')", encoding="utf-8")
     assert len(validator.validate_bundle(bundle)) == 2
 
+    (assets / "app.js").write_text(
+        "const firebaseConfig={apiKey:'AIza" + "A" * 35 + "'};",
+        encoding="utf-8",
+    )
+    assert len(validator.validate_bundle(bundle)) == 2
+    (assets / "app.js").write_text(
+        '{"private_key_id":"not-a-real-service-credential"}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="service-account"):
+        validator.validate_bundle(bundle)
+    (assets / "app.js").write_text("console.log('safe synthetic bundle')", encoding="utf-8")
+
     (bundle / "nft.csv").write_text("wallet,amount\nnot-real,1\n", encoding="utf-8")
     with pytest.raises(ValueError, match="forbidden bundle file"):
         validator.validate_bundle(bundle)
@@ -198,11 +228,10 @@ def test_deployment_files_are_excluded_from_api_image_context() -> None:
     assert "COPY ." not in dockerfile
 
 
-def test_no_firebase_sdk_telemetry_or_automatic_cloud_publish_was_added() -> None:
+def test_firebase_sdk_has_no_telemetry_or_automatic_cloud_publish() -> None:
     package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
-    assert set(package["dependencies"]) == {"react", "react-dom"}
+    assert set(package["dependencies"]) == {"firebase", "react", "react-dom"}
     dependency_names = set(package["dependencies"]) | set(package["devDependencies"])
-    assert "firebase" not in dependency_names
     assert dependency_names.isdisjoint({"@sentry/react", "@vercel/analytics", "posthog-js"})
 
     workflows = ROOT / ".github" / "workflows"
@@ -217,7 +246,7 @@ def test_no_firebase_sdk_telemetry_or_automatic_cloud_publish_was_added() -> Non
         assert "docker push" not in text
 
 
-def test_required_phase_7a_runbooks_exist_and_do_not_claim_a_live_deployment() -> None:
+def test_required_deployment_runbooks_exist_and_do_not_claim_a_live_deployment() -> None:
     required = (
         "google_cloud_deployment_plan.md",
         "firebase_hosting_configuration.md",
@@ -228,8 +257,8 @@ def test_required_phase_7a_runbooks_exist_and_do_not_claim_a_live_deployment() -
     for name in required:
         text = (ROOT / "docs" / name).read_text(encoding="utf-8")
         assert len(text.strip()) > 500
-        assert "Phase 7A" in text or "phase 7A" in text
+        assert any(phase in text.casefold() for phase in ("phase 7a", "phase 7b"))
     combined = "\n".join((ROOT / "docs" / name).read_text(encoding="utf-8") for name in required)
-    assert "No Google Cloud project" in combined
-    assert "public browser" in combined
+    assert "No Google Cloud/Firebase resource" in combined
+    assert "hosted browser" in combined
     assert "not a deployment record" in combined.casefold()

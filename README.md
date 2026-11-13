@@ -2,7 +2,7 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 7A prepares the locally validated React/Vite dashboard for Firebase Hosting and the existing non-root FastAPI image for private Google Cloud Run deployment through Artifact Registry. Configuration, guarded student-operated commands and local contract tests are included, but no cloud resource was created or changed. The API still provides descriptive feature preview only: no anomaly, fraud, wash-trading or probability output is enabled.
+Phase 7B adds Google sign-in with Firebase Authentication and verifies Firebase ID tokens in FastAPI before descriptive preview or scoring-gate requests. The backend also requires a verified Google email and an explicit Firebase UID allowlist. Health and readiness remain public, and authorized scoring still returns `MODEL_NOT_APPROVED`; no model is loaded. Deployment remains preparation only: no cloud or Firebase resource, public invocation, or IAM policy was created or changed.
 
 ## Phase 4A evidence and blockers
 
@@ -54,8 +54,8 @@ Open `http://127.0.0.1:8000/docs` for generated OpenAPI documentation. Optional 
 |---|---|
 | `GET /healthz` | HTTP 200 when the process is responsive; no model-readiness claim |
 | `GET /readyz` | HTTP 503 `MODEL_NOT_APPROVED` while prediction is unavailable |
-| `POST /v1/features/preview` | Descriptive 29-feature snapshot from one wallet's validated user-supplied events using `block_time < as_of` |
-| `POST /v1/score` | HTTP 503 `MODEL_NOT_APPROVED`; no artifact load or fabricated score |
+| `POST /v1/features/preview` | Firebase Bearer token plus approved UID required; returns a descriptive 29-feature snapshot using `block_time < as_of` |
+| `POST /v1/score` | Firebase Bearer token plus approved UID required; then HTTP 503 `MODEL_NOT_APPROVED`, with no artifact load or fabricated score |
 
 Feature preview uses the same `build_wallet_snapshots` implementation as offline Phase 3. Wallet identifiers remain metadata, at-cutoff and future events are excluded, and unavailable single-event gap features remain null. The endpoint does not verify that submitted events are authentic or complete and does not fetch blockchain history from a wallet address. See [`docs/api_contract.md`](docs/api_contract.md) and [`docs/api_implementation_findings.md`](docs/api_implementation_findings.md).
 
@@ -69,7 +69,7 @@ docker compose up --detach --build --wait
 docker compose ps
 ```
 
-The API is available only on `http://127.0.0.1:8080`. `/healthz` must return 200, while `/readyz` and `/v1/score` intentionally return 503 `MODEL_NOT_APPROVED`. View logs and stop the temporary resources with:
+The API is available only on `http://127.0.0.1:8080`. `/healthz` returns 200 and public `/readyz` returns 503 `MODEL_NOT_APPROVED`. Preview and scoring require a valid approved Firebase user; without a Bearer token they return 401, while an authorized scoring request returns 503 `MODEL_NOT_APPROVED`. View logs and stop the temporary resources with:
 
 ```bash
 docker compose logs --follow api
@@ -96,7 +96,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. By default, Vite proxies `/api` to the loopback-only Docker API at `http://127.0.0.1:8080`, so start the Phase 5B service with `docker compose up --detach --wait` first. `.env.example` documents the non-secret `VITE_API_BASE_URL`; browser-visible environment variables must never contain credentials.
+Open `http://127.0.0.1:5173`. By default, Vite proxies `/api` to the loopback-only Docker API at `http://127.0.0.1:8080`, so start the Phase 5B service with `docker compose up --detach --wait` first. Copy the Firebase Web identifiers from `frontend/.env.example` into an ignored local environment file. These identifiers, including the Firebase Web API key, are browser-visible project configuration rather than an Admin credential; service-account keys and tokens must never be placed in `VITE_*` variables.
+
+For authenticated local API calls, export `SOLANA_RISK_FIREBASE_PROJECT_ID` and a comma-separated `SOLANA_RISK_ALLOWED_UIDS`. Firebase Admin obtains credentials through Application Default Credentials (ADC), for example a local developer ADC login or the future Cloud Run runtime identity. Do not download or store a service-account JSON key in this repository. A development API without authentication configuration still starts for public health checks; a protected request with a submitted token then fails closed with HTTP 503.
 
 The dashboard reports API health separately from unavailable scoring, validates one wallet's event payload before submission, offers a clearly synthetic example and local JSON import, and renders all 29 returned features with accessible charts. Input is not stored in browser storage. No wallet history is fetched and no HTTP 503 model response is treated as a failure of descriptive preview. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md) and [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md).
 
@@ -123,6 +125,12 @@ Inspect the non-destructive deployment plan from the repository root:
 Future mutating actions require both `--execute` and an interactive exact confirmation showing the project, region and effect. Phase 7A did not execute them. Copy `deployment/deployment.env.example` to the Git-ignored `deployment/deployment.env.local` and replace every placeholder before any later use; browser-visible Vite variables must contain only the exact HTTPS API origin, never a credential.
 
 Direct production API-origin routing preserves `/healthz`, `/readyz`, `/v1/features/preview`, and `/v1/score` without a duplicate `/api`. The local Vite proxy remains unchanged. A hosted static SPA cannot invoke the private IAM-protected API without a separate access design, so end-to-end public deployment remains blocked; exact CORS is not authentication. See [`docs/google_cloud_deployment_plan.md`](docs/google_cloud_deployment_plan.md) and [`docs/deployment_readiness_checklist.md`](docs/deployment_readiness_checklist.md).
+
+## Phase 7B authentication preparation
+
+The React application uses the official Firebase Web SDK with `GoogleAuthProvider` and popup sign-in. It observes authentication state, provides accessible loading/error/sign-out controls, and requests a current Firebase ID token only for protected API calls. Public health/readiness requests carry no Firebase token. The API verifies the token signature and time/project claims through Firebase Admin, then explicitly checks audience, issuer, subject/UID, expiration, verified email, Google provider, and the server-side UID allowlist. CORS now permits the `Authorization` header only from exact configured origins.
+
+The private Cloud Run design remains unchanged. Firebase end-user tokens authenticate to the application, but they do not grant Cloud Run IAM invocation. The guarded deployment smoke utility therefore supports separate `X-Serverless-Authorization` (Cloud Run caller token) and `Authorization` (Firebase user token) headers for an authorized operator. A normal hosted browser cannot obtain the Cloud Run IAM credential, so Phase 7C still needs an explicit access architecture decision; Phase 7B does not enable anonymous invocation or alter IAM.
 
 The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
 
@@ -187,10 +195,10 @@ All assessed components remain in one repository with clear boundaries:
 
 - Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
 - The Phase 5A FastAPI foundation imports the shared feature builder and loads no model artifact. Phase 5B packages it for local Docker/Compose use. A later, explicitly approved scoring extension may load an already-created artifact; it will never train at startup or during prediction.
-- The Phase 6 React + Vite frontend communicates only through the typed HTTP/JSON API and contains no model logic or credentials. Phase 7A prepares its static Firebase Hosting bundle and a direct environment-configured HTTPS API origin without deploying either component.
+- The React + Vite frontend communicates only through the typed HTTP/JSON API, uses Firebase Google sign-in for end-user identity, and contains no model logic or Admin credentials. Phase 7A prepares hosting; Phase 7B adds token-bearing protected calls without deploying either component.
 - Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
 
-Local Docker/Compose, frontend and deployment-configuration validation are complete. Google Cloud Run and Firebase configuration is prepared but no live deployment is claimed. Authentication, public access, provider-backed wallet retrieval and promotion of predictive scoring remain unresolved or out of scope.
+Local Docker/Compose, frontend, authentication-contract and deployment-configuration validation are complete. Google Cloud Run and Firebase configuration is prepared but no live deployment is claimed. Cloud Run browser access, App Check/rate controls, provider-backed wallet retrieval and promotion of predictive scoring remain unresolved or out of scope.
 
 ## Repository layout
 
@@ -263,6 +271,7 @@ The student must run it personally. The helper checks the local Git identity, di
 8. **Phase 5B — container delivery:** non-root Docker image, restricted Compose service, content checks, endpoint smoke tests, configurable port, and graceful shutdown. Complete locally; no cloud deployment was performed.
 9. **Phase 6 — React frontend:** typed event entry, descriptive 29-feature output, status/model gates, accessible charts, responsive layout, tests, and local API integration. Complete locally; no hosting or model scoring was enabled.
 10. **Phase 7A — Google Cloud deployment preparation:** Firebase static SPA configuration, private Cloud Run/Artifact Registry plan, SHA-tagged guarded commands, exact CORS/HTTPS contracts, cost/security controls, and local deployment tests. Preparation complete; no resource was created and public browser-to-private-API access remains blocked.
+11. **Phase 7B — Firebase authentication and secure API integration:** Google sign-in, Firebase ID-token verification, verified-email/provider checks, UID allowlist, protected preview/scoring, auth-aware frontend errors, and local/deployment contracts. Complete locally; no resource or IAM change was made and hosted browser access to private Cloud Run remains blocked.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
@@ -278,4 +287,4 @@ The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B e
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** review the Phase 7A plan and access blocker. Do not execute a live cloud action, enable anonymous invocation, add authentication/infrastructure, or begin model promotion without explicit student approval.
+**Next action:** review Phase 7B and choose a Phase 7C access architecture. Do not execute a live cloud action, enable anonymous invocation, change IAM, or begin model promotion without explicit student approval.

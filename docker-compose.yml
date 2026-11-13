@@ -2,7 +2,7 @@ name: solana-wallet-risk
 
 services:
   api:
-    image: solana-wallet-risk-api:phase5b
+    image: solana-wallet-risk-api:phase7b
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,6 +15,8 @@ services:
       SOLANA_RISK_CORS_ORIGINS: "${SOLANA_RISK_CORS_ORIGINS:-http://localhost:5173}"
       SOLANA_RISK_MAX_EVENTS: "${SOLANA_RISK_MAX_EVENTS:-100}"
       SOLANA_RISK_MAX_REQUEST_BYTES: "${SOLANA_RISK_MAX_REQUEST_BYTES:-262144}"
+      SOLANA_RISK_FIREBASE_PROJECT_ID: "${SOLANA_RISK_FIREBASE_PROJECT_ID:-}"
+      SOLANA_RISK_ALLOWED_UIDS: "${SOLANA_RISK_ALLOWED_UIDS:-}"
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777

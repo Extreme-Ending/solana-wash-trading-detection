@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from solana_risk.api.auth import require_authorized_user
 from solana_risk.api.errors import ApiError
 from solana_risk.api.feature_service import build_feature_preview
 from solana_risk.api.schemas import (
@@ -19,8 +20,11 @@ router = APIRouter(prefix="/v1/features", tags=["descriptive features"])
     "/preview",
     response_model=FeaturePreviewResponse,
     responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         413: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
     },
     summary="Preview descriptive wallet features",
     description=(
@@ -31,7 +35,9 @@ router = APIRouter(prefix="/v1/features", tags=["descriptive features"])
 async def preview_features(
     payload: FeaturePreviewRequest,
     request: Request,
+    authorized_user: dict = Depends(require_authorized_user),
 ) -> FeaturePreviewResponse:
+    del authorized_user
     settings = request.app.state.settings
     if len(payload.events) > settings.max_events:
         raise ApiError(
