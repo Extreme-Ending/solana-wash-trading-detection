@@ -1,7 +1,5 @@
 # Experimental anomaly-modelling findings
 
-> **PROVISIONAL — METHODOLOGY NOT YET SUPERVISOR-APPROVED**
-
 ## Scope and claim boundary
 
 Phase 4B is a label-free experiment on the available Solana DEX swap-event data. It does not change the approved capstone title or the pending status of the proposed amendment. The fitted systems assign relative anomaly scores to `(wallet, as_of)` observations. They do not classify wash trading, estimate fraud likelihood, establish intent, identify coordination, or validate the historical heuristic flags.

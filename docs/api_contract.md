@@ -1,4 +1,4 @@
-# API contract through Phase 8B
+# API contract through Phase 8C
 
 ## Scope
 
@@ -217,13 +217,16 @@ Eligible wallets are scored with the same 29-field builder and fitted pipeline a
 
 - model/version, shared cutoff, training cutoff, score direction/units, feature-rule version and registry SHA-256;
 - submitted/scored/rejected counts and requested/applied review budgets;
-- ranked wallet, raw anomaly score, included/excluded event counts, observable history, warnings and review-candidate boolean;
+- a training-only reference summary for the exact 29 registered features, including its version, cutoff, snapshot fingerprint, wallet count and per-feature observed/missing counts, min/Q1/median/mean/Q3/max and binary/constant flags;
+- ranked wallet, raw anomaly score, the exact 29 point-in-time feature values, included/excluded event counts, observable history, warnings and review-candidate boolean;
 - separate wallet-local rejection code/message/count records; and
 - `Experimental statistical anomalies requiring review; not confirmed wash trading or fraud.`
 
 Invalid top-level schema, timestamp or numeric data, duplicate wallet groups, resource-limit violations, pre-training cutoff, authentication failure and missing/incompatible model artifacts fail the whole request. Empty histories, group/event wallet mismatch, duplicate source rows, exact duplicate event records, no pre-cutoff history and wallet-local feature-input errors reject only that wallet. Rejected data never contributes to another wallet. If all groups are rejected, HTTP 422 `NO_SCORABLE_WALLETS` is returned. Repeated transaction hashes are accepted when their instruction-level event records differ.
 
 No inner wall-clock cancellation is claimed for the synchronous feature/model operation. Bounded inputs, bounded output, rate limiting and zero request-time external I/O provide the current resource control. Default and production configurations return HTTP 503 `MODEL_NOT_APPROVED` before any artifact is used.
+
+The reference summary is computed only from the earliest-cutoff training partition when the ignored local artifact is generated. It contains aggregates, not raw training rows. The loader rejects a stale version, feature order/set, registry fingerprint, snapshot fingerprint, wallet count, nonfinite or unordered statistic, or incorrect binary/constant declaration. The frontend uses it only for descriptive median/IQR context; it is not an explanation of how Isolation Forest produced a score.
 
 ## Status codes
 

@@ -45,6 +45,30 @@ FEATURE_VALUES.dex_concentration = 0.75;
 FEATURE_VALUES.missing_fee_proportion = 0;
 FEATURE_VALUES.history_coverage_30d_fraction = 0.8;
 
+const BINARY_FEATURES = new Set<FeatureName>([
+  "single_event_history",
+  "insufficient_history_7d",
+  "insufficient_history_30d",
+]);
+
+const FEATURE_REFERENCE_STATISTICS = Object.fromEntries(
+  FEATURE_NAMES.map((name, index) => {
+    const binary = BINARY_FEATURES.has(name);
+    return [name, {
+      observed_count: 40,
+      missing_count: 0,
+      minimum: 0,
+      quartile_1: binary ? 0 : index + 1,
+      median: binary ? 0 : index + 2,
+      mean: binary ? 0.25 : index + 2,
+      quartile_3: binary ? 1 : index + 3,
+      maximum: binary ? 1 : index + 4,
+      is_binary: binary,
+      is_constant: false,
+    }];
+  }),
+) as ExperimentalBatchScoreResponse["feature_reference"]["statistics"];
+
 export const VALID_PREVIEW: FeaturePreviewResponse = {
   status: "descriptive_features",
   source: "user_supplied_unverified_events",
@@ -121,6 +145,17 @@ export const VALID_EXPERIMENTAL_BATCH_SCORE: ExperimentalBatchScoreResponse = {
   is_probability: false,
   feature_rules_version: "1.0.0",
   feature_registry_sha256: "synthetic-registry-digest",
+  feature_reference: {
+    version: "training_reference_v1",
+    source: "phase_3_training_snapshots",
+    training_cutoff: "2025-09-01T00:00:00Z",
+    snapshot_sha256: "synthetic-training-snapshot-digest",
+    wallet_count: 40,
+    feature_registry_sha256: "synthetic-registry-digest",
+    feature_order: [...FEATURE_NAMES],
+    statistics: FEATURE_REFERENCE_STATISTICS,
+    comparison_method: "robust_iqr_distance_for_nonbinary_nonconstant_features",
+  },
   wallets_submitted: 3,
   wallets_scored: 3,
   wallets_rejected: 0,
@@ -137,6 +172,7 @@ export const VALID_EXPERIMENTAL_BATCH_SCORE: ExperimentalBatchScoreResponse = {
       included_historical_event_count: 1,
       excluded_at_or_after_cutoff_count: 0,
       observable_history_days: 10,
+      features: { ...FEATURE_VALUES, historical_event_count: 14 },
       warnings: [],
     },
     {
@@ -148,6 +184,7 @@ export const VALID_EXPERIMENTAL_BATCH_SCORE: ExperimentalBatchScoreResponse = {
       included_historical_event_count: 1,
       excluded_at_or_after_cutoff_count: 0,
       observable_history_days: 5,
+      features: { ...FEATURE_VALUES, historical_event_count: 8 },
       warnings: [],
     },
     {
@@ -159,6 +196,7 @@ export const VALID_EXPERIMENTAL_BATCH_SCORE: ExperimentalBatchScoreResponse = {
       included_historical_event_count: 1,
       excluded_at_or_after_cutoff_count: 0,
       observable_history_days: 1,
+      features: { ...FEATURE_VALUES, historical_event_count: 1 },
       warnings: ["Less than seven days of observable history are available."],
     },
   ],

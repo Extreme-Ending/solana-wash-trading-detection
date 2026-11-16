@@ -133,7 +133,33 @@ export interface BatchWalletScore {
   included_historical_event_count: number;
   excluded_at_or_after_cutoff_count: number;
   observable_history_days: number;
+  features: Record<FeatureName, FeatureValue>;
   warnings: string[];
+}
+
+export interface FeatureReferenceStatistic {
+  observed_count: number;
+  missing_count: number;
+  minimum: number;
+  quartile_1: number;
+  median: number;
+  mean: number;
+  quartile_3: number;
+  maximum: number;
+  is_binary: boolean;
+  is_constant: boolean;
+}
+
+export interface FeatureTrainingReference {
+  version: "training_reference_v1";
+  source: "phase_3_training_snapshots";
+  training_cutoff: string;
+  snapshot_sha256: string;
+  wallet_count: number;
+  feature_registry_sha256: string;
+  feature_order: FeatureName[];
+  statistics: Record<FeatureName, FeatureReferenceStatistic>;
+  comparison_method: "robust_iqr_distance_for_nonbinary_nonconstant_features";
 }
 
 export interface BatchWalletRejection {
@@ -156,6 +182,7 @@ export interface ExperimentalBatchScoreResponse {
   is_probability: false;
   feature_rules_version: string;
   feature_registry_sha256: string;
+  feature_reference: FeatureTrainingReference;
   wallets_submitted: number;
   wallets_scored: number;
   wallets_rejected: number;

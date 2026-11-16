@@ -337,3 +337,12 @@ This log records decisions that constrain later implementation. It does not clai
 - **Claim boundary:** Return raw model-specific scores, warnings, explicit rejection reasons, `is_probability=false`, and the fixed statement that anomalies requiring review are not confirmed wash trading or fraud. No labels, performance claims, score bands or automated flags are introduced.
 - **Runtime boundary:** Keep default and production scoring at `503 MODEL_NOT_APPROVED`; make no container, Firebase, cloud, IAM, billing, deployment or Git mutation.
 - **Next gate:** Stop after Phase 8B. Advanced dashboards, detailed wallet views, thresholds/flags, artifact promotion and deployment require a separately authorized milestone.
+
+## D041 — Use training-only aggregate context for advanced anomaly review
+
+- **Date:** 2026-11-16
+- **Status:** accepted for Phase 8C local implementation only
+- **Decision:** Extend the authenticated batch response with each wallet's existing 29 point-in-time feature values and a versioned aggregate reference computed from only the earliest Phase 3 training cutoff. Expose counts and descriptive min/quartile/median/mean/max statistics, never raw training rows or an artifact in the browser.
+- **Rationale:** A ranked score alone gives an analyst little reproducible context. Training-cutoff medians and IQRs support transparent descriptive comparison without claiming a model explanation, labelled outcome or causal driver. Fitting the reference on the training partition preserves the lab pattern that held-out data must not determine preprocessing or interpretation baselines.
+- **Dashboard contract:** Preserve server scores and original ranks; filters and sorts affect visibility only. Use actual numeric values, explicit small-batch displays, full identifiers, warnings and all registered features. A review-budget edit requires a new server request.
+- **Integrity boundary:** Robust IQR distance is unavailable for missing, binary, constant or zero-IQR fields and is never called SHAP, contribution, probability, threshold or fraud evidence. Production continues to return `MODEL_NOT_APPROVED`; no model promotion or deployment occurs.

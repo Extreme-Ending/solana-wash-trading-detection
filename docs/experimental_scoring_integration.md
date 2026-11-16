@@ -1,8 +1,8 @@
-# Phase 8A–8B experimental scoring integration
+# Phase 8A–8C experimental scoring integration
 
 ## Scope and status
 
-Phase 8A exposes one existing Phase 4B detector for authenticated **local research use only**. Phase 8B applies that same loaded detector to bounded, isolated wallet histories and ranks the resulting scores within one request. Neither phase retrains a model, promotes an artifact, chooses a fraud threshold, flags a wallet as fraudulent, deploys a service, or alters the production container. The score is an unsupervised, model-specific ranking signal: higher means more unusual relative to the September 2025 training reference.
+Phase 8A exposes one existing Phase 4B detector for authenticated **local research use only**. Phase 8B applies that same loaded detector to bounded, isolated wallet histories and ranks the resulting scores within one request. Phase 8C adds advanced analysis of that response and a reproducible aggregate training reference. These phases do not promote an artifact, choose a fraud threshold, flag a wallet as fraudulent, deploy a service, or alter the production container. The score is an unsupervised, model-specific ranking signal: higher means more unusual relative to the September 2025 training reference.
 
 Isolation Forest is the provisional integration candidate because the Phase 4B evidence found stable validation ranks across the predeclared tree-count and sample-size alternatives. The robust MAD detector remains a transparent comparison and LOF remains a disagreement diagnostic. Stability does not establish outcome validity, and no labelled performance metric exists.
 
@@ -16,7 +16,8 @@ Experimental loading is disabled by default. It is possible only when all of the
 4. a 64-character expected SHA-256 is configured;
 5. the manifest digest equals that configured value and the artifact bytes hash to it;
 6. the manifest and bundle agree on experiment status/version, training cutoff, package versions, feature-rule version, registry fingerprint and exact 29-field order; and
-7. the selected object is a fitted `Pipeline` containing the expected imputer and Isolation Forest with 29 named inputs.
+7. the selected object is a fitted `Pipeline` containing the expected imputer and Isolation Forest with 29 named inputs; and
+8. the bundle contains a compatible training-only aggregate reference with the exact registry order, valid counts/statistics and matching manifest metadata.
 
 The manifest is parsed and the digest is verified before `joblib.load`. This matters because joblib artifacts use Python object serialization and must never be loaded from an untrusted source. Symlinked files are rejected. Artifact paths are server configuration and cannot be supplied in an API request.
 
@@ -103,7 +104,7 @@ python scripts/demonstrate_batch_scoring.py \
   --sha256 "$(sha256sum artifacts/experimental/anomaly_models.joblib | cut -d' ' -f1)"
 ```
 
-With the local Phase 4B.1 artifact digest `737b1358a4907707f70f7c0cb34213902cd08f4685417c4da4ce8be716bf5af6`, the verified run ranked the synthetic bursty, steady and sparse histories at `0.7112287827056774`, `0.5244905161109438` and `0.45179068711851816`. A review budget of two selected the first two. An immediate repeat was identical at the response-model level, and each score exactly equalled its single-wallet result. These synthetic outputs demonstrate software behavior only, not real-world performance or misconduct.
+With the regenerated local Phase 4B.1 artifact digest `3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035`, the verified run ranked the synthetic bursty, steady and sparse histories at `0.7112287827056774`, `0.5244905161109438` and `0.45179068711851816`. A review budget of two selected the first two. An immediate repeat was identical at the response-model level, and each score exactly equalled its single-wallet result. The digest changed because Phase 8C added a training-only aggregate feature reference; the fitted model and demonstration scores remained unchanged. These synthetic outputs demonstrate software behavior only, not real-world performance or misconduct.
 
 To reproduce a score, keep the artifact SHA-256, manifest, pinned Python packages and request bytes unchanged, then repeat the request. Automated tests load the same synthetic artifact twice and require the complete response—including the numeric score—to be identical.
 
@@ -117,7 +118,9 @@ The production Dockerfile, Compose definition and Cloud Run plan are unchanged: 
 
 ## Frontend behavior
 
-The authenticated dashboard keeps the one-wallet `/v1/score` flow and adds a separate batch form for one cutoff, wallet-history JSON and a review budget. The batch section displays only schema-validated API output: rank, raw score, history count/duration, review-candidate status, batch warnings and explicit wallet-local rejections. It has loading, authentication, disabled-model and safe error states. It does not append a percent sign, create score bands, hide rejected groups, or convert a score/rank into a fraud label. Existing descriptive feature cards and charts remain separate and unchanged.
+The authenticated dashboard keeps the one-wallet `/v1/score` flow and adds a separate batch form for one cutoff, wallet-history JSON and a review budget. Phase 8C displays only schema-validated API output in summary cards, a ranked score chart, a small-batch dot view or histogram, a filterable/sortable table, explicit rejections, and a selected-wallet detail view containing all 29 point-in-time values. Full wallet identifiers remain accessible even when chart labels are shortened. Filters and sorts never recalculate or overwrite server ranks/scores.
+
+The feature detail compares an observed value with aggregate statistics fitted only on the earliest training cutoff. For non-binary, non-constant features it may display `(value - training median) / training IQR`; missing values and zero-IQR references are explicitly unavailable, while binary indicators show training true share. These comparisons are descriptive context—not SHAP values, feature contributions, causal explanations or outcome evidence. Changing the review budget after a response does not relabel rows in the browser; a new authenticated request is required.
 
 ## Limitations
 

@@ -26,6 +26,8 @@ from solana_risk.api.schemas import (
     BatchWalletScore,
     ExperimentalBatchScoreResponse,
     ExperimentalScoreResponse,
+    FeatureReferenceStatistic,
+    FeatureTrainingReference,
     FeaturePreviewResponse,
     ScoreRequest,
 )
@@ -35,8 +37,10 @@ from solana_risk.features.build import (
     feature_registry_sha256,
 )
 from solana_risk.models.train_anomaly import (
+    BINARY_FEATURE_COLUMNS,
     EXPERIMENT_STATUS,
     EXPERIMENT_VERSION,
+    FEATURE_REFERENCE_VERSION,
     MODEL_NAMES,
 )
 
@@ -85,6 +89,82 @@ def _validate_runtime_versions(manifest: Mapping[str, Any]) -> None:
         _same(versions.get(package), version, name=f"{package} version")
 
 
+def _validated_feature_reference(
+    *,
+    bundle: Mapping[str, Any],
+    manifest: Mapping[str, Any],
+    training_cutoff: datetime,
+) -> FeatureTrainingReference:
+    reference = _mapping(bundle.get("training_reference"), name="training reference")
+    _same(reference.get("version"), FEATURE_REFERENCE_VERSION, name="reference version")
+    _same(
+        manifest.get("feature_reference_version"),
+        FEATURE_REFERENCE_VERSION,
+        name="manifest reference version",
+    )
+    _same(
+        reference.get("feature_order"),
+        list(MODEL_FEATURE_COLUMNS),
+        name="reference feature order",
+    )
+    wallet_count = reference.get("wallet_count")
+    if not isinstance(wallet_count, int) or isinstance(wallet_count, bool) or wallet_count < 1:
+        raise ExperimentalArtifactError("Training reference wallet count is invalid")
+    _same(
+        manifest.get("feature_reference_wallet_count"),
+        wallet_count,
+        name="reference wallet count",
+    )
+    snapshot_sha256 = manifest.get("snapshot_sha256")
+    if not isinstance(snapshot_sha256, str) or not snapshot_sha256:
+        raise ExperimentalArtifactError("Training snapshot fingerprint is invalid")
+
+    raw_statistics = _mapping(reference.get("statistics"), name="reference statistics")
+    if set(raw_statistics) != set(MODEL_FEATURE_COLUMNS):
+        raise ExperimentalArtifactError("Training reference feature set is incompatible")
+    statistics: dict[str, FeatureReferenceStatistic] = {}
+    for name in MODEL_FEATURE_COLUMNS:
+        raw = _mapping(raw_statistics[name], name=f"reference statistic {name}")
+        try:
+            statistic = FeatureReferenceStatistic.model_validate(raw)
+        except Exception as exc:
+            raise ExperimentalArtifactError(
+                f"Training reference statistic is invalid: {name}"
+            ) from exc
+        if statistic.observed_count + statistic.missing_count != wallet_count:
+            raise ExperimentalArtifactError(f"Training reference counts are invalid: {name}")
+        ordered = (
+            statistic.minimum,
+            statistic.quartile_1,
+            statistic.median,
+            statistic.quartile_3,
+            statistic.maximum,
+        )
+        if any(not math.isfinite(value) for value in (*ordered, statistic.mean)):
+            raise ExperimentalArtifactError(f"Training reference values are invalid: {name}")
+        if tuple(sorted(ordered)) != ordered or not (
+            statistic.minimum <= statistic.mean <= statistic.maximum
+        ):
+            raise ExperimentalArtifactError(f"Training reference ordering is invalid: {name}")
+        if statistic.is_binary != (name in BINARY_FEATURE_COLUMNS):
+            raise ExperimentalArtifactError(f"Training reference type is invalid: {name}")
+        if statistic.is_constant != (statistic.minimum == statistic.maximum):
+            raise ExperimentalArtifactError(f"Training reference variance flag is invalid: {name}")
+        statistics[name] = statistic
+
+    return FeatureTrainingReference(
+        version="training_reference_v1",
+        source="phase_3_training_snapshots",
+        training_cutoff=training_cutoff,
+        snapshot_sha256=snapshot_sha256,
+        wallet_count=wallet_count,
+        feature_registry_sha256=feature_registry_sha256(),
+        feature_order=list(MODEL_FEATURE_COLUMNS),
+        statistics=statistics,
+        comparison_method="robust_iqr_distance_for_nonbinary_nonconstant_features",
+    )
+
+
 class TrustedExperimentalScorer:
     """A checksum-pinned, metadata-validated local Isolation Forest scorer."""
 
@@ -94,10 +174,12 @@ class TrustedExperimentalScorer:
         model: Pipeline,
         model_version: str,
         training_cutoff: datetime,
+        feature_reference: FeatureTrainingReference,
     ) -> None:
         self._model = model
         self._model_version = model_version
         self._training_cutoff = training_cutoff
+        self._feature_reference = feature_reference
 
     @classmethod
     def load(
@@ -154,10 +236,16 @@ class TrustedExperimentalScorer:
             "feature_registry_sha256",
             "feature_order",
             "versions",
+            "feature_reference_version",
         ):
             _same(metadata.get(field), manifest.get(field), name=f"artifact {field}")
         _same(metadata.get("labels_used"), False, name="label-use declaration")
         _same(metadata.get("is_probability"), False, name="probability declaration")
+        _same(
+            metadata.get("snapshot_sha256"),
+            manifest.get("snapshot_sha256"),
+            name="training snapshot fingerprint",
+        )
 
         split = _mapping(metadata.get("temporal_split"), name="temporal split")
         _same(split.get("train_cutoff"), manifest.get("training_cutoff"), name="training cutoff")
@@ -183,10 +271,17 @@ class TrustedExperimentalScorer:
         if feature_names is not None and list(feature_names) != list(MODEL_FEATURE_COLUMNS):
             raise ExperimentalArtifactError("The fitted model feature names are incompatible")
 
+        feature_reference = _validated_feature_reference(
+            bundle=bundle_map,
+            manifest=manifest,
+            training_cutoff=training_cutoff,
+        )
+
         return cls(
             model=model,
             model_version=str(metadata["experiment_version"]),
             training_cutoff=training_cutoff,
+            feature_reference=feature_reference,
         )
 
     def _validate_scoring_time(self, as_of: datetime) -> None:
@@ -421,6 +516,7 @@ class TrustedExperimentalScorer:
                         preview.excluded_at_or_after_cutoff_count
                     ),
                     observable_history_days=self._observable_history_days(preview),
+                    features=preview.features,
                     warnings=self._history_warnings(preview),
                 )
             )
@@ -453,6 +549,7 @@ class TrustedExperimentalScorer:
             is_probability=False,
             feature_rules_version=FEATURE_RULES_VERSION,
             feature_registry_sha256=feature_registry_sha256(),
+            feature_reference=self._feature_reference,
             wallets_submitted=wallet_count,
             wallets_scored=len(ranked_wallets),
             wallets_rejected=len(rejected),

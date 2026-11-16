@@ -31,12 +31,15 @@ describe("batch scoring", () => {
     const submit = screen.getByRole("button", { name: "Request batch ranking" });
     await waitFor(() => expect(submit).toBeEnabled());
     await user.click(submit);
-    expect(await screen.findByText("wallet-a")).toBeInTheDocument();
-    expect(screen.getByText("0.630000")).toBeInTheDocument();
+    expect((await screen.findAllByText("wallet-a")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("0.630000").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Review candidate")).toHaveLength(2);
+    await user.click(screen.getAllByRole("button", { name: "Inspect" })[2]);
     expect(screen.getByText(/less than seven days of observable history/i)).toBeInTheDocument();
+    expect(screen.getByText(/not SHAP values/i)).toBeInTheDocument();
+    expect(screen.getByText(/training_reference_v1/i)).toBeInTheDocument();
     expect(screen.getByText(/not confirmed wash trading or fraud/i)).toBeInTheDocument();
-    expect(screen.getByText(/not probabilities/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/not probabilities/i).length).toBeGreaterThan(0);
   });
 
   it("exposes an accessible loading state while the protected request is pending", async () => {
@@ -52,7 +55,7 @@ describe("batch scoring", () => {
     await user.click(submit);
     expect(screen.getByRole("button", { name: "Ranking wallets…" })).toBeDisabled();
     resolveResponse(jsonResponse(VALID_EXPERIMENTAL_BATCH_SCORE));
-    expect(await screen.findByText("wallet-a")).toBeInTheDocument();
+    expect((await screen.findAllByText("wallet-a")).length).toBeGreaterThan(0);
   });
 
   it("renders explicit wallet-local rejections without hiding ranked results", async () => {
@@ -77,7 +80,23 @@ describe("batch scoring", () => {
     expect(await screen.findByRole("heading", { name: "Rejected wallet histories" })).toBeInTheDocument();
     expect(screen.getByText("wallet-empty")).toBeInTheDocument();
     expect(screen.getByText("EMPTY_WALLET_HISTORY")).toBeInTheDocument();
-    expect(screen.getByText("wallet-a")).toBeInTheDocument();
+    expect(screen.getAllByText("wallet-a").length).toBeGreaterThan(0);
+  });
+
+  it("filters results and requires a new request after the review budget changes", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(VALID_EXPERIMENTAL_BATCH_SCORE)));
+    renderWithAuth(<BatchScoring />);
+    await user.click(screen.getByRole("button", { name: "Load synthetic batch" }));
+    await user.click(screen.getByRole("button", { name: "Request batch ranking" }));
+    await screen.findByRole("heading", { name: "Batch anomaly analysis dashboard" });
+    await user.type(screen.getByLabelText("Wallet identifier"), "wallet-c");
+    expect(screen.getByText(/Showing 1 of 3/)).toBeInTheDocument();
+    expect(screen.getAllByText("wallet-c").length).toBeGreaterThan(0);
+    await user.clear(screen.getByLabelText("Analyst review budget"));
+    await user.type(screen.getByLabelText("Analyst review budget"), "1");
+    expect(screen.getByText(/Submit a new authenticated request/i)).toBeInTheDocument();
+    expect(screen.getAllByText("0.400000").length).toBeGreaterThan(0);
   });
 
   it("shows disabled model availability without inventing results", async () => {

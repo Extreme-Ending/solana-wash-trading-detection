@@ -24,9 +24,24 @@ from solana_risk.api.experimental_scoring import (
     TrustedExperimentalScorer,
 )
 from solana_risk.api.main import create_app
-from solana_risk.api.schemas import BatchScoreRequest, ScoreRequest
-from solana_risk.features.build import METADATA_COLUMNS, MODEL_FEATURE_COLUMNS
-from solana_risk.models.train_anomaly import AnomalyConfig, fit_experiment, save_bundle, sha256_file
+from solana_risk.api.schemas import (
+    BatchScoreRequest,
+    FeatureReferenceStatistic,
+    FeatureTrainingReference,
+    ScoreRequest,
+)
+from solana_risk.features.build import (
+    METADATA_COLUMNS,
+    MODEL_FEATURE_COLUMNS,
+    feature_registry_sha256,
+)
+from solana_risk.models.train_anomaly import (
+    BINARY_FEATURE_COLUMNS,
+    AnomalyConfig,
+    fit_experiment,
+    save_bundle,
+    sha256_file,
+)
 
 
 class _Verifier:
@@ -222,6 +237,35 @@ def _copy_trusted_files(
     return artifact, manifest, digest
 
 
+def _feature_reference() -> FeatureTrainingReference:
+    statistics = {
+        name: FeatureReferenceStatistic(
+            observed_count=40,
+            missing_count=0,
+            minimum=0.0,
+            quartile_1=1.0,
+            median=2.0,
+            mean=2.0,
+            quartile_3=3.0,
+            maximum=4.0,
+            is_binary=name in BINARY_FEATURE_COLUMNS,
+            is_constant=False,
+        )
+        for name in MODEL_FEATURE_COLUMNS
+    }
+    return FeatureTrainingReference(
+        version="training_reference_v1",
+        source="phase_3_training_snapshots",
+        training_cutoff=datetime(2025, 9, 1, tzinfo=timezone.utc),
+        snapshot_sha256="0" * 64,
+        wallet_count=40,
+        feature_registry_sha256=feature_registry_sha256(),
+        feature_order=list(MODEL_FEATURE_COLUMNS),
+        statistics=statistics,
+        comparison_method="robust_iqr_distance_for_nonbinary_nonconstant_features",
+    )
+
+
 def test_trusted_local_artifact_scores_with_point_in_time_exclusion(
     trusted_files: tuple[Path, Path, str],
 ) -> None:
@@ -303,6 +347,11 @@ def test_batch_scores_match_single_scores_and_rank_descending(
         True,
         False,
     ]
+    assert body["feature_reference"]["source"] == "phase_3_training_snapshots"
+    assert body["feature_reference"]["training_cutoff"] == body["training_cutoff"]
+    assert body["feature_reference"]["feature_order"] == list(MODEL_FEATURE_COLUMNS)
+    assert set(body["feature_reference"]["statistics"]) == set(MODEL_FEATURE_COLUMNS)
+    assert all(list(item["features"]) == list(MODEL_FEATURE_COLUMNS) for item in body["ranked_wallets"])
     for history in payload["wallet_histories"]:
         single = _request(
             app,
@@ -369,6 +418,7 @@ def test_batch_ties_use_wallet_identifier_as_stable_secondary_key() -> None:
         model=model,  # type: ignore[arg-type]
         model_version="synthetic-test-version",
         training_cutoff=datetime(2025, 9, 1, tzinfo=timezone.utc),
+        feature_reference=_feature_reference(),
     )
     payload = BatchScoreRequest.model_validate(_batch_payload(review_budget=1))
     response = scorer.score_batch(
@@ -678,6 +728,7 @@ def test_checksum_mismatch_is_rejected_before_deserialization(
         ("training_cutoff", "2024-01-01T00:00:00+00:00", "training cutoff"),
         ("feature_order", ["wrong"], "feature order"),
         ("feature_registry_sha256", "0" * 64, "feature registry fingerprint"),
+        ("feature_reference_version", "unsupported", "artifact feature_reference_version"),
         ("versions", {"numpy": "0"}, "numpy version"),
     ],
 )
@@ -693,6 +744,27 @@ def test_incompatible_manifest_metadata_is_rejected(
     data[field] = bad_value
     manifest.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ExperimentalArtifactError, match=message):
+        TrustedExperimentalScorer.load(
+            artifact_path=artifact,
+            manifest_path=manifest,
+            expected_sha256=digest,
+        )
+
+
+def test_incompatible_training_reference_is_rejected_after_checksum_verification(
+    trusted_files: tuple[Path, Path, str],
+    tmp_path: Path,
+) -> None:
+    artifact, manifest, _ = _copy_trusted_files(trusted_files, tmp_path)
+    bundle = joblib.load(artifact)
+    del bundle["training_reference"]["statistics"][MODEL_FEATURE_COLUMNS[0]]
+    joblib.dump(bundle, artifact, compress=3)
+    digest = sha256_file(artifact)
+    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+    manifest_data["artifact_sha256"] = digest
+    manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(ExperimentalArtifactError, match="feature set is incompatible"):
         TrustedExperimentalScorer.load(
             artifact_path=artifact,
             manifest_path=manifest,

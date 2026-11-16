@@ -10,6 +10,8 @@ Phase 8A integrates the existing Isolation Forest behind an explicit local-devel
 
 Phase 8B extends that same local-only scorer to bounded multi-wallet requests. It preserves isolated point-in-time features, returns a deterministic within-batch ranking, supports a bounded analyst review budget, and reports wallet-local rejections explicitly. A rank or review-candidate marker is not a fraud class, probability, threshold, or real-world performance result. Default and production modes still return `MODEL_NOT_APPROVED`.
 
+Phase 8C adds a responsive analysis dashboard over the authenticated batch response: actual-score charts, stable filters/sorts, rejected-history visibility and a full 29-feature wallet detail. Descriptive comparisons use versioned aggregates fitted only on the earliest training cutoff; they are not SHAP values, causal explanations or fraud evidence. Changing review capacity requires a new API request, and production behavior is unchanged.
+
 ## Phase 4A evidence and blockers
 
 The audited file contains 10,800 rows, 18 columns, and 2,312 unique wallets between 1 January and 30 November 2025 UTC. Its columns and source values support DEX/swap-event semantics, not verified NFT marketplace-sale semantics. Despite the filename, no NFT-specific column is present.
@@ -107,7 +109,7 @@ Open `http://127.0.0.1:5173`. By default, Vite proxies `/api` to the loopback-on
 
 For authenticated local API calls, export `SOLANA_RISK_FIREBASE_PROJECT_ID` and a comma-separated `SOLANA_RISK_ALLOWED_UIDS`. Firebase Admin obtains credentials through Application Default Credentials (ADC), for example a local developer ADC login or the future Cloud Run runtime identity. Do not download or store a service-account JSON key in this repository. A development API without authentication configuration still starts for public health checks; a protected request with a submitted token then fails closed with HTTP 503.
 
-The dashboard reports API health separately from model capability, validates one wallet's event payload before submission, offers a clearly synthetic example and local JSON import, and renders all 29 returned features with accessible charts. Its experimental sections handle disabled, loading, error, single-score and batch-ranking states without percentage formatting or fraud conclusions. The batch form uses one shared cutoff, isolated wallet histories and a review budget, then displays the actual typed API ranking and explicit rejections. Input is not stored in browser storage. No wallet history is fetched and no HTTP 503 model response is treated as a failure of descriptive preview. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md) and [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md).
+The dashboard reports API health separately from model capability, validates one wallet's event payload before submission, offers a clearly synthetic example and local JSON import, and renders all 29 returned features with accessible charts. Its experimental sections handle disabled, loading, error, single-score and batch-ranking states without probability formatting or fraud conclusions. The batch form uses one shared cutoff, isolated wallet histories and a review budget, then displays the actual typed API ranking, score distribution, deterministic filters/sorts, full wallet detail and explicit rejections. Input is not stored in browser storage. No wallet history is fetched and no HTTP 503 model response is treated as a failure of descriptive preview. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md), [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md) and [`docs/anomaly_dashboard_validation.md`](docs/anomaly_dashboard_validation.md).
 
 Frontend verification commands are:
 
@@ -118,7 +120,7 @@ npm test
 npm run build
 ```
 
-## Phase 8A–8B local experimental scoring
+## Phase 8A–8C local experimental scoring
 
 Keep the normal gate disabled unless the local generated artifact is intentionally being inspected. To enable it, install the `api` and `models` extras, calculate the artifact SHA-256, and export the development-only paths/digest before starting Uvicorn on the Vite proxy target:
 
@@ -274,7 +276,8 @@ docs/label_evidence_and_readiness.md  Phase 4A provenance findings and readiness
 docs/modelling_evaluation_plan.md  Conditional target, split, and metric plan
 docs/experimental_modelling_findings.md  Phase 4B evidence and limitations
 docs/anomaly_model_comparison.md  Detector configuration and stability comparison
-docs/experimental_scoring_integration.md  Phase 8A–8B local artifact, batch ranking, interpretation, and production boundaries
+docs/experimental_scoring_integration.md  Phase 8A–8C local artifact, batch ranking/dashboard, interpretation, and production boundaries
+docs/anomaly_dashboard_validation.md  Phase 8C interaction, reference provenance, visual checks, and scientific boundaries
 docs/api_contract.md              Phase 5A endpoints, validation, examples, and errors
 docs/api_implementation_findings.md  Feature parity, security decisions, and limitations
 docs/containerization_and_local_deployment.md  Build, Compose, and future Cloud Run compatibility
@@ -308,7 +311,7 @@ The student must run it personally. The helper checks the local Git identity, di
 3. **Phase 2 — preprocessing:** deterministic parsing, ordering, invalid-row handling, and event-grain policy. Implemented; scientific blockers remain documented.
 4. **Phase 3 — features:** strict point-in-time wallet features and reproducible notebooks. Complete.
 5. **Phase 4A — label evidence/readiness:** trace candidate-label provenance, define the target/evaluation contract, and validate external evidence fail-closed. Complete; decision is **REVISION REQUIRED** and supervised training remains **BLOCKED**.
-6. **Phase 4B — provisional unsupervised experiment:** reproducible label-free detectors, chronological diagnostics, sensitivity, drift, and notebook. Implemented experimentally; methodology remains **NOT SUPERVISOR-APPROVED** and no model is production-approved.
+6. **Phase 4B — unsupervised experiment:** reproducible label-free detectors, chronological diagnostics, sensitivity, drift, and notebook. Implemented experimentally; no model is production-approved.
 7. **Phase 5A — service foundation:** FastAPI health/readiness gates, descriptive shared-code feature preview, bounded validation, OpenAPI, and HTTP tests. Complete; prediction remains unavailable and no model artifact is loaded.
 8. **Phase 5B — container delivery:** non-root Docker image, restricted Compose service, content checks, endpoint smoke tests, configurable port, and graceful shutdown. Complete locally; no cloud deployment was performed.
 9. **Phase 6 — React frontend:** typed event entry, descriptive 29-feature output, status/model gates, accessible charts, responsive layout, tests, and local API integration. Complete locally; no hosting or model scoring was enabled.
@@ -316,6 +319,7 @@ The student must run it personally. The helper checks the local Git identity, di
 11. **Phase 7B — Firebase authentication and secure API integration:** Google sign-in, Firebase ID-token verification, verified-email/provider checks, UID allowlist, protected preview/scoring, auth-aware frontend errors, and local/deployment contracts. Complete locally; no resource or IAM change was made and hosted browser access to private Cloud Run remains blocked.
 12. **Phase 8A — experimental anomaly scoring integration:** checksum-pinned local Isolation Forest loading, shared point-in-time features, typed non-probability responses, history warnings, frontend states and production refusal. Complete locally; no artifact promotion or deployment was performed.
 13. **Phase 8B — batch scoring and anomaly ranking:** bounded isolated wallet histories, deterministic within-batch ranking, analyst review-budget candidates, explicit partial failures and typed frontend results. Complete locally; no threshold, classification, artifact promotion or deployment was performed.
+14. **Phase 8C — advanced anomaly analysis dashboard:** actual-score charts, deterministic filters/sorts, complete wallet detail and training-only descriptive feature reference. Complete locally; no threshold, classification, model explanation, artifact promotion or deployment was performed.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
@@ -325,10 +329,10 @@ The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B e
 
 ## Status
 
-**Current phase:** Phase 8B — batch wallet scoring and anomaly ranking.
+**Current phase:** Phase 8C — advanced wallet anomaly analysis dashboard.
 
-**Implementation:** an explicit local-development process can verify and load the existing experimental Isolation Forest, rebuild the exact 29 point-in-time features, and return finite unitless single-wallet or bounded batch scores with model/history metadata and scientific warnings. Batch results are deterministically ranked within that request and a bounded top-N can be marked for manual review. The React dashboard renders typed results and rejections separately from descriptive charts. Default and production modes remain unavailable, and the generated artifact is not copied into Git, Docker or the frontend.
+**Implementation:** an explicit local-development process can verify and load the existing experimental Isolation Forest, rebuild the exact 29 point-in-time features, and return finite unitless single-wallet or bounded batch scores with model/history metadata and scientific warnings. Batch results are deterministically ranked within that request and a bounded top-N can be marked for manual review. The React dashboard renders typed summaries, actual-score charts, stable filters/sorts, rejections and all 29 wallet features with a training-only aggregate reference. Default and production modes remain unavailable, and the generated artifact is not copied into Git, Docker or the frontend.
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** review Phase 8B evidence. Do not begin advanced dashboards, wallet-detail analytics, thresholds/flags, model promotion, or live deployment without an explicit next-phase instruction.
+**Next action:** review Phase 8C evidence. Do not begin threshold/flag design, model promotion, cloud deployment or final-report work without an explicit next-phase instruction.

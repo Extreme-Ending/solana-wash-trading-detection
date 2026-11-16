@@ -1,7 +1,5 @@
 # Provisional anomaly-model comparison
 
-> **PROVISIONAL — METHODOLOGY NOT YET SUPERVISOR-APPROVED**
-
 All three methods are fitted on the 1 September 2025 reference only. Higher scores mean more unusual relative to that reference. The magnitudes have method-specific scales and are not probabilities.
 
 | Method | Exact primary configuration | Preprocessing | Useful property | Main limitation observed |

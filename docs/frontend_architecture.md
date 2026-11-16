@@ -2,7 +2,7 @@
 
 ## Purpose and boundary
 
-The React frontend is a local research interface for the FastAPI feature and experimental-scoring service. The one-wallet flow accepts one identifier, one explicit UTC cutoff and bounded user-supplied Solana DEX swap events. The Phase 8B batch flow accepts separated wallet histories, one shared cutoff and a bounded analyst review budget. It displays only schema-validated results from `POST /v1/features/preview`, `POST /v1/score` and `POST /v1/score/batch`; it calculates neither features nor model scores independently.
+The React frontend is a local research interface for the FastAPI feature and experimental-scoring service. The one-wallet flow accepts one identifier, one explicit UTC cutoff and bounded user-supplied Solana DEX swap events. The Phase 8B–8C batch flow accepts separated wallet histories, one shared cutoff and a bounded analyst review budget, then supports analysis of that exact response. It displays only schema-validated results from `POST /v1/features/preview`, `POST /v1/score` and `POST /v1/score/batch`; it calculates neither features nor model scores independently.
 
 The interface does not fetch wallet history, persist input, call a blockchain provider, load a model artifact, or present a fraud probability, wash-trading verdict, threshold, severity or automatic wallet flag. `GET /readyz` and default/production score endpoints returning HTTP 503 `MODEL_NOT_APPROVED` are expected capability states, not frontend crashes. A successful local score is shown as a unitless, model-specific anomaly value. A batch rank is explicitly relative to that submitted batch and review selection represents analyst capacity only.
 
@@ -41,6 +41,8 @@ The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin an
 | `src/components/ServiceStatus.tsx` | Independent process-health and scoring-capability status |
 | `src/components/ModelStatus.tsx` | Local experimental scoring states, typed metadata, history warnings and non-probability interpretation |
 | `src/components/BatchScoring.tsx` | Authenticated batch input, loading/errors, review budget, ranked API results and explicit rejections |
+| `src/components/AnomalyDashboard.tsx` | Response summary, accessible score charts, filters/sorts, wallet selection and 29-feature detail |
+| `src/utils/anomalyDashboard.ts` | Pure deterministic filtering, sorting, distribution and descriptive-reference comparisons |
 
 `App.tsx` retains only the most recent response and its validated request in component memory. Reloading or clearing the page removes them. A local JSON file is read with the browser file API, limited to 256 KiB, and is not uploaded until the student explicitly submits the form.
 
@@ -63,13 +65,13 @@ The response guard requires:
 - a finite number, boolean, or null for every registered field; and
 - required wallet, cutoff, and interpretation metadata.
 
-Schema drift is shown as an error instead of being silently reformatted. Network errors do not create placeholder results. A successful experimental score is accepted only when its status/source, finite raw score, model identity/version, direction, unit, `is_probability=false`, cutoff, registry metadata, counts, observable history, warnings and interpretation match the typed contract. The batch response guard additionally enforces submitted/scored/rejected count consistency, unique wallet membership, sequential ranks, descending score/tie ordering, review-budget selection, exact candidates, known rejection codes and the fixed non-fraud interpretation.
+Schema drift is shown as an error instead of being silently reformatted. Network errors do not create placeholder results. A successful experimental score is accepted only when its status/source, finite raw score, model identity/version, direction, unit, `is_probability=false`, cutoff, registry metadata, counts, observable history, warnings and interpretation match the typed contract. The batch response guard additionally enforces submitted/scored/rejected count consistency, unique wallet membership, sequential ranks, descending score/tie ordering, review-budget selection, exact candidates, known rejection codes and the fixed non-fraud interpretation. Phase 8C also requires every ranked wallet to contain the exact 29 feature keys and requires a training-reference object whose cutoff and registry fingerprint match the response, whose counts and ordered statistics are internally valid, and whose binary/constant declarations match the feature contract.
 
 ## Interface and accessibility
 
 The responsive dashboard uses semantic landmarks, labelled controls, visible keyboard focus, a skip link, live status messages, disabled loading states, text equivalents for bar charts, labelled progress meters, and a reduced-motion rule. Charts use HTML and CSS instead of canvas, so their values remain available to assistive technology. Missing values display as `Unavailable`; numeric zero remains a real zero.
 
-The visual hierarchy separates evidence from capability: project scope, process health, event entry, descriptive output, charts, single experimental score, batch ranking and methodological limits are distinct sections. Raw anomaly values are never percentage-formatted. The batch table is horizontally scrollable at narrow widths, while form and summary layouts collapse to one column.
+The visual hierarchy separates evidence from capability: project scope, process health, event entry, descriptive output, charts, single experimental score, batch ranking and methodological limits are distinct sections. Raw anomaly values are never percentage-formatted. The advanced batch view preserves original API ranks and values while applying client-side visibility and ordering controls. It uses a dot view for fewer than five visible scores and a histogram otherwise. Wallet detail reports observed values beside training median and interquartile range; robust IQR distance is descriptive only and is suppressed for missing, binary, constant or zero-IQR fields. The table and feature detail are horizontally scrollable at narrow widths, while form, filter, chart and summary layouts collapse responsively.
 
 ## Security and privacy
 
@@ -93,6 +95,6 @@ Phase 7C.0 recommends, but does not activate, a future platform-public Cloud Run
 
 ## Deferred work
 
-Live Firebase/Google Cloud resource configuration, the Cloud Run browser-access architecture, distributed rate limiting/App Check, provider-backed wallet lookup, telemetry, model-artifact promotion, advanced batch analytics, thresholds and wallet-flag dashboards remain outside Phase 8B. Experimental scoring and ranking are local only.
+Live Firebase/Google Cloud resource configuration, the Cloud Run browser-access architecture, distributed rate limiting/App Check, provider-backed wallet lookup, telemetry, model-artifact promotion, automated thresholds and fraud/wash-trading flags remain deferred. Phase 8C advanced analytics are local only and require a successful authenticated Phase 8B response.
 
 The intended later deployment shape is a Vite production build published from `frontend/dist/` to standard Firebase Hosting with a single-page-app rewrite, while the existing container runs independently on Cloud Run. That phase would need an owned Google Cloud/Firebase project, billing and budget controls, an Artifact Registry/image release process, Cloud Run service identity and resource limits, HTTPS API configuration, the exact Firebase origin in backend CORS, environment-specific `VITE_API_BASE_URL`, access/log-retention review, and post-deployment health/readiness/preview tests. It must not place a credential in the static bundle or enable scoring merely because hosting exists.

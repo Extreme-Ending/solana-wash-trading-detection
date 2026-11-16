@@ -84,6 +84,53 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function hasExactFeatureKeys(value: Record<string, unknown>): boolean {
+  return Object.keys(value).join("|") === FEATURE_NAMES.join("|");
+}
+
+function isFeatureMap(value: unknown): boolean {
+  return isRecord(value) && hasExactFeatureKeys(value) && FEATURE_NAMES.every((name) => isFeatureValue(value[name]));
+}
+
+function isFeatureReference(value: unknown, payload: Record<string, unknown>): boolean {
+  if (
+    !isRecord(value) ||
+    value.version !== "training_reference_v1" ||
+    value.source !== "phase_3_training_snapshots" ||
+    value.training_cutoff !== payload.training_cutoff ||
+    value.feature_registry_sha256 !== payload.feature_registry_sha256 ||
+    typeof value.snapshot_sha256 !== "string" ||
+    !value.snapshot_sha256 ||
+    !isPositiveInteger(value.wallet_count) ||
+    !Array.isArray(value.feature_order) ||
+    value.feature_order.join("|") !== FEATURE_NAMES.join("|") ||
+    value.comparison_method !== "robust_iqr_distance_for_nonbinary_nonconstant_features" ||
+    !isRecord(value.statistics) ||
+    !hasExactFeatureKeys(value.statistics)
+  ) return false;
+  const statistics = value.statistics as Record<string, unknown>;
+  const binary = new Set(["single_event_history", "insufficient_history_7d", "insufficient_history_30d"]);
+  return FEATURE_NAMES.every((name) => {
+    const stat = statistics[name];
+    if (!isRecord(stat)) return false;
+    const values = [stat.minimum, stat.quartile_1, stat.median, stat.mean, stat.quartile_3, stat.maximum];
+    return (
+      isPositiveInteger(stat.observed_count) &&
+      isNonnegativeInteger(stat.missing_count) &&
+      stat.observed_count + stat.missing_count === value.wallet_count &&
+      values.every((item) => typeof item === "number" && Number.isFinite(item)) &&
+      (stat.minimum as number) <= (stat.quartile_1 as number) &&
+      (stat.quartile_1 as number) <= (stat.median as number) &&
+      (stat.median as number) <= (stat.quartile_3 as number) &&
+      (stat.quartile_3 as number) <= (stat.maximum as number) &&
+      (stat.minimum as number) <= (stat.mean as number) &&
+      (stat.mean as number) <= (stat.maximum as number) &&
+      stat.is_binary === binary.has(name) &&
+      stat.is_constant === (stat.minimum === stat.maximum)
+    );
+  });
+}
+
 function assertFeaturePreview(payload: unknown): FeaturePreviewResponse {
   if (!isRecord(payload) || !Array.isArray(payload.feature_order) || !isRecord(payload.features)) {
     throw new ApiClientError("The feature response does not match the registered schema.", 200, "SCHEMA_MISMATCH");
@@ -173,6 +220,7 @@ function assertExperimentalBatchScore(payload: unknown): ExperimentalBatchScoreR
     payload.is_probability !== false ||
     typeof payload.feature_rules_version !== "string" ||
     typeof payload.feature_registry_sha256 !== "string" ||
+    !isFeatureReference(payload.feature_reference, payload) ||
     !isPositiveInteger(payload.wallets_submitted) ||
     !isPositiveInteger(payload.wallets_scored) ||
     !isNonnegativeInteger(payload.wallets_rejected) ||
@@ -215,6 +263,7 @@ function assertExperimentalBatchScore(payload: unknown): ExperimentalBatchScoreR
       typeof item.observable_history_days !== "number" ||
       !Number.isFinite(item.observable_history_days) ||
       item.observable_history_days < 0 ||
+      !isFeatureMap(item.features) ||
       !isStringArray(item.warnings) ||
       rankedWallets.has(item.wallet)
     ) {

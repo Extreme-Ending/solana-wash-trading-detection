@@ -6,6 +6,7 @@ import type {
   ExperimentalBatchScoreResponse,
 } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { AnomalyDashboard } from "./AnomalyDashboard";
 import {
   SYNTHETIC_BATCH_AS_OF,
   SYNTHETIC_BATCH_HISTORIES,
@@ -224,54 +225,10 @@ export function BatchScoring() {
         {message && <p className="form-message" role="status" aria-live="polite">{message}</p>}
       </form>
 
-      {result && (
-        <div className="batch-results" aria-live="polite">
-          <div className="batch-summary">
-            <p><strong>{result.wallets_scored}</strong> scored</p>
-            <p><strong>{result.review_budget}</strong> selected for review</p>
-            <p><strong>{result.wallets_rejected}</strong> rejected</p>
-          </div>
-          <p className="batch-interpretation">{result.interpretation}</p>
-          <div className="table-scroll">
-            <table>
-              <caption>Wallet anomaly ranking within this submitted batch</caption>
-              <thead><tr><th scope="col">Rank</th><th scope="col">Wallet</th><th scope="col">Anomaly score</th><th scope="col">History</th><th scope="col">Review</th></tr></thead>
-              <tbody>
-                {result.ranked_wallets.map((wallet) => (
-                  <tr key={wallet.wallet}>
-                    <td>{wallet.rank}</td>
-                    <td><code>{wallet.wallet}</code></td>
-                    <td>{wallet.anomaly_score.toFixed(6)}</td>
-                    <td>
-                      {wallet.included_historical_event_count} event(s) · {wallet.observable_history_days.toFixed(2)} days
-                      {wallet.warnings.length > 0 && (
-                        <ul className="wallet-warnings">
-                          {wallet.warnings.map((warning) => <li key={warning}>{warning}</li>)}
-                        </ul>
-                      )}
-                    </td>
-                    <td>{wallet.selected_for_review ? <strong className="review-badge">Review candidate</strong> : "Outside budget"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {result.rejected_wallets.length > 0 && (
-            <div className="rejected-wallets">
-              <h3>Rejected wallet histories</h3>
-              <ul>
-                {result.rejected_wallets.map((wallet) => (
-                  <li key={wallet.wallet}><code>{wallet.wallet}</code>: <strong>{wallet.code}</strong> — {wallet.message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <div className="batch-warnings">
-            <h3>Batch warnings</h3>
-            <ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
-          </div>
-        </div>
+      {result && Number(reviewBudget) !== result.review_budget_requested && (
+        <p className="form-message" role="status">The review budget was changed after this result. Submit a new authenticated request to recalculate selection; the displayed ranking remains unchanged.</p>
       )}
+      {result && <AnomalyDashboard result={result} />}
     </section>
   );
 }

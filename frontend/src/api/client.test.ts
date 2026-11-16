@@ -90,6 +90,20 @@ describe("API client", () => {
       ranked_wallets: [...VALID_EXPERIMENTAL_BATCH_SCORE.ranked_wallets].reverse(),
     },
     { ...VALID_EXPERIMENTAL_BATCH_SCORE, review_candidates: ["wallet-c"] },
+    {
+      ...VALID_EXPERIMENTAL_BATCH_SCORE,
+      feature_reference: {
+        ...VALID_EXPERIMENTAL_BATCH_SCORE.feature_reference,
+        training_cutoff: "2024-01-01T00:00:00Z",
+      },
+    },
+    {
+      ...VALID_EXPERIMENTAL_BATCH_SCORE,
+      feature_reference: {
+        ...VALID_EXPERIMENTAL_BATCH_SCORE.feature_reference,
+        wallet_count: 41,
+      },
+    },
   ])("rejects inconsistent experimental batch responses", async (payload) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(payload)));
     await expect(

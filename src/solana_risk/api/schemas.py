@@ -206,6 +206,33 @@ class ExperimentalScoreResponse(ApiModel):
     interpretation: str
 
 
+class FeatureReferenceStatistic(ApiModel):
+    observed_count: int = Field(ge=1)
+    missing_count: int = Field(ge=0)
+    minimum: float = Field(allow_inf_nan=False)
+    quartile_1: float = Field(allow_inf_nan=False)
+    median: float = Field(allow_inf_nan=False)
+    mean: float = Field(allow_inf_nan=False)
+    quartile_3: float = Field(allow_inf_nan=False)
+    maximum: float = Field(allow_inf_nan=False)
+    is_binary: bool
+    is_constant: bool
+
+
+class FeatureTrainingReference(ApiModel):
+    version: Literal["training_reference_v1"]
+    source: Literal["phase_3_training_snapshots"]
+    training_cutoff: datetime
+    snapshot_sha256: str
+    wallet_count: int = Field(ge=1)
+    feature_registry_sha256: str
+    feature_order: list[str]
+    statistics: dict[str, FeatureReferenceStatistic]
+    comparison_method: Literal[
+        "robust_iqr_distance_for_nonbinary_nonconstant_features"
+    ]
+
+
 class BatchWalletScore(ApiModel):
     wallet: str
     anomaly_score: float = Field(allow_inf_nan=False)
@@ -215,6 +242,7 @@ class BatchWalletScore(ApiModel):
     included_historical_event_count: int = Field(ge=1)
     excluded_at_or_after_cutoff_count: int = Field(ge=0)
     observable_history_days: float = Field(ge=0, allow_inf_nan=False)
+    features: dict[str, FeatureValue]
     warnings: list[str]
 
 
@@ -245,6 +273,7 @@ class ExperimentalBatchScoreResponse(ApiModel):
     is_probability: Literal[False]
     feature_rules_version: str
     feature_registry_sha256: str
+    feature_reference: FeatureTrainingReference
     wallets_submitted: int = Field(ge=1)
     wallets_scored: int = Field(ge=1)
     wallets_rejected: int = Field(ge=0)

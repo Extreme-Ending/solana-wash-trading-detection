@@ -40,7 +40,15 @@ from solana_risk.models.baselines import RobustMADDetector
 
 EXPERIMENT_STATUS = "EXPERIMENTAL UNSUPERVISED ANOMALY MODELLING"
 EXPERIMENT_VERSION = "4B.1"
+FEATURE_REFERENCE_VERSION = "training_reference_v1"
 MODEL_NAMES: tuple[str, ...] = ("isolation_forest", "local_outlier_factor", "robust_mad")
+BINARY_FEATURE_COLUMNS = frozenset(
+    {
+        "single_event_history",
+        "insufficient_history_7d",
+        "insufficient_history_30d",
+    }
+)
 
 
 class AnomalyValidationError(ValueError):
@@ -225,6 +233,36 @@ def feature_matrix(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.loc[:, MODEL_FEATURE_COLUMNS].astype(float)
 
 
+def build_feature_reference(train: pd.DataFrame) -> dict[str, Any]:
+    """Summarize registered features from the training cutoff only."""
+
+    matrix = feature_matrix(train)
+    statistics: dict[str, dict[str, Any]] = {}
+    for name in MODEL_FEATURE_COLUMNS:
+        values = matrix[name]
+        observed = values.dropna()
+        if observed.empty:
+            raise AnomalyValidationError(f"Training reference feature is entirely missing: {name}")
+        statistics[name] = {
+            "observed_count": int(observed.size),
+            "missing_count": int(values.isna().sum()),
+            "minimum": float(observed.min()),
+            "quartile_1": float(observed.quantile(0.25)),
+            "median": float(observed.median()),
+            "mean": float(observed.mean()),
+            "quartile_3": float(observed.quantile(0.75)),
+            "maximum": float(observed.max()),
+            "is_binary": name in BINARY_FEATURE_COLUMNS,
+            "is_constant": bool(observed.nunique() == 1),
+        }
+    return {
+        "version": FEATURE_REFERENCE_VERSION,
+        "wallet_count": int(len(matrix)),
+        "feature_order": list(MODEL_FEATURE_COLUMNS),
+        "statistics": statistics,
+    }
+
+
 def audit_feature_matrix(frame: pd.DataFrame) -> dict[str, Any]:
     """Return structural audit evidence without altering the snapshot data."""
 
@@ -367,6 +405,7 @@ def fit_experiment(
         "feature_rules_version": FEATURE_RULES_VERSION,
         "feature_registry_sha256": feature_registry_sha256(),
         "feature_order": list(MODEL_FEATURE_COLUMNS),
+        "feature_reference_version": FEATURE_REFERENCE_VERSION,
         "metadata_columns_excluded": list(METADATA_COLUMNS),
         "snapshot_sha256": snapshot_sha256,
         "temporal_split": asdict(split),
@@ -396,6 +435,7 @@ def fit_experiment(
         "training_reference": {
             "wallet_count": len(train),
             "local_outlier_factor_intrinsic_scores": intrinsic_lof,
+            **build_feature_reference(train),
         },
         "input_audit": audit,
     }
@@ -417,6 +457,8 @@ def save_bundle(bundle: Mapping[str, Any], output_dir: Path | str) -> dict[str, 
         "feature_rules_version": bundle["metadata"]["feature_rules_version"],
         "feature_registry_sha256": bundle["metadata"]["feature_registry_sha256"],
         "feature_order": bundle["metadata"]["feature_order"],
+        "feature_reference_version": bundle["metadata"]["feature_reference_version"],
+        "feature_reference_wallet_count": bundle["training_reference"]["wallet_count"],
         "config": bundle["metadata"]["config"],
         "versions": bundle["metadata"]["versions"],
     }
@@ -443,6 +485,14 @@ def load_bundle(path: Path | str) -> dict[str, Any]:
         raise AnomalyValidationError("Model artifact feature order does not match the registry")
     if metadata.get("feature_registry_sha256") != feature_registry_sha256():
         raise AnomalyValidationError("Model artifact feature registry fingerprint is stale")
+    reference = bundle.get("training_reference", {})
+    if (
+        metadata.get("feature_reference_version") != FEATURE_REFERENCE_VERSION
+        or reference.get("version") != FEATURE_REFERENCE_VERSION
+        or reference.get("feature_order") != list(MODEL_FEATURE_COLUMNS)
+        or set(reference.get("statistics", {})) != set(MODEL_FEATURE_COLUMNS)
+    ):
+        raise AnomalyValidationError("Model artifact training reference is incompatible")
     return bundle
 
 

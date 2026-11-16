@@ -18,10 +18,12 @@ from solana_risk.models.baselines import RobustMADDetector
 from solana_risk.models.evaluate_anomaly import evaluate_experiment, score_partition
 from solana_risk.models.train_anomaly import (
     EXPERIMENT_STATUS,
+    FEATURE_REFERENCE_VERSION,
     MODEL_NAMES,
     AnomalyConfig,
     AnomalyValidationError,
     audit_feature_matrix,
+    build_feature_reference,
     chronological_partitions,
     feature_matrix,
     fit_experiment,
@@ -162,6 +164,39 @@ def test_preprocessing_is_fitted_on_train_only() -> None:
         assert statistics[feature_index] == pytest.approx(train_median)
 
 
+def test_feature_reference_uses_only_training_cutoff_and_registered_order() -> None:
+    frame = _snapshots()
+    partitions, _ = chronological_partitions(frame)
+    reference = build_feature_reference(partitions["train"])
+    statistic = reference["statistics"]["total_usd_volume"]
+    train_values = partitions["train"]["total_usd_volume"]
+
+    assert reference["version"] == FEATURE_REFERENCE_VERSION
+    assert reference["wallet_count"] == len(partitions["train"])
+    assert reference["feature_order"] == list(MODEL_FEATURE_COLUMNS)
+    assert list(reference["statistics"]) == list(MODEL_FEATURE_COLUMNS)
+    assert statistic["median"] == pytest.approx(train_values.median())
+    assert statistic["maximum"] == pytest.approx(train_values.max())
+    assert statistic["maximum"] != pytest.approx(frame["total_usd_volume"].max())
+
+
+def test_feature_reference_records_missing_constant_and_binary_semantics() -> None:
+    frame = _snapshots()
+    first = sorted(frame["as_of"].unique())[0]
+    train_rows = frame["as_of"].eq(first)
+    frame.loc[train_rows, "events_last_24h"] = 7
+    frame.loc[frame.index[train_rows][0], "inter_event_mean_seconds"] = np.nan
+    partitions, _ = chronological_partitions(frame)
+    reference = build_feature_reference(partitions["train"])["statistics"]
+
+    assert reference["events_last_24h"]["is_constant"] is True
+    assert reference["events_last_24h"]["quartile_1"] == 7
+    assert reference["events_last_24h"]["quartile_3"] == 7
+    assert reference["inter_event_mean_seconds"]["missing_count"] >= 1
+    assert reference["single_event_history"]["is_binary"] is True
+    assert reference["historical_event_count"]["is_binary"] is False
+
+
 def test_models_are_deterministic_and_scores_share_direction() -> None:
     frame = _snapshots()
     first = fit_experiment(frame)
@@ -200,6 +235,9 @@ def test_serialization_reload_preserves_scores_and_contract(tmp_path: Path) -> N
     reloaded = load_bundle(paths["artifact"])
     manifest = json.loads(paths["manifest"].read_text())
     assert manifest["feature_registry_sha256"] == feature_registry_sha256()
+    assert manifest["feature_reference_version"] == FEATURE_REFERENCE_VERSION
+    assert manifest["feature_reference_wallet_count"] == 90
+    assert reloaded["training_reference"]["feature_order"] == list(MODEL_FEATURE_COLUMNS)
     assert manifest["artifact_sha256"]
     for name in MODEL_NAMES:
         before = score_model(name, bundle["models"][name], frame)
