@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClient } from "./client";
 import { resolveApiBaseUrl } from "./config";
 import { FEATURE_NAMES } from "./types";
-import { jsonResponse, MODEL_NOT_APPROVED, VALID_PREVIEW, VALID_REQUEST } from "../test/fixtures";
+import { jsonResponse, MODEL_NOT_APPROVED, VALID_EXPERIMENTAL_SCORE, VALID_PREVIEW, VALID_REQUEST } from "../test/fixtures";
 
 describe("API client", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -44,9 +44,26 @@ describe("API client", () => {
     await expect(new ApiClient("/api", async () => "token").preview(VALID_REQUEST)).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
   });
 
-  it("does not accept an unexpected successful scoring response", async () => {
+  it("accepts a schema-compatible experimental score and sends authorization", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(VALID_EXPERIMENTAL_SCORE)));
+    const result = await new ApiClient("/api", async () => "token").score(VALID_REQUEST);
+    expect(result).toEqual(VALID_EXPERIMENTAL_SCORE);
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer token");
+  });
+
+  it("rejects an invalid successful scoring response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ anomaly_score: 0.99 })));
-    await expect(new ApiClient("/api", async () => "token").scoringAvailability(VALID_REQUEST)).rejects.toMatchObject({ code: "UNSUPPORTED_MODEL_RESPONSE" });
+    await expect(new ApiClient("/api", async () => "token").score(VALID_REQUEST)).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
+  });
+
+  it("preserves disabled experimental scoring as an availability state", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(MODEL_NOT_APPROVED, 503)));
+    await expect(new ApiClient("/api", async () => "token").score(VALID_REQUEST)).resolves.toEqual({
+      available: false,
+      code: "MODEL_NOT_APPROVED",
+      message: "Prediction capability is unavailable.",
+    });
   });
 
   it("converts network failures into a structured backend-unavailable error", async () => {

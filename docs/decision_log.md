@@ -314,3 +314,14 @@ This log records decisions that constrain later implementation. It does not clai
 - **Abuse boundary:** The local limiter is not distributed and does not protect Firebase verification from invalid-token traffic. App Check is evaluated but deferred because enabling it requires live provider/domain configuration, cost/quota approval, debug-environment handling and monitored rollout. Do not describe either control as implemented globally.
 - **Cost boundary:** Retain min 0/max 2, 1 CPU, 512 MiB, concurrency 20 and 30-second timeout in `africa-south1`. Propose a USD 10 monthly alert budget at 50/80/100%; alerts do not cap spend. Treat the documented spend-cap feature as conditional on actual project/service eligibility.
 - **Next gate:** Resolve exact project/identity/budget/App Check or risk-acceptance prerequisites, deploy privately first, then obtain separate approval for public invocation and run the prepared hosted Firebase-to-Cloud-Run acceptance smoke. No resource, IAM, billing or deployment change occurred in Phase 7C.0.
+
+## D039 — Integrate one checksum-pinned detector for local experimental scoring
+
+- **Date:** 2026-11-16
+- **Status:** accepted for Phase 8A local implementation only
+- **Decision:** Select Isolation Forest as the provisional serving candidate because its Phase 4B validation ranks were stable across predeclared tree-count and sample-size alternatives. Preserve robust MAD and LOF as offline comparators; do not interpret detector choice as labelled performance evidence.
+- **Artifact boundary:** Require explicit development enablement, server-configured non-symlink paths, a configured SHA-256 matching both manifest and bytes, exact package/model/feature metadata and a compatible fitted 29-input pipeline before deserialization/use. Reject missing or incompatible artifacts without repair.
+- **Temporal boundary:** Build inputs through the shared Phase 3 implementation, retain `block_time < as_of`, report excluded events and reject scoring times earlier than the fitted September 2025 reference.
+- **Claim boundary:** Return a finite unitless model-specific score whose higher direction is explicit. Return no probability, threshold, class, severity, wallet flag, or fraud/wash-trading conclusion. Surface incomplete-history warnings.
+- **Runtime boundary:** Enable only in local `development`; leave `/readyz`, production, Docker, Cloud Run configuration and generated-artifact exclusions unchanged. No cloud, IAM, Firebase or Git mutation is part of this decision.
+- **Next gate:** Stop after Phase 8A. Batch scoring, thresholds/flags, dashboards based on ranked wallet populations, artifact promotion and deployment require a separate milestone.

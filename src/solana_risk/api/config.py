@@ -6,6 +6,7 @@ import os
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlsplit
 
 
@@ -14,6 +15,7 @@ class ConfigurationError(ValueError):
 
 
 _PROJECT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
+_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _parse_positive_int(
@@ -95,6 +97,10 @@ class Settings:
     check_revoked_tokens: bool = True
     rate_limit_requests: int = 30
     rate_limit_window_seconds: int = 60
+    experimental_scoring_enabled: bool = False
+    experimental_model_artifact: Path | None = None
+    experimental_model_manifest: Path | None = None
+    experimental_artifact_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if not self.service_name.strip() or not self.api_version.strip():
@@ -125,6 +131,14 @@ class Settings:
             "allowed_user_uids",
             _validate_uids(self.allowed_user_uids),
         )
+        if self.experimental_artifact_sha256 is not None:
+            normalized_sha256 = self.experimental_artifact_sha256.strip().lower()
+            if not _SHA256_PATTERN.fullmatch(normalized_sha256):
+                raise ConfigurationError(
+                    "SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256 must be 64 lowercase "
+                    "hexadecimal characters"
+                )
+            object.__setattr__(self, "experimental_artifact_sha256", normalized_sha256)
         if self.environment.strip().lower() == "production":
             if self.firebase_project_id is None:
                 raise ConfigurationError(
@@ -142,6 +156,15 @@ class Settings:
         """Return whether protected endpoints can attempt token verification."""
 
         return self.firebase_project_id is not None and bool(self.allowed_user_uids)
+
+    @property
+    def experimental_scoring_allowed(self) -> bool:
+        """Return whether this process may load the local experimental artifact."""
+
+        return (
+            self.experimental_scoring_enabled
+            and self.environment.strip().lower() == "development"
+        )
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
@@ -180,5 +203,22 @@ class Settings:
                 values.get("SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS", "60"),
                 name="SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS",
                 maximum=3_600,
+            ),
+            experimental_scoring_enabled=_parse_bool(
+                values.get("SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING", "false"),
+                name="SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING",
+            ),
+            experimental_model_artifact=(
+                Path(values["SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT"])
+                if values.get("SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT", "").strip()
+                else None
+            ),
+            experimental_model_manifest=(
+                Path(values["SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST"])
+                if values.get("SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST", "").strip()
+                else None
+            ),
+            experimental_artifact_sha256=(
+                values.get("SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256") or None
             ),
         )

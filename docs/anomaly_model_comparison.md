@@ -52,4 +52,4 @@ With `novelty=True`, the fitted estimator exposes `negative_outlier_factor_` for
 
 ## Provisional assessment
 
-Isolation Forest is the most stable nonlinear experimental ranker in the tested range, and robust MAD is a valuable transparent comparator. Their agreement is descriptive only. LOF contributes a useful disagreement diagnostic but is not stable enough here to support a single operational ranking without further predeclared eligibility, dimensionality/redundancy treatment and supervisor-approved evaluation. No model is approved for deployment.
+Isolation Forest is the most stable nonlinear experimental ranker in the tested range, and robust MAD is a valuable transparent comparator. Their agreement is descriptive only. LOF contributes a useful disagreement diagnostic but is not stable enough here to support a single operational ranking without further predeclared eligibility and dimensionality/redundancy treatment. Phase 8A therefore integrates Isolation Forest behind a local-only experimental gate. This is not production promotion and does not turn anomaly ranking into confirmed fraud detection.

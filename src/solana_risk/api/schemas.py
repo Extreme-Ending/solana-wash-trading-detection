@@ -130,7 +130,7 @@ class FeaturePreviewRequest(ApiModel):
 
 
 class ScoreRequest(FeaturePreviewRequest):
-    """Reserved future scoring input; Phase 5A never produces a score."""
+    """One-wallet history for explicitly enabled local experimental scoring."""
 
 
 FeatureValue = int | float | bool | None
@@ -149,6 +149,29 @@ class FeaturePreviewResponse(ApiModel):
     feature_registry_sha256: str
     feature_order: list[str]
     features: dict[str, FeatureValue]
+
+
+class ExperimentalScoreResponse(ApiModel):
+    status: Literal["experimental_anomaly_score"]
+    methodology_status: Literal["experimental_unsupervised_research_only"]
+    source: Literal["user_supplied_unverified_events"]
+    wallet: str
+    as_of: datetime
+    supplied_event_count: int
+    included_historical_event_count: int
+    excluded_at_or_after_cutoff_count: int
+    model_id: Literal["isolation_forest"]
+    model_version: str
+    anomaly_score: float = Field(allow_inf_nan=False)
+    score_direction: Literal["higher_means_more_anomalous_relative_to_training_reference"]
+    score_units: Literal["model_specific_unitless_isolation_forest_score"]
+    is_probability: Literal[False]
+    training_cutoff: datetime
+    feature_rules_version: str
+    feature_registry_sha256: str
+    observable_history_days: float = Field(ge=0, allow_inf_nan=False)
+    warnings: list[str]
+    interpretation: str
 
 
 class HealthResponse(ApiModel):

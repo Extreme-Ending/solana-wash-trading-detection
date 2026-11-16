@@ -409,9 +409,12 @@ def save_bundle(bundle: Mapping[str, Any], output_dir: Path | str) -> dict[str, 
     artifact_sha256 = sha256_file(artifact_path)
     manifest = {
         "experiment_status": EXPERIMENT_STATUS,
+        "experiment_version": bundle["metadata"]["experiment_version"],
         "artifact": artifact_path.name,
         "artifact_sha256": artifact_sha256,
         "snapshot_sha256": bundle["metadata"]["snapshot_sha256"],
+        "training_cutoff": bundle["metadata"]["temporal_split"]["train_cutoff"],
+        "feature_rules_version": bundle["metadata"]["feature_rules_version"],
         "feature_registry_sha256": bundle["metadata"]["feature_registry_sha256"],
         "feature_order": bundle["metadata"]["feature_order"],
         "config": bundle["metadata"]["config"],

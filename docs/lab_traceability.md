@@ -16,6 +16,7 @@
 - Docker, `.dockerignore`, API-test, and container-smoke workflow examples rechecked for Phase 5B on: `2026-11-12`
 - API schema/order, HTTP-test, and separation-of-capabilities examples rechecked for Phase 6 on: `2026-11-12`
 - Deployment-layer separation, runtime-only image, smoke-test, and no-automatic-publish examples rechecked for Phase 7A on: `2026-11-12`
+- Serialized feature-order, typed serving, train/serve parity, and cautious anomaly-score interpretation rechecked for Phase 8A on: `2026-11-16`
 - Method: temporary read-only Lab 2 reference files under `/tmp` at the exact snapshot plus read-only inspection of the current local lecturer checkout; no course files were copied into or used as a scaffold for this repository.
 
 The Lab 2 observations below were verified from actual files at the exact snapshot. The end-to-end, Lab 10, fraud-MLOps, and MLflow examples were rechecked at the current-checkout commit shown above. Findings are not inferred solely from directory names.
@@ -84,6 +85,8 @@ The Lab 2 observations below were verified from actual files at the exact snapsh
 | Live cloud delivery | The fraud-MLOps workflow pushes an image only after its own labelled-model gate. | Phase 7A prepares but does not execute Cloud Run/Firebase delivery. A future live milestone must retain student confirmation, private access by default, cost review, exact CORS, bundle gates and the unavailable-model contract. |
 
 ## Deliberate non-copying
+
+Phase 8A adapts the Lab 05 wallet-level anomaly-score direction and the Lab 10 typed artifact-serving pattern by loading one pre-fitted local detector only after checksum, version, cutoff, registry and exact feature-order validation. Unlike the labelled Lab 10 examples, the endpoint returns no class or probability, preserves the shared point-in-time feature builder, rejects pre-reference scoring times and stays disabled in production. Synthetic API tests cover successful scoring, tampering, incompatible metadata, missing artifacts and production refusal.
 
 - The Lab 2 notebook’s absolute Windows path is not reused.
 - The end-to-end practical's random holdout and test-set threshold exploration are not reused.

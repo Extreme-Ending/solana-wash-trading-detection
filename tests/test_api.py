@@ -366,8 +366,12 @@ def test_environment_configuration_and_unsafe_cors_rejection() -> None:
     assert settings.cors_origins == ("https://example.test", "http://localhost:5173")
     assert settings.max_events == 25
     assert settings.max_request_bytes == 4096
+    assert settings.experimental_scoring_enabled is False
+    assert settings.experimental_scoring_allowed is False
     with pytest.raises(ConfigurationError, match="Wildcard"):
         Settings(cors_origins=("*",))
+    with pytest.raises(ConfigurationError, match="SHA256"):
+        Settings(experimental_artifact_sha256="not-a-digest")
 
 
 def test_startup_and_requests_never_load_or_fit_models(
@@ -398,4 +402,4 @@ def test_openapi_documents_health_features_and_unavailable_scoring(app: Any) -> 
     assert {"/healthz", "/readyz", "/v1/features/preview", "/v1/score"}.issubset(
         schema["paths"]
     )
-    assert "model scoring is unavailable" in schema["info"]["description"].casefold()
+    assert "experimental anomaly scoring is disabled" in schema["info"]["description"].casefold()

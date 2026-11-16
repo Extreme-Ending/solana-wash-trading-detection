@@ -4,6 +4,7 @@ import {
   FEATURE_NAMES,
   type AvailabilityResponse,
   type ErrorResponse,
+  type ExperimentalScoreResponse,
   type FeatureName,
   type FeaturePreviewRequest,
   type FeaturePreviewResponse,
@@ -103,6 +104,40 @@ function assertFeaturePreview(payload: unknown): FeaturePreviewResponse {
   return payload as unknown as FeaturePreviewResponse;
 }
 
+function assertExperimentalScore(payload: unknown): ExperimentalScoreResponse {
+  if (
+    !isRecord(payload) ||
+    payload.status !== "experimental_anomaly_score" ||
+    payload.methodology_status !== "experimental_unsupervised_research_only" ||
+    payload.source !== "user_supplied_unverified_events" ||
+    typeof payload.wallet !== "string" ||
+    typeof payload.as_of !== "string" ||
+    payload.model_id !== "isolation_forest" ||
+    typeof payload.model_version !== "string" ||
+    typeof payload.anomaly_score !== "number" ||
+    !Number.isFinite(payload.anomaly_score) ||
+    payload.score_direction !== "higher_means_more_anomalous_relative_to_training_reference" ||
+    payload.score_units !== "model_specific_unitless_isolation_forest_score" ||
+    payload.is_probability !== false ||
+    typeof payload.training_cutoff !== "string" ||
+    typeof payload.feature_rules_version !== "string" ||
+    typeof payload.feature_registry_sha256 !== "string" ||
+    typeof payload.observable_history_days !== "number" ||
+    !Number.isFinite(payload.observable_history_days) ||
+    payload.observable_history_days < 0 ||
+    !isNonnegativeInteger(payload.supplied_event_count) ||
+    !isNonnegativeInteger(payload.included_historical_event_count) ||
+    !isNonnegativeInteger(payload.excluded_at_or_after_cutoff_count) ||
+    payload.included_historical_event_count + payload.excluded_at_or_after_cutoff_count !== payload.supplied_event_count ||
+    !Array.isArray(payload.warnings) ||
+    !payload.warnings.every((warning) => typeof warning === "string") ||
+    typeof payload.interpretation !== "string"
+  ) {
+    throw new ApiClientError("The experimental score response is invalid.", 200, "SCHEMA_MISMATCH");
+  }
+  return payload as unknown as ExperimentalScoreResponse;
+}
+
 export class ApiClient {
   constructor(
     private readonly baseUrl = API_BASE_URL,
@@ -198,10 +233,10 @@ export class ApiClient {
     return assertFeaturePreview(payload);
   }
 
-  async scoringAvailability(
+  async score(
     request: FeaturePreviewRequest,
     signal?: AbortSignal,
-  ): Promise<AvailabilityResponse> {
+  ): Promise<AvailabilityResponse | ExperimentalScoreResponse> {
     const response = await this.authorizedRequest("/v1/score", {
       method: "POST",
       body: JSON.stringify(request),
@@ -211,12 +246,11 @@ export class ApiClient {
     if (response.status === 503 && isErrorResponse(payload) && payload.error.code === "MODEL_NOT_APPROVED") {
       return { available: false, code: "MODEL_NOT_APPROVED", message: payload.error.message };
     }
+    if (response.status === 503 && isErrorResponse(payload) && payload.error.code === "EXPERIMENTAL_MODEL_UNAVAILABLE") {
+      return { available: false, code: "EXPERIMENTAL_MODEL_UNAVAILABLE", message: payload.error.message };
+    }
     if (!response.ok) throw toApiError(response.status, payload);
-    throw new ApiClientError(
-      "Scoring output is not supported by this frontend phase.",
-      response.status,
-      "UNSUPPORTED_MODEL_RESPONSE",
-    );
+    return assertExperimentalScore(payload);
   }
 }
 

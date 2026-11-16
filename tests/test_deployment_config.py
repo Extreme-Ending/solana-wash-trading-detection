@@ -44,21 +44,36 @@ def test_firebase_hosts_actual_vite_spa_with_cache_and_security_headers() -> Non
     assert all(term not in serialized for term in ('"run"', "firestore", "authentication", "functions"))
 
 
-def test_project_and_production_environment_examples_are_placeholders_only() -> None:
+def test_project_and_production_environment_examples_are_browser_safe() -> None:
     firebase_example = json.loads((ROOT / ".firebaserc.example").read_text(encoding="utf-8"))
     assert firebase_example == {"projects": {"default": "YOUR_GCP_PROJECT_ID"}}
     frontend_example = (ROOT / "frontend" / ".env.production.example").read_text(encoding="utf-8")
-    assignments = [
-        line for line in frontend_example.splitlines() if line and not line.startswith("#")
-    ]
-    assert assignments == [
-        "VITE_API_BASE_URL=https://YOUR_CLOUD_RUN_SERVICE_HOST",
-        "VITE_FIREBASE_API_KEY=YOUR_FIREBASE_WEB_API_KEY",
-        "VITE_FIREBASE_AUTH_DOMAIN=YOUR_GCP_PROJECT_ID.firebaseapp.com",
-        "VITE_FIREBASE_PROJECT_ID=YOUR_GCP_PROJECT_ID",
-        "VITE_FIREBASE_APP_ID=YOUR_FIREBASE_WEB_APP_ID",
-    ]
-    assert all(term not in frontend_example.casefold() for term in ("private_key", "password"))
+    values = dict(
+        line.split("=", maxsplit=1)
+        for line in frontend_example.splitlines()
+        if line and not line.startswith("#")
+    )
+    assert set(values) == {
+        "VITE_API_BASE_URL",
+        "VITE_FIREBASE_API_KEY",
+        "VITE_FIREBASE_AUTH_DOMAIN",
+        "VITE_FIREBASE_PROJECT_ID",
+        "VITE_FIREBASE_APP_ID",
+    }
+    assert values["VITE_API_BASE_URL"].startswith("https://")
+    assert values["VITE_FIREBASE_AUTH_DOMAIN"] == (
+        f'{values["VITE_FIREBASE_PROJECT_ID"]}.firebaseapp.com'
+    )
+    assert values["VITE_FIREBASE_API_KEY"] == "YOUR_FIREBASE_WEB_API_KEY" or re.fullmatch(
+        r"AIza[0-9A-Za-z_-]{30,}", values["VITE_FIREBASE_API_KEY"]
+    )
+    assert values["VITE_FIREBASE_APP_ID"] == "YOUR_FIREBASE_WEB_APP_ID" or re.fullmatch(
+        r"1:[0-9]+:web:[0-9a-f]+", values["VITE_FIREBASE_APP_ID"]
+    )
+    assert all(
+        term not in frontend_example.casefold()
+        for term in ("private_key", "password", "client_secret", "access_token", "refresh_token")
+    )
     ignore_rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "/deployment/deployment.env.local" in ignore_rules
 

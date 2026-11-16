@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiClientError, apiClient } from "../api/client";
-import type { FeaturePreviewRequest } from "../api/types";
+import type { ExperimentalScoreResponse, FeaturePreviewRequest } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 
 interface ModelStatusProps {
@@ -10,6 +10,7 @@ interface ModelStatusProps {
 export function ModelStatus({ request }: ModelStatusProps) {
   const { user, loading } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
+  const [result, setResult] = useState<ExperimentalScoreResponse | null>(null);
   const [checking, setChecking] = useState(false);
   const controller = useRef<AbortController | null>(null);
 
@@ -22,9 +23,11 @@ export function ModelStatus({ request }: ModelStatusProps) {
     controller.current = active;
     setChecking(true);
     setMessage(null);
+    setResult(null);
     try {
-      const response = await apiClient.scoringAvailability(request, active.signal);
-      setMessage(response.message);
+      const response = await apiClient.score(request, active.signal);
+      if ("available" in response) setMessage(response.message);
+      else setResult(response);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setMessage(
@@ -36,7 +39,7 @@ export function ModelStatus({ request }: ModelStatusProps) {
               : error.status === 429
                 ? "Too many requests reached this service instance. Wait before trying again."
               : error.message
-          : "The scoring gate could not be checked.",
+          : "The experimental scoring request could not be completed.",
       );
     } finally {
       if (controller.current === active) {
@@ -50,21 +53,41 @@ export function ModelStatus({ request }: ModelStatusProps) {
     <section className="model-gate" aria-labelledby="model-heading">
       <div className="model-icon" aria-hidden="true">◇</div>
       <div>
-        <p className="eyebrow">Model capability</p>
-        <h2 id="model-heading">Anomaly scoring is not enabled</h2>
+        <p className="eyebrow">Experimental model capability</p>
+        <h2 id="model-heading">Local anomaly scoring</h2>
         <p>
-          This phase exposes validated descriptive features only. Offline unsupervised experiments
-          exist as research artifacts, but none is loaded or served; the service intentionally
-          returns HTTP 503 for readiness and scoring requests.
+          When explicitly enabled in the local API, this section submits the same validated event
+          history to the checksum-pinned Phase 4B Isolation Forest. Production and default local
+          configurations keep scoring unavailable.
         </p>
-        <p className="model-rule"><strong>Interpretation rule:</strong> unusual activity would not, by itself, establish wash trading or fraud.</p>
+        <p className="model-rule"><strong>Interpretation rule:</strong> a larger model-specific score means more unusual relative to the training reference. It is not a probability, label, or fraud determination.</p>
         <button className="button secondary" type="button" onClick={check} disabled={!request || checking || loading || !user}>
-          {checking ? "Checking gate…" : "Check scoring gate with last request"}
+          {checking ? "Scoring locally…" : "Request experimental score"}
         </button>
         {!user && !loading
-          ? <small>Sign in with an approved Google account to check the protected endpoint.</small>
-          : !request && <small>Generate a valid feature preview to enable this check.</small>}
+          ? <small>Sign in with an approved Google account to use the protected endpoint.</small>
+          : !request && <small>Generate a valid feature preview before requesting a score.</small>}
         {message && <p className="gate-message" role="status">{message}</p>}
+        {result && (
+          <div className="score-result" role="status" aria-label="Experimental anomaly score">
+            <p className="score-value">{result.anomaly_score.toFixed(6)}</p>
+            <p><strong>Unit:</strong> model-specific, unitless Isolation Forest score</p>
+            <dl>
+              <div><dt>Model</dt><dd>{result.model_id} · {result.model_version}</dd></div>
+              <div><dt>Methodology</dt><dd>Experimental unsupervised research only</dd></div>
+              <div><dt>Training cutoff</dt><dd>{result.training_cutoff}</dd></div>
+              <div><dt>Observable history</dt><dd>{result.observable_history_days.toFixed(2)} days</dd></div>
+              <div><dt>Feature rules</dt><dd>{result.feature_rules_version}</dd></div>
+            </dl>
+            <p>{result.interpretation}</p>
+            {result.warnings.length > 0 && (
+              <div>
+                <strong>Input and history warnings</strong>
+                <ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

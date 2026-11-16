@@ -4,6 +4,7 @@ import {
   type FeaturePreviewRequest,
   type FeaturePreviewResponse,
   type FeatureValue,
+  type ExperimentalScoreResponse,
 } from "../api/types";
 
 export const VALID_REQUEST: FeaturePreviewRequest = {
@@ -70,4 +71,27 @@ export const MODEL_NOT_APPROVED = {
     message: "Prediction capability is unavailable.",
     details: { prediction_available: false },
   },
+};
+
+export const VALID_EXPERIMENTAL_SCORE: ExperimentalScoreResponse = {
+  status: "experimental_anomaly_score",
+  methodology_status: "experimental_unsupervised_research_only",
+  source: "user_supplied_unverified_events",
+  wallet: "synthetic-wallet-demo-001",
+  as_of: "2025-02-01T00:00:00Z",
+  supplied_event_count: 1,
+  included_historical_event_count: 1,
+  excluded_at_or_after_cutoff_count: 0,
+  model_id: "isolation_forest",
+  model_version: "4B.1",
+  anomaly_score: 0.413245,
+  score_direction: "higher_means_more_anomalous_relative_to_training_reference",
+  score_units: "model_specific_unitless_isolation_forest_score",
+  is_probability: false,
+  training_cutoff: "2025-09-01T00:00:00Z",
+  feature_rules_version: "1.0.0",
+  feature_registry_sha256: "synthetic-registry-digest",
+  observable_history_days: 0,
+  warnings: ["The submitted event history is user-supplied and may be incomplete or unverified."],
+  interpretation: "Experimental anomaly score; not a probability or fraud determination.",
 };

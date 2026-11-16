@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,8 +24,9 @@ def create_app(
     settings: Settings | None = None,
     *,
     token_verifier: TokenVerifier | None = None,
+    experimental_scorer: Any | None = None,
 ) -> FastAPI:
-    """Create an app with no model deserialization or training side effects."""
+    """Create the API; experimental deserialization is explicit and development-only."""
 
     selected = settings or Settings.from_env()
 
@@ -40,7 +42,8 @@ def create_app(
         version=selected.api_version,
         description=(
             "Descriptive point-in-time wallet feature previews. Process health is separate "
-            "from prediction readiness; model scoring is unavailable."
+            "from prediction readiness. Experimental anomaly scoring is disabled unless an "
+            "explicit development-only artifact configuration is valid."
         ),
         lifespan=lifespan,
         docs_url=None if production else "/docs",
@@ -48,6 +51,22 @@ def create_app(
         openapi_url=None if production else "/openapi.json",
     )
     application.state.settings = selected
+    application.state.experimental_scorer = None
+    application.state.experimental_scoring_load_failed = False
+    if selected.experimental_scoring_allowed:
+        if experimental_scorer is not None:
+            application.state.experimental_scorer = experimental_scorer
+        else:
+            try:
+                from solana_risk.api.experimental_scoring import TrustedExperimentalScorer
+
+                application.state.experimental_scorer = TrustedExperimentalScorer.load(
+                    artifact_path=selected.experimental_model_artifact,
+                    manifest_path=selected.experimental_model_manifest,
+                    expected_sha256=selected.experimental_artifact_sha256,
+                )
+            except (ImportError, ValueError):
+                application.state.experimental_scoring_load_failed = True
     application.state.token_verifier = token_verifier
     if application.state.token_verifier is None and selected.firebase_project_id is not None:
         application.state.token_verifier = FirebaseTokenVerifier(

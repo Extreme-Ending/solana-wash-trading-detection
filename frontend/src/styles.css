@@ -338,6 +338,12 @@ textarea { resize: vertical; min-height: 300px; font-family: "SFMono-Regular", C
 .model-gate .button.secondary { border-color: #608173; background: transparent; color: white; }
 .model-gate small { display: block; margin-top: 0.7rem; color: #9eb9ab; }
 .model-gate .gate-message { background: rgba(214, 237, 115, 0.12); color: #e8f2c2; }
+.score-result { margin-top: 1.2rem; padding: 1.2rem; border: 1px solid #608173; border-radius: 0.75rem; background: rgba(255, 255, 255, 0.06); }
+.score-result .score-value { margin: 0; color: var(--lime); font-family: "SFMono-Regular", Consolas, ui-monospace, monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; letter-spacing: -0.04em; }
+.score-result dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; margin: 1rem 0; }
+.score-result dt { color: #9eb9ab; font-size: 0.67rem; text-transform: uppercase; }
+.score-result dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, ui-monospace, monospace; font-size: 0.75rem; }
+.score-result ul { margin: 0.6rem 0 0; padding-left: 1.2rem; color: #bfd2c8; line-height: 1.6; }
 
 .principle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
 .principle-grid article { padding: 1.2rem; border-top: 3px solid var(--forest); background: #faf9f4; }

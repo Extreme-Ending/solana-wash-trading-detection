@@ -78,8 +78,31 @@ export interface ErrorResponse {
 
 export interface AvailabilityResponse {
   available: false;
-  code: "MODEL_NOT_APPROVED";
+  code: "MODEL_NOT_APPROVED" | "EXPERIMENTAL_MODEL_UNAVAILABLE";
   message: string;
+}
+
+export interface ExperimentalScoreResponse {
+  status: "experimental_anomaly_score";
+  methodology_status: "experimental_unsupervised_research_only";
+  source: "user_supplied_unverified_events";
+  wallet: string;
+  as_of: string;
+  supplied_event_count: number;
+  included_historical_event_count: number;
+  excluded_at_or_after_cutoff_count: number;
+  model_id: "isolation_forest";
+  model_version: string;
+  anomaly_score: number;
+  score_direction: "higher_means_more_anomalous_relative_to_training_reference";
+  score_units: "model_specific_unitless_isolation_forest_score";
+  is_probability: false;
+  training_cutoff: string;
+  feature_rules_version: string;
+  feature_registry_sha256: string;
+  observable_history_days: number;
+  warnings: string[];
+  interpretation: string;
 }
 
 export interface FeaturePreviewResponse {

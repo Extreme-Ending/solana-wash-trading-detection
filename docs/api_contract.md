@@ -1,8 +1,8 @@
-# Phase 5A API contract
+# API contract through Phase 8A
 
 ## Scope
 
-The FastAPI service provides process health, prediction-readiness status, and descriptive point-in-time feature previews from user-supplied events. It does not load the Phase 4B experimental artifacts, train a model, call a blockchain provider, or return anomaly, fraud, wash-trading, or probability outputs.
+The FastAPI service provides process health, production-readiness status, descriptive point-in-time feature previews and an explicitly gated local experimental anomaly score. It never trains a model, calls a blockchain provider, returns a fraud/wash-trading class, or presents an anomaly score as a probability. The normal and all production configurations load no experimental artifact.
 
 Interactive OpenAPI documentation is available at `/docs` in development, with the machine-readable schema at `/openapi.json`. `/docs`, `/redoc` and `/openapi.json` return 404 when `SOLANA_RISK_ENVIRONMENT=production`.
 
@@ -21,8 +21,12 @@ Configuration is read from environment variables. The tracked `.env.example` con
 | `SOLANA_RISK_CHECK_REVOKED_TOKENS` | `true` | Strict boolean; must remain true in production |
 | `SOLANA_RISK_RATE_LIMIT_REQUESTS` | `30` | Per-process protected requests per UID, 1–10,000 |
 | `SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS` | `60` | Per-process window, 1–3,600 seconds |
+| `SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING` | `false` | Strict boolean; effective only when environment is exactly `development` |
+| `SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT` | unset | Server-side path to a trusted local generated joblib bundle |
+| `SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST` | unset | Server-side path to the matching generated manifest |
+| `SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256` | unset | Expected 64-character SHA-256 pinned before deserialization |
 
-Firebase Admin uses Google Cloud Application Default Credentials. No service-account key path, model path, API key, RPC endpoint, or client-supplied server path is accepted. Development may start without Firebase settings so public health can be checked, but protected endpoints then fail closed with HTTP 503.
+Firebase Admin uses Google Cloud Application Default Credentials. No service-account key path, API key, RPC endpoint, or client-supplied server path is accepted. The experimental model paths are trusted server startup configuration only and never request fields. Development may start without Firebase settings so public health can be checked, but protected endpoints then fail closed with HTTP 503.
 
 ## Authentication and authorization
 
@@ -70,7 +74,7 @@ Response: HTTP 200
 
 ## `GET /readyz`
 
-Reports whether prediction capability is available. Phase 5A always returns HTTP 503 because no approved prediction capability is configured.
+Reports whether production prediction capability is available. It remains HTTP 503 because the local experimental path is not production readiness.
 
 ```json
 {
@@ -151,19 +155,21 @@ The real response contains all 29 registered feature names. Missing inter-event 
 
 ## `POST /v1/score`
 
-The request shape is reserved for future interface stability, but no model is loaded and no score is returned. An authenticated, authorized request returns HTTP 503 with `MODEL_NOT_APPROVED`, using the same body as `/readyz`. Missing authentication returns 401 and an authenticated user outside the allowlist returns 403.
+The protected endpoint uses the same bounded one-wallet request as feature preview. By default and in production, an authorized request returns HTTP 503 `MODEL_NOT_APPROVED`. In an explicitly enabled `development` process, a checksum-pinned compatible Phase 4B artifact returns a finite experimental Isolation Forest score. It reuses the shared feature builder and excludes every event at or after `as_of`.
+
+The successful response identifies `methodology_status=experimental_unsupervised_research_only`, the model/version, training cutoff, feature-rule version, registry fingerprint, history coverage, event counts, score direction and warnings. `is_probability` is always false. An `as_of` before the model training cutoff returns HTTP 422. Missing/tampered/incompatible local artifacts return HTTP 503 without leaking paths. See [`experimental_scoring_integration.md`](experimental_scoring_integration.md) for the loader and interpretation contract.
 
 ## Status codes
 
 | Status | Meaning |
 |---:|---|
-| 200 | Process health or successfully computed descriptive features |
+| 200 | Process health, descriptive features, or an explicitly enabled local experimental score |
 | 401 | Firebase Bearer token missing, expired, malformed, or for the wrong project |
 | 403 | Verified-email, Google-provider, or UID-allowlist authorization policy failed |
 | 413 | Raw request byte limit or event-count limit exceeded |
 | 422 | Malformed schema, unsafe value, incompatible event set, or insufficient pre-cutoff history |
 | 429 | Per-instance authorized-UID request limit exceeded; response includes `Retry-After` |
-| 503 | Prediction unavailable, or authentication configuration/verification unavailable |
+| 503 | Production prediction unavailable, local artifact/scoring unavailable, or authentication configuration/verification unavailable |
 
 ## Local startup
 

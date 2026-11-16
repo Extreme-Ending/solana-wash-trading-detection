@@ -73,3 +73,15 @@ Thumbs.db
 /artifacts/experimental/
 /mlruns/
 /mlflow.db
+
+# Ignore environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Keep safe configuration templates
+!.env.example
+!.env.production.example
+!**/.env.example
+!**/.env.production.example

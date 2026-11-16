@@ -38,7 +38,7 @@ The full validation and holdout sets are longitudinal rescoring diagnostics, not
 
 Each model contains median imputation fitted only on the training reference. LOF additionally contains a train-fitted `RobustScaler`. Isolation Forest receives unscaled imputed values. The robust baseline learns its medians and MAD values from training after imputation. The code rejects all-missing training features, infinities, schema/order changes, extra target-like fields, duplicate snapshot keys and an incompatible artifact registry fingerprint.
 
-The artifact bundle records the feature order, registry and snapshot hashes, cutoffs and overlap, parameters, random seed, preprocessing, Python/library versions and a sidecar artifact checksum. The generated bundle is local and Git-ignored. Its current checksum is `2d6f4ee9ed05f83588bd26019cd103d0d754cc878888a171a0d1505f974774a1`; regenerating the artifact may change serialized bytes across environments even when scores remain reproducible, so reload consistency is tested directly.
+The artifact bundle records the feature order, registry and snapshot hashes, cutoffs and overlap, parameters, random seed, preprocessing, Python/library versions and a sidecar artifact checksum. The generated bundle is local and Git-ignored. Its sidecar, rather than a checksum copied into tracked prose, is the authoritative digest because regenerating serialized bytes may change them across environments. Reload consistency and the Phase 8A pre-deserialization checksum/metadata gate are tested directly.
 
 ## Exploratory findings
 
@@ -67,7 +67,7 @@ At a holdout review budget of 10, no observation appears in all three model list
 
 ## Scientific conclusion
 
-The experiment demonstrates a reproducible way to rank unusual wallet snapshots relative to a historical reference and to audit sensitivity, drift and coverage. It does not demonstrate wash-trading detection. Isolation Forest and the robust baseline show comparatively stable and concordant ranks, while LOF is locally sensitive and has an unstable extreme tail on this feature space. No method is selected for production or promoted as the approved capstone methodology.
+The experiment demonstrates a reproducible way to rank unusual wallet snapshots relative to a historical reference and to audit sensitivity, drift and coverage. It does not demonstrate wash-trading detection. Isolation Forest and the robust baseline show comparatively stable and concordant ranks, while LOF is locally sensitive and has an unstable extreme tail on this feature space. No method is selected for production. Phase 8A selects Isolation Forest only as the most stable provisional candidate for an explicit local research integration; that engineering choice does not add ground truth or outcome performance evidence.
 
 Stronger conclusions require written supervisor approval of the revised question and claim boundary, verified dataset provenance/licensing, predeclared wallet-history eligibility, an approved review-budget meaning, and—if outcome performance is to be claimed—independent timestamped outcome evidence kept outside feature construction and model selection.
 

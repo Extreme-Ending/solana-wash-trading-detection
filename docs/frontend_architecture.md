@@ -2,9 +2,9 @@
 
 ## Purpose and boundary
 
-The React frontend is a local research interface for the existing FastAPI descriptive-feature service. It accepts one wallet identifier, one explicit UTC cutoff, and a bounded array of user-supplied Solana DEX swap events. It displays the 29 values returned by `POST /v1/features/preview` and does not calculate those features independently.
+The React frontend is a local research interface for the FastAPI feature and experimental-scoring service. It accepts one wallet identifier, one explicit UTC cutoff, and a bounded array of user-supplied Solana DEX swap events. It displays the 29 values returned by `POST /v1/features/preview` and, only when the local backend gate is enabled, the schema-validated result from `POST /v1/score`. It calculates neither features nor model scores independently.
 
-The interface does not fetch wallet history, persist input, call a blockchain provider, load a model artifact, or present an anomaly score, fraud probability, wash-trading verdict, or threshold. `GET /readyz` and `POST /v1/score` returning HTTP 503 `MODEL_NOT_APPROVED` is an expected capability state, not a frontend crash.
+The interface does not fetch wallet history, persist input, call a blockchain provider, load a model artifact, or present a fraud probability, wash-trading verdict, threshold, severity or automatic wallet flag. `GET /readyz` and default/production `POST /v1/score` returning HTTP 503 `MODEL_NOT_APPROVED` is an expected capability state, not a frontend crash. A successful local score is shown as a unitless, model-specific anomaly value with explicit non-fraud caveats.
 
 ## Runtime shape
 
@@ -37,7 +37,7 @@ The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin an
 | `src/components/FeatureResults.tsx` | Complete grouped feature output with null and zero distinguished |
 | `src/components/FeatureCharts.tsx` | Dependency-free accessible comparisons derived only from API values |
 | `src/components/ServiceStatus.tsx` | Independent process-health and scoring-capability status |
-| `src/components/ModelStatus.tsx` | Explicit unavailable-scoring gate; never renders model output |
+| `src/components/ModelStatus.tsx` | Local experimental scoring states, typed metadata, history warnings and non-probability interpretation |
 
 `App.tsx` retains only the most recent response and its validated request in component memory. Reloading or clearing the page removes them. A local JSON file is read with the browser file API, limited to 256 KiB, and is not uploaded until the student explicitly submits the form.
 
@@ -46,7 +46,7 @@ The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin an
 1. `AuthProvider` initializes the official modular Firebase Web SDK from four environment-provided public identifiers and subscribes with `onAuthStateChanged`.
 2. The header offers Google popup sign-in, sign-out, an initial loading state, the current display identity, and an accessible safe error message.
 3. The API client requests a current Firebase ID token immediately before preview or scoring-gate requests and sets `Authorization: Bearer <token>`. It does not send the token on health/readiness requests and does not persist or log it.
-4. A missing local user blocks submission. Backend 401 prompts reauthentication, 403 explains that the account is not approved, and authentication-related 503 reports temporary verification/configuration unavailability. `MODEL_NOT_APPROVED` remains the expected scoring 503.
+4. A missing local user blocks submission. Backend 401 prompts reauthentication, 403 explains that the account is not approved, and authentication-related 503 reports temporary verification/configuration unavailability. `MODEL_NOT_APPROVED` and `EXPERIMENTAL_MODEL_UNAVAILABLE` are expected disabled/unavailable scoring states.
 5. Signing out clears the rendered feature preview and last scoring request from React state.
 
 ## API contract and fail-closed behavior
@@ -60,13 +60,13 @@ The response guard requires:
 - a finite number, boolean, or null for every registered field; and
 - required wallet, cutoff, and interpretation metadata.
 
-Schema drift is shown as an error instead of being silently reformatted. Network errors do not create placeholder results. Unexpected successful readiness/scoring responses are rejected because model output is outside this phase.
+Schema drift is shown as an error instead of being silently reformatted. Network errors do not create placeholder results. A successful experimental score is accepted only when its status/source, finite raw score, model identity/version, direction, unit, `is_probability=false`, cutoff, registry metadata, counts, observable history, warnings and interpretation all match the typed Phase 8A contract.
 
 ## Interface and accessibility
 
 The responsive dashboard uses semantic landmarks, labelled controls, visible keyboard focus, a skip link, live status messages, disabled loading states, text equivalents for bar charts, labelled progress meters, and a reduced-motion rule. Charts use HTML and CSS instead of canvas, so their values remain available to assistive technology. Missing values display as `Unavailable`; numeric zero remains a real zero.
 
-The visual hierarchy separates evidence from capability: project scope, process health, event entry, descriptive output, charts, the model gate, and methodological limits are distinct sections. Mobile layouts collapse without horizontal data tables.
+The visual hierarchy separates evidence from capability: project scope, process health, event entry, descriptive output, charts, experimental model section, and methodological limits are distinct sections. The raw anomaly value is never percentage-formatted. Mobile layouts collapse without horizontal data tables.
 
 ## Security and privacy
 
@@ -75,7 +75,7 @@ The visual hierarchy separates evidence from capability: project scope, process 
 - React escapes displayed wallet and metadata strings.
 - Requests are explicit and are not retried automatically.
 - Firebase ID tokens remain in Firebase SDK/browser memory and request headers; they are not written to application storage or displayed.
-- In-flight preview and model-gate requests are cancellable on replacement or unmount.
+- In-flight preview and experimental-score requests are cancellable on replacement or unmount.
 - Production CORS remains the backend's exact-origin responsibility; the local proxy does not justify a wildcard origin.
 
 ## Scientific interpretation
@@ -90,6 +90,6 @@ Phase 7C.0 recommends, but does not activate, a future platform-public Cloud Run
 
 ## Deferred work
 
-Live Firebase/Google Cloud resource configuration, the Cloud Run browser-access architecture, rate limiting/App Check, provider-backed wallet lookup, telemetry, model-artifact promotion, and anomaly scoring remain outside Phase 7B.
+Live Firebase/Google Cloud resource configuration, the Cloud Run browser-access architecture, distributed rate limiting/App Check, provider-backed wallet lookup, telemetry, model-artifact promotion, batch ranking, thresholds and wallet-flag dashboards remain outside Phase 8A. Experimental scoring is local only.
 
 The intended later deployment shape is a Vite production build published from `frontend/dist/` to standard Firebase Hosting with a single-page-app rewrite, while the existing container runs independently on Cloud Run. That phase would need an owned Google Cloud/Firebase project, billing and budget controls, an Artifact Registry/image release process, Cloud Run service identity and resource limits, HTTPS API configuration, the exact Firebase origin in backend CORS, environment-specific `VITE_API_BASE_URL`, access/log-retention review, and post-deployment health/readiness/preview tests. It must not place a credential in the static bundle or enable scoring merely because hosting exists.

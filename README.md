@@ -2,9 +2,11 @@
 
 This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
 
-Phase 7B adds Google sign-in with Firebase Authentication and verifies Firebase ID tokens in FastAPI before descriptive preview or scoring-gate requests. The backend also requires a verified Google email and an explicit Firebase UID allowlist. Health and readiness remain public, and authorized scoring still returns `MODEL_NOT_APPROVED`; no model is loaded. Deployment remains preparation only: no cloud or Firebase resource, public invocation, or IAM policy was created or changed.
+Phase 7B added Google sign-in with Firebase Authentication and verifies Firebase ID tokens in FastAPI before descriptive preview or scoring requests. The backend also requires a verified Google email and an explicit Firebase UID allowlist. Health and readiness remain public. That milestone kept authorized scoring at `MODEL_NOT_APPROVED`; Phase 8A's later local-only exception is described below. Deployment remains preparation only: no cloud or Firebase resource, public invocation, or IAM policy was created or changed.
 
 Phase 7C.0 hardens that boundary locally: production disables API documentation/schema routes, revocation checks are mandatory, protected authentication occurs before body parsing, and approved UIDs receive a per-instance 30-request/60-second limit. The reviewed future static-browser architecture requires platform-public Cloud Run plus application-layer Firebase authorization, but public invocation is **not enabled** and the deployment verdict remains **NO-GO**. See [`docs/phase_7c_deployment_security_review.md`](docs/phase_7c_deployment_security_review.md).
+
+Phase 8A integrates the existing Isolation Forest behind an explicit local-development gate. The server verifies a configured artifact SHA-256, sidecar metadata, package/model version, September 2025 training cutoff, registry fingerprint and exact 29-feature order before use. The returned value is a unitless experimental anomaly score—not a probability, fraud label or wash-trading conclusion. Production, `/readyz`, the slim Docker image and cloud configuration remain scoring-disabled. See [`docs/experimental_scoring_integration.md`](docs/experimental_scoring_integration.md).
 
 ## Phase 4A evidence and blockers
 
@@ -50,14 +52,14 @@ uvicorn solana_risk.api.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` for generated OpenAPI documentation. Optional non-secret configuration is shown in `.env.example`; export values into the process environment before starting Uvicorn.
 
-## Phase 5A API foundation
+## API endpoints
 
 | Endpoint | Current behavior |
 |---|---|
 | `GET /healthz` | HTTP 200 when the process is responsive; no model-readiness claim |
 | `GET /readyz` | HTTP 503 `MODEL_NOT_APPROVED` while prediction is unavailable |
 | `POST /v1/features/preview` | Firebase Bearer token plus approved UID required; returns a descriptive 29-feature snapshot using `block_time < as_of` |
-| `POST /v1/score` | Firebase Bearer token plus approved UID required; then HTTP 503 `MODEL_NOT_APPROVED`, with no artifact load or fabricated score |
+| `POST /v1/score` | Firebase Bearer token plus approved UID required; default/production returns `MODEL_NOT_APPROVED`; explicit local development may return a checksum-pinned experimental score |
 
 Feature preview uses the same `build_wallet_snapshots` implementation as offline Phase 3. Wallet identifiers remain metadata, at-cutoff and future events are excluded, and unavailable single-event gap features remain null. The endpoint does not verify that submitted events are authentic or complete and does not fetch blockchain history from a wallet address. See [`docs/api_contract.md`](docs/api_contract.md) and [`docs/api_implementation_findings.md`](docs/api_implementation_findings.md).
 
@@ -71,7 +73,7 @@ docker compose up --detach --build --wait
 docker compose ps
 ```
 
-The API is available only on `http://127.0.0.1:8080`. `/healthz` returns 200 and public `/readyz` returns 503 `MODEL_NOT_APPROVED`. Preview and scoring require a valid approved Firebase user; without a Bearer token they return 401, while an authorized scoring request returns 503 `MODEL_NOT_APPROVED`. View logs and stop the temporary resources with:
+The API is available only on `http://127.0.0.1:8080`. `/healthz` returns 200 and public `/readyz` returns 503 `MODEL_NOT_APPROVED`. Preview and scoring require a valid approved Firebase user; without a Bearer token they return 401, while an authorized scoring request in this production-shaped container returns 503 `MODEL_NOT_APPROVED`. View logs and stop the temporary resources with:
 
 ```bash
 docker compose logs --follow api
@@ -102,7 +104,7 @@ Open `http://127.0.0.1:5173`. By default, Vite proxies `/api` to the loopback-on
 
 For authenticated local API calls, export `SOLANA_RISK_FIREBASE_PROJECT_ID` and a comma-separated `SOLANA_RISK_ALLOWED_UIDS`. Firebase Admin obtains credentials through Application Default Credentials (ADC), for example a local developer ADC login or the future Cloud Run runtime identity. Do not download or store a service-account JSON key in this repository. A development API without authentication configuration still starts for public health checks; a protected request with a submitted token then fails closed with HTTP 503.
 
-The dashboard reports API health separately from unavailable scoring, validates one wallet's event payload before submission, offers a clearly synthetic example and local JSON import, and renders all 29 returned features with accessible charts. Input is not stored in browser storage. No wallet history is fetched and no HTTP 503 model response is treated as a failure of descriptive preview. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md) and [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md).
+The dashboard reports API health separately from model capability, validates one wallet's event payload before submission, offers a clearly synthetic example and local JSON import, and renders all 29 returned features with accessible charts. Its experimental section handles disabled, loading, error and successful local-score states without percentage formatting or fraud language. Input is not stored in browser storage. No wallet history is fetched and no HTTP 503 model response is treated as a failure of descriptive preview. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md) and [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md).
 
 Frontend verification commands are:
 
@@ -112,6 +114,23 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## Phase 8A local experimental scoring
+
+Keep the normal gate disabled unless the local generated artifact is intentionally being inspected. To enable it, install the `api` and `models` extras, calculate the artifact SHA-256, and export the development-only paths/digest before starting Uvicorn on the Vite proxy target:
+
+```bash
+python -m pip install -e '.[api,models]'
+sha256sum artifacts/experimental/anomaly_models.joblib
+export SOLANA_RISK_ENVIRONMENT=development
+export SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=true
+export SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT=artifacts/experimental/anomaly_models.joblib
+export SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST=artifacts/experimental/anomaly_models_manifest.json
+export SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256='<verified digest from sha256sum>'
+uvicorn solana_risk.api.main:app --host 127.0.0.1 --port 8080
+```
+
+Existing Firebase project, ADC and allowed-UID settings are still required. The artifact and manifest stay Git-ignored. Do not place them in the Docker image or frontend. Set the enable flag back to `false` to restore the normal 503 behavior.
 
 ## Phase 7A deployment preparation
 
@@ -202,7 +221,7 @@ PYTHONPATH=src python3 -m solana_risk.features.build --as-of 2025-12-01T00:00:00
 All assessed components remain in one repository with clear boundaries:
 
 - Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
-- The Phase 5A FastAPI foundation imports the shared feature builder and loads no model artifact. Phase 5B packages it for local Docker/Compose use. A later, explicitly approved scoring extension may load an already-created artifact; it will never train at startup or during prediction.
+- The FastAPI service imports the shared feature builder. Phase 8A may load one already-created checksum-pinned artifact only in explicit local development; it never trains at startup or prediction time. Phase 5B's production-shaped Docker/Compose runtime still contains no model dependency or artifact.
 - The React + Vite frontend communicates only through the typed HTTP/JSON API, uses Firebase Google sign-in for end-user identity, and contains no model logic or Admin credentials. Phase 7A prepares hosting; Phase 7B adds token-bearing protected calls without deploying either component.
 - Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
 
@@ -241,6 +260,7 @@ docs/label_evidence_and_readiness.md  Phase 4A provenance findings and readiness
 docs/modelling_evaluation_plan.md  Conditional target, split, and metric plan
 docs/experimental_modelling_findings.md  Phase 4B evidence and limitations
 docs/anomaly_model_comparison.md  Detector configuration and stability comparison
+docs/experimental_scoring_integration.md  Phase 8A local artifact, API, interpretation, and production boundaries
 docs/api_contract.md              Phase 5A endpoints, validation, examples, and errors
 docs/api_implementation_findings.md  Feature parity, security decisions, and limitations
 docs/containerization_and_local_deployment.md  Build, Compose, and future Cloud Run compatibility
@@ -280,6 +300,7 @@ The student must run it personally. The helper checks the local Git identity, di
 9. **Phase 6 — React frontend:** typed event entry, descriptive 29-feature output, status/model gates, accessible charts, responsive layout, tests, and local API integration. Complete locally; no hosting or model scoring was enabled.
 10. **Phase 7A — Google Cloud deployment preparation:** Firebase static SPA configuration, private Cloud Run/Artifact Registry plan, SHA-tagged guarded commands, exact CORS/HTTPS contracts, cost/security controls, and local deployment tests. Preparation complete; no resource was created and public browser-to-private-API access remains blocked.
 11. **Phase 7B — Firebase authentication and secure API integration:** Google sign-in, Firebase ID-token verification, verified-email/provider checks, UID allowlist, protected preview/scoring, auth-aware frontend errors, and local/deployment contracts. Complete locally; no resource or IAM change was made and hosted browser access to private Cloud Run remains blocked.
+12. **Phase 8A — experimental anomaly scoring integration:** checksum-pinned local Isolation Forest loading, shared point-in-time features, typed non-probability responses, history warnings, frontend states and production refusal. Complete locally; no artifact promotion or deployment was performed.
 
 Each phase stops for student review and a student-authored commit before the next begins.
 
@@ -289,10 +310,10 @@ The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B e
 
 ## Status
 
-**Current phase:** Phase 6 — React frontend development.
+**Current phase:** Phase 8A — experimental anomaly scoring integration.
 
-**Implementation:** the responsive React/TypeScript dashboard validates bounded event input, consumes the typed descriptive API, renders every registered feature and accessible comparison charts, and handles expected model unavailability without fabricating output. The locked dependency tree, type checks, component tests, production build, Python regression suite, and local Vite-to-container path are validated. No model artifact is copied or loaded.
+**Implementation:** an explicit local-development process can verify and load the existing experimental Isolation Forest, rebuild the exact 29 point-in-time features, and return a finite unitless score with model/history metadata and scientific warnings. The React dashboard renders that typed response separately from descriptive charts. Default and production modes remain unavailable, and the generated artifact is not copied into Git, Docker or the frontend.
 
 **Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
 
-**Next action:** review Phase 7B and choose a Phase 7C access architecture. Do not execute a live cloud action, enable anonymous invocation, change IAM, or begin model promotion without explicit student approval.
+**Next action:** review Phase 8A evidence. Do not begin batch ranking, thresholds/flags, aggregate wallet dashboards, model promotion, or live deployment without an explicit next-phase instruction.
