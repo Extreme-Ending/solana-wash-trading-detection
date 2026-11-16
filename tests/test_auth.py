@@ -63,7 +63,7 @@ def _request(app: Any, path: str, token: str | None = "submitted-token") -> http
         headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=True)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            return await client.post(path, headers=headers, json={
+            single_payload = {
                 "as_of": "2025-02-01T00:00:00Z",
                 "events": [{
                     "source_row_number": 1,
@@ -80,7 +80,22 @@ def _request(app: Any, path: str, token: str | None = "submitted-token") -> http
                     "outer_instruction_index": 0,
                     "inner_instruction_index": 0,
                 }],
-            })
+            }
+            payload = (
+                {
+                    "as_of": single_payload["as_of"],
+                    "wallet_histories": [
+                        {
+                            "wallet": "synthetic-wallet",
+                            "events": single_payload["events"],
+                        }
+                    ],
+                    "review_budget": 1,
+                }
+                if path == "/v1/score/batch"
+                else single_payload
+            )
+            return await client.post(path, headers=headers, json=payload)
 
     return asyncio.run(run())
 
@@ -168,6 +183,18 @@ def test_authorized_scoring_still_returns_model_not_approved() -> None:
     response = _request(_app(_claims()), "/v1/score")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "MODEL_NOT_APPROVED"
+
+
+def test_authorized_batch_scoring_still_returns_model_not_approved() -> None:
+    response = _request(_app(_claims()), "/v1/score/batch")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "MODEL_NOT_APPROVED"
+
+
+def test_batch_scoring_requires_authentication_before_processing() -> None:
+    response = _request(_app(_claims()), "/v1/score/batch", token=None)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
 
 
 def test_verification_infrastructure_failure_returns_safe_503() -> None:

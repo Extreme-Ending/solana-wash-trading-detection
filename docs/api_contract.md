@@ -1,8 +1,8 @@
-# API contract through Phase 8A
+# API contract through Phase 8B
 
 ## Scope
 
-The FastAPI service provides process health, production-readiness status, descriptive point-in-time feature previews and an explicitly gated local experimental anomaly score. It never trains a model, calls a blockchain provider, returns a fraud/wash-trading class, or presents an anomaly score as a probability. The normal and all production configurations load no experimental artifact.
+The FastAPI service provides process health, production-readiness status, descriptive point-in-time feature previews, an explicitly gated local experimental anomaly score, and bounded batch ranking. It never trains a model, calls a blockchain provider, returns a fraud/wash-trading class, or presents an anomaly score as a probability. The normal and all production configurations load no experimental artifact.
 
 Interactive OpenAPI documentation is available at `/docs` in development, with the machine-readable schema at `/openapi.json`. `/docs`, `/redoc` and `/openapi.json` return 404 when `SOLANA_RISK_ENVIRONMENT=production`.
 
@@ -15,6 +15,9 @@ Configuration is read from environment variables. The tracked `.env.example` con
 | `SOLANA_RISK_ENVIRONMENT` | `development` | Nonempty descriptive environment name |
 | `SOLANA_RISK_CORS_ORIGINS` | `http://localhost:5173` | Comma-separated exact HTTP(S) origins; wildcard, paths, credentials, query and fragments are rejected |
 | `SOLANA_RISK_MAX_EVENTS` | `100` | Integer from 1 to 10,000 |
+| `SOLANA_RISK_MAX_BATCH_WALLETS` | `20` | Integer from 1 to 100; configured runtime ranking cap |
+| `SOLANA_RISK_MAX_BATCH_EVENTS` | `100` | Integer from 1 to 10,000 |
+| `SOLANA_RISK_MAX_BATCH_EVENTS_PER_WALLET` | `50` | Integer from 1 to 10,000 |
 | `SOLANA_RISK_MAX_REQUEST_BYTES` | `262144` | Integer from 1 byte to 10 MiB |
 | `SOLANA_RISK_FIREBASE_PROJECT_ID` | unset | Firebase/Google Cloud project ID; mandatory in production |
 | `SOLANA_RISK_ALLOWED_UIDS` | unset | Comma-separated approved Firebase UIDs; mandatory and nonempty in production |
@@ -30,7 +33,7 @@ Firebase Admin uses Google Cloud Application Default Credentials. No service-acc
 
 ## Authentication and authorization
 
-`/v1/features/preview` and `/v1/score` require `Authorization: Bearer FIREBASE_ID_TOKEN`. Authentication is rejected at the protected-route boundary before JSON/schema processing. The Firebase Admin SDK verifies the signature, expiration, revocation/disabled-user state, issuer, and audience against the configured project. The application additionally requires matching `sub`/`uid`, a verified email, `google.com` as the sign-in provider, and membership in `SOLANA_RISK_ALLOWED_UIDS`. Tokens are never logged or returned.
+`/v1/features/preview`, `/v1/score` and `/v1/score/batch` require `Authorization: Bearer FIREBASE_ID_TOKEN`. Authentication is rejected at the protected-route boundary before JSON/schema processing. The Firebase Admin SDK verifies the signature, expiration, revocation/disabled-user state, issuer, and audience against the configured project. The application additionally requires matching `sub`/`uid`, a verified email, `google.com` as the sign-in provider, and membership in `SOLANA_RISK_ALLOWED_UIDS`. Tokens are never logged or returned.
 
 The 30-request/60-second default is per UID **within one process**. It resets on restart and is not shared across Cloud Run instances, so it is a bounded application safeguard rather than a global quota or complete abuse control.
 
@@ -159,14 +162,77 @@ The protected endpoint uses the same bounded one-wallet request as feature previ
 
 The successful response identifies `methodology_status=experimental_unsupervised_research_only`, the model/version, training cutoff, feature-rule version, registry fingerprint, history coverage, event counts, score direction and warnings. `is_probability` is always false. An `as_of` before the model training cutoff returns HTTP 422. Missing/tampered/incompatible local artifacts return HTTP 503 without leaking paths. See [`experimental_scoring_integration.md`](experimental_scoring_integration.md) for the loader and interpretation contract.
 
+## `POST /v1/score/batch`
+
+The protected local-development endpoint accepts this top-level shape:
+
+```json
+{
+  "as_of": "2025-11-01T00:00:00Z",
+  "review_budget": 2,
+  "wallet_histories": [
+    {
+      "wallet": "synthetic-wallet-a",
+      "events": [{
+        "source_row_number": 1,
+        "wallet": "synthetic-wallet-a",
+        "block_time": "2025-10-20T10:00:00Z",
+        "block_slot": 2001,
+        "tx_hash": "synthetic-a-transaction-1",
+        "dex": "synthetic-dex",
+        "token_pair": "TOKEN-A/TOKEN-B",
+        "token_in": "synthetic-token-a",
+        "token_out": "synthetic-token-b",
+        "amount_usd": 100.0,
+        "fee_usd": 0.1,
+        "outer_instruction_index": 1,
+        "inner_instruction_index": 0
+      }]
+    },
+    {
+      "wallet": "synthetic-wallet-b",
+      "events": [{
+        "source_row_number": 1,
+        "wallet": "synthetic-wallet-b",
+        "block_time": "2025-10-31T23:59:00Z",
+        "block_slot": 2002,
+        "tx_hash": "synthetic-b-transaction-1",
+        "dex": "synthetic-dex",
+        "token_pair": "TOKEN-A/TOKEN-B",
+        "token_in": "synthetic-token-a",
+        "token_out": "synthetic-token-b",
+        "amount_usd": 5000.0,
+        "fee_usd": 0.1,
+        "outer_instruction_index": 1,
+        "inner_instruction_index": 0
+      }]
+    }
+  ]
+}
+```
+
+The event objects use the exact fields and validation shown for feature preview. Each group identifier must be unique. Event wallet values must match their group. One explicit UTC cutoff applies to every wallet, and only `block_time < as_of` contributes. Limits are 20 wallets, 100 total events, 50 events per wallet, and 256 KiB for the raw body; because at most 20 wallets can be scored, at most 20 ranking rows are returned. The endpoint performs no provider lookup, retraining or per-wallet model deserialization.
+
+Eligible wallets are scored with the same 29-field builder and fitted pipeline as `/v1/score`, then ordered by descending score and ascending wallet identifier for ties. `review_budget` is optional, is limited to 20, and is clamped to the number of scored wallets. Selected rows are manual-review candidates only. The response always declares `is_probability=false` and includes:
+
+- model/version, shared cutoff, training cutoff, score direction/units, feature-rule version and registry SHA-256;
+- submitted/scored/rejected counts and requested/applied review budgets;
+- ranked wallet, raw anomaly score, included/excluded event counts, observable history, warnings and review-candidate boolean;
+- separate wallet-local rejection code/message/count records; and
+- `Experimental statistical anomalies requiring review; not confirmed wash trading or fraud.`
+
+Invalid top-level schema, timestamp or numeric data, duplicate wallet groups, resource-limit violations, pre-training cutoff, authentication failure and missing/incompatible model artifacts fail the whole request. Empty histories, group/event wallet mismatch, duplicate source rows, exact duplicate event records, no pre-cutoff history and wallet-local feature-input errors reject only that wallet. Rejected data never contributes to another wallet. If all groups are rejected, HTTP 422 `NO_SCORABLE_WALLETS` is returned. Repeated transaction hashes are accepted when their instruction-level event records differ.
+
+No inner wall-clock cancellation is claimed for the synchronous feature/model operation. Bounded inputs, bounded output, rate limiting and zero request-time external I/O provide the current resource control. Default and production configurations return HTTP 503 `MODEL_NOT_APPROVED` before any artifact is used.
+
 ## Status codes
 
 | Status | Meaning |
 |---:|---|
-| 200 | Process health, descriptive features, or an explicitly enabled local experimental score |
+| 200 | Process health, descriptive features, or explicitly enabled local experimental single/batch scoring |
 | 401 | Firebase Bearer token missing, expired, malformed, or for the wrong project |
 | 403 | Verified-email, Google-provider, or UID-allowlist authorization policy failed |
-| 413 | Raw request byte limit or event-count limit exceeded |
+| 413 | Raw request byte, batch-wallet, event, per-wallet event, or review-budget limit exceeded |
 | 422 | Malformed schema, unsafe value, incompatible event set, or insufficient pre-cutoff history |
 | 429 | Per-instance authorized-UID request limit exceeded; response includes `Retry-After` |
 | 503 | Production prediction unavailable, local artifact/scoring unavailable, or authentication configuration/verification unavailable |

@@ -3,7 +3,10 @@ import { firebaseIdTokenProvider } from "../auth/firebase";
 import {
   FEATURE_NAMES,
   type AvailabilityResponse,
+  type BatchScoreRequest,
+  type BatchWalletRejectionCode,
   type ErrorResponse,
+  type ExperimentalBatchScoreResponse,
   type ExperimentalScoreResponse,
   type FeatureName,
   type FeaturePreviewRequest,
@@ -73,6 +76,14 @@ function isNonnegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
+function isPositiveInteger(value: unknown): value is number {
+  return isNonnegativeInteger(value) && value > 0;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
 function assertFeaturePreview(payload: unknown): FeaturePreviewResponse {
   if (!isRecord(payload) || !Array.isArray(payload.feature_order) || !isRecord(payload.features)) {
     throw new ApiClientError("The feature response does not match the registered schema.", 200, "SCHEMA_MISMATCH");
@@ -136,6 +147,121 @@ function assertExperimentalScore(payload: unknown): ExperimentalScoreResponse {
     throw new ApiClientError("The experimental score response is invalid.", 200, "SCHEMA_MISMATCH");
   }
   return payload as unknown as ExperimentalScoreResponse;
+}
+
+const REJECTION_CODES = new Set<BatchWalletRejectionCode>([
+  "EMPTY_WALLET_HISTORY",
+  "WALLET_EVENT_MISMATCH",
+  "DUPLICATE_SOURCE_ROW",
+  "DUPLICATE_EVENT_RECORD",
+  "INSUFFICIENT_HISTORY",
+  "FEATURE_INPUT_INVALID",
+]);
+
+function assertExperimentalBatchScore(payload: unknown): ExperimentalBatchScoreResponse {
+  if (
+    !isRecord(payload) ||
+    payload.status !== "experimental_batch_anomaly_ranking" ||
+    payload.methodology_status !== "experimental_unsupervised_research_only" ||
+    payload.source !== "user_supplied_unverified_events" ||
+    payload.model_id !== "isolation_forest" ||
+    typeof payload.model_version !== "string" ||
+    typeof payload.as_of !== "string" ||
+    typeof payload.training_cutoff !== "string" ||
+    payload.score_direction !== "higher_means_more_anomalous_relative_to_training_reference" ||
+    payload.score_units !== "model_specific_unitless_isolation_forest_score" ||
+    payload.is_probability !== false ||
+    typeof payload.feature_rules_version !== "string" ||
+    typeof payload.feature_registry_sha256 !== "string" ||
+    !isPositiveInteger(payload.wallets_submitted) ||
+    !isPositiveInteger(payload.wallets_scored) ||
+    !isNonnegativeInteger(payload.wallets_rejected) ||
+    (payload.review_budget_requested !== null && !isPositiveInteger(payload.review_budget_requested)) ||
+    !isNonnegativeInteger(payload.review_budget) ||
+    !isStringArray(payload.review_candidates) ||
+    !Array.isArray(payload.ranked_wallets) ||
+    !Array.isArray(payload.rejected_wallets) ||
+    !isStringArray(payload.warnings) ||
+    payload.interpretation !== "Experimental statistical anomalies requiring review; not confirmed wash trading or fraud."
+  ) {
+    throw new ApiClientError("The experimental batch response is invalid.", 200, "SCHEMA_MISMATCH");
+  }
+
+  if (
+    payload.wallets_scored !== payload.ranked_wallets.length ||
+    payload.wallets_rejected !== payload.rejected_wallets.length ||
+    payload.wallets_submitted !== payload.wallets_scored + payload.wallets_rejected ||
+    payload.review_budget > payload.wallets_scored
+  ) {
+    throw new ApiClientError("The experimental batch counts are inconsistent.", 200, "SCHEMA_MISMATCH");
+  }
+
+  const rankedWallets = new Set<string>();
+  for (let index = 0; index < payload.ranked_wallets.length; index += 1) {
+    const item = payload.ranked_wallets[index];
+    if (
+      !isRecord(item) ||
+      typeof item.wallet !== "string" ||
+      !item.wallet ||
+      typeof item.anomaly_score !== "number" ||
+      !Number.isFinite(item.anomaly_score) ||
+      item.rank !== index + 1 ||
+      typeof item.selected_for_review !== "boolean" ||
+      item.selected_for_review !== (item.rank <= payload.review_budget) ||
+      !isNonnegativeInteger(item.supplied_event_count) ||
+      !isPositiveInteger(item.included_historical_event_count) ||
+      !isNonnegativeInteger(item.excluded_at_or_after_cutoff_count) ||
+      item.included_historical_event_count + item.excluded_at_or_after_cutoff_count !== item.supplied_event_count ||
+      typeof item.observable_history_days !== "number" ||
+      !Number.isFinite(item.observable_history_days) ||
+      item.observable_history_days < 0 ||
+      !isStringArray(item.warnings) ||
+      rankedWallets.has(item.wallet)
+    ) {
+      throw new ApiClientError("A ranked wallet result is invalid.", 200, "SCHEMA_MISMATCH");
+    }
+    const previous = payload.ranked_wallets[index - 1];
+    if (
+      index > 0 &&
+      isRecord(previous) &&
+      typeof previous.anomaly_score === "number" &&
+      (previous.anomaly_score < item.anomaly_score ||
+        (previous.anomaly_score === item.anomaly_score &&
+          typeof previous.wallet === "string" && previous.wallet > item.wallet))
+    ) {
+      throw new ApiClientError("The wallet ranking order is invalid.", 200, "SCHEMA_MISMATCH");
+    }
+    rankedWallets.add(item.wallet);
+  }
+
+  const rejectedWallets = new Set<string>();
+  for (const item of payload.rejected_wallets) {
+    if (
+      !isRecord(item) ||
+      typeof item.wallet !== "string" ||
+      !item.wallet ||
+      typeof item.code !== "string" ||
+      !REJECTION_CODES.has(item.code as BatchWalletRejectionCode) ||
+      typeof item.message !== "string" ||
+      !isNonnegativeInteger(item.supplied_event_count) ||
+      rankedWallets.has(item.wallet) ||
+      rejectedWallets.has(item.wallet)
+    ) {
+      throw new ApiClientError("A rejected wallet result is invalid.", 200, "SCHEMA_MISMATCH");
+    }
+    rejectedWallets.add(item.wallet);
+  }
+
+  const selectedWallets = payload.ranked_wallets
+    .filter((item) => isRecord(item) && item.selected_for_review === true)
+    .map((item) => String(item.wallet));
+  if (
+    selectedWallets.length !== payload.review_budget ||
+    selectedWallets.join("|") !== payload.review_candidates.join("|")
+  ) {
+    throw new ApiClientError("The review candidate metadata is inconsistent.", 200, "SCHEMA_MISMATCH");
+  }
+  return payload as unknown as ExperimentalBatchScoreResponse;
 }
 
 export class ApiClient {
@@ -251,6 +377,32 @@ export class ApiClient {
     }
     if (!response.ok) throw toApiError(response.status, payload);
     return assertExperimentalScore(payload);
+  }
+
+  async scoreBatch(
+    request: BatchScoreRequest,
+    signal?: AbortSignal,
+  ): Promise<AvailabilityResponse | ExperimentalBatchScoreResponse> {
+    const response = await this.authorizedRequest("/v1/score/batch", {
+      method: "POST",
+      body: JSON.stringify(request),
+      signal,
+    });
+    const payload = await readJson(response);
+    if (
+      response.status === 503 &&
+      isErrorResponse(payload) &&
+      (payload.error.code === "MODEL_NOT_APPROVED" ||
+        payload.error.code === "EXPERIMENTAL_MODEL_UNAVAILABLE")
+    ) {
+      return {
+        available: false,
+        code: payload.error.code,
+        message: payload.error.message,
+      } as AvailabilityResponse;
+    }
+    if (!response.ok) throw toApiError(response.status, payload);
+    return assertExperimentalBatchScore(payload);
   }
 }
 

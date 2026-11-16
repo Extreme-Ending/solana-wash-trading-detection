@@ -133,6 +133,38 @@ class ScoreRequest(FeaturePreviewRequest):
     """One-wallet history for explicitly enabled local experimental scoring."""
 
 
+class BatchWalletHistory(ApiModel):
+    """One explicitly separated wallet history within a batch request."""
+
+    wallet: str
+    events: list[EventInput] = Field(default_factory=list)
+
+    @field_validator("wallet")
+    @classmethod
+    def validate_wallet(cls, value: str) -> str:
+        return _safe_text(value, field_name="wallet", maximum=128)
+
+
+class BatchScoreRequest(ApiModel):
+    """Bounded multi-wallet histories sharing one explicit UTC decision time."""
+
+    as_of: datetime
+    wallet_histories: list[BatchWalletHistory] = Field(min_length=1)
+    review_budget: int | None = Field(default=None, strict=True, ge=1)
+
+    @field_validator("as_of", mode="before")
+    @classmethod
+    def validate_as_of(cls, value: Any) -> datetime:
+        return _explicit_utc(value, field_name="as_of")
+
+    @model_validator(mode="after")
+    def validate_unique_wallet_groups(self) -> "BatchScoreRequest":
+        wallets = [history.wallet for history in self.wallet_histories]
+        if len(wallets) != len(set(wallets)):
+            raise ValueError("wallet_histories must contain each wallet exactly once")
+        return self
+
+
 FeatureValue = int | float | bool | None
 
 
@@ -172,6 +204,59 @@ class ExperimentalScoreResponse(ApiModel):
     observable_history_days: float = Field(ge=0, allow_inf_nan=False)
     warnings: list[str]
     interpretation: str
+
+
+class BatchWalletScore(ApiModel):
+    wallet: str
+    anomaly_score: float = Field(allow_inf_nan=False)
+    rank: int = Field(ge=1)
+    selected_for_review: bool
+    supplied_event_count: int = Field(ge=0)
+    included_historical_event_count: int = Field(ge=1)
+    excluded_at_or_after_cutoff_count: int = Field(ge=0)
+    observable_history_days: float = Field(ge=0, allow_inf_nan=False)
+    warnings: list[str]
+
+
+class BatchWalletRejection(ApiModel):
+    wallet: str
+    code: Literal[
+        "EMPTY_WALLET_HISTORY",
+        "WALLET_EVENT_MISMATCH",
+        "DUPLICATE_SOURCE_ROW",
+        "DUPLICATE_EVENT_RECORD",
+        "INSUFFICIENT_HISTORY",
+        "FEATURE_INPUT_INVALID",
+    ]
+    message: str
+    supplied_event_count: int = Field(ge=0)
+
+
+class ExperimentalBatchScoreResponse(ApiModel):
+    status: Literal["experimental_batch_anomaly_ranking"]
+    methodology_status: Literal["experimental_unsupervised_research_only"]
+    source: Literal["user_supplied_unverified_events"]
+    model_id: Literal["isolation_forest"]
+    model_version: str
+    as_of: datetime
+    training_cutoff: datetime
+    score_direction: Literal["higher_means_more_anomalous_relative_to_training_reference"]
+    score_units: Literal["model_specific_unitless_isolation_forest_score"]
+    is_probability: Literal[False]
+    feature_rules_version: str
+    feature_registry_sha256: str
+    wallets_submitted: int = Field(ge=1)
+    wallets_scored: int = Field(ge=1)
+    wallets_rejected: int = Field(ge=0)
+    review_budget_requested: int | None = Field(default=None, ge=1)
+    review_budget: int = Field(ge=0)
+    review_candidates: list[str]
+    ranked_wallets: list[BatchWalletScore]
+    rejected_wallets: list[BatchWalletRejection]
+    warnings: list[str]
+    interpretation: Literal[
+        "Experimental statistical anomalies requiring review; not confirmed wash trading or fraud."
+    ]
 
 
 class HealthResponse(ApiModel):

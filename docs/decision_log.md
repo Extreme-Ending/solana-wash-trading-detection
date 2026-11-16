@@ -325,3 +325,15 @@ This log records decisions that constrain later implementation. It does not clai
 - **Claim boundary:** Return a finite unitless model-specific score whose higher direction is explicit. Return no probability, threshold, class, severity, wallet flag, or fraud/wash-trading conclusion. Surface incomplete-history warnings.
 - **Runtime boundary:** Enable only in local `development`; leave `/readyz`, production, Docker, Cloud Run configuration and generated-artifact exclusions unchanged. No cloud, IAM, Firebase or Git mutation is part of this decision.
 - **Next gate:** Stop after Phase 8A. Batch scoring, thresholds/flags, dashboards based on ranked wallet populations, artifact promotion and deployment require a separate milestone.
+
+## D040 — Rank bounded experimental wallet batches without creating classifications
+
+- **Date:** 2026-11-16
+- **Status:** accepted for Phase 8B local implementation only
+- **Decision:** Add authenticated `POST /v1/score/batch` using one shared UTC cutoff, explicit isolated wallet-history groups, the existing 29-field point-in-time builder, and the already-loaded trusted Isolation Forest. Score eligible snapshots in one model call and guarantee equivalence with the single-wallet path.
+- **Resource boundary:** Accept at most 20 wallet groups, 100 total events, 50 events per wallet and the existing 256 KiB body. Return at most 20 ranked rows. Retain Firebase/UID checks before body processing and the per-instance request limiter. Do not claim an inner wall-clock timeout; the bounded synchronous work performs no request-time network access.
+- **Ranking boundary:** Sort descending by model score with wallet identifier as the stable tie key. Treat rank as relative to only that submitted batch. An optional budget selects the top N manual-review candidates and is analyst capacity, not a threshold or class.
+- **Failure boundary:** Fail the whole request for structural, time, resource, authorization or artifact errors. Reject wallet-local empty/mismatched/duplicate/no-history groups separately without contaminating other features. Never silently repair or deduplicate evidence.
+- **Claim boundary:** Return raw model-specific scores, warnings, explicit rejection reasons, `is_probability=false`, and the fixed statement that anomalies requiring review are not confirmed wash trading or fraud. No labels, performance claims, score bands or automated flags are introduced.
+- **Runtime boundary:** Keep default and production scoring at `503 MODEL_NOT_APPROVED`; make no container, Firebase, cloud, IAM, billing, deployment or Git mutation.
+- **Next gate:** Stop after Phase 8B. Advanced dashboards, detailed wallet views, thresholds/flags, artifact promotion and deployment require a separately authorized milestone.

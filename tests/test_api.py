@@ -61,7 +61,11 @@ def _request(
     **kwargs: Any,
 ) -> httpx.Response:
     authenticated = kwargs.pop("authenticated", True)
-    if authenticated and path in {"/v1/features/preview", "/v1/score"}:
+    if authenticated and path in {
+        "/v1/features/preview",
+        "/v1/score",
+        "/v1/score/batch",
+    }:
         headers = dict(kwargs.get("headers", {}))
         headers.setdefault("Authorization", "Bearer valid-test-token")
         kwargs["headers"] = headers
@@ -144,6 +148,25 @@ def test_scoring_interface_returns_503_without_score_fields(app: Any) -> None:
     assert "anomaly_score" not in serialized
     assert "fraud_probability" not in serialized
     assert "wash_probability" not in serialized
+
+
+def test_batch_scoring_interface_is_protected_and_disabled_by_default(app: Any) -> None:
+    response = _request(
+        app,
+        "POST",
+        "/v1/score/batch",
+        json={
+            "as_of": "2025-02-01T00:00:00Z",
+            "wallet_histories": [
+                {"wallet": "synthetic-wallet-001", "events": [_event(1)]}
+            ],
+            "review_budget": 1,
+        },
+    )
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error"]["code"] == "MODEL_NOT_APPROVED"
+    assert "anomaly_score" not in json.dumps(body).casefold()
 
 
 def test_valid_feature_preview_is_descriptive_and_registry_ordered(app: Any) -> None:
@@ -359,12 +382,18 @@ def test_environment_configuration_and_unsafe_cors_rejection() -> None:
             "SOLANA_RISK_ENVIRONMENT": "test",
             "SOLANA_RISK_CORS_ORIGINS": "https://example.test,http://localhost:5173",
             "SOLANA_RISK_MAX_EVENTS": "25",
+            "SOLANA_RISK_MAX_BATCH_WALLETS": "12",
+            "SOLANA_RISK_MAX_BATCH_EVENTS": "120",
+            "SOLANA_RISK_MAX_BATCH_EVENTS_PER_WALLET": "30",
             "SOLANA_RISK_MAX_REQUEST_BYTES": "4096",
         }
     )
     assert settings.environment == "test"
     assert settings.cors_origins == ("https://example.test", "http://localhost:5173")
     assert settings.max_events == 25
+    assert settings.max_batch_wallets == 12
+    assert settings.max_batch_events == 120
+    assert settings.max_batch_events_per_wallet == 30
     assert settings.max_request_bytes == 4096
     assert settings.experimental_scoring_enabled is False
     assert settings.experimental_scoring_allowed is False
@@ -399,7 +428,13 @@ def test_openapi_documents_health_features_and_unavailable_scoring(app: Any) -> 
     response = _request(app, "GET", "/openapi.json")
     assert response.status_code == 200
     schema = response.json()
-    assert {"/healthz", "/readyz", "/v1/features/preview", "/v1/score"}.issubset(
+    assert {
+        "/healthz",
+        "/readyz",
+        "/v1/features/preview",
+        "/v1/score",
+        "/v1/score/batch",
+    }.issubset(
         schema["paths"]
     )
     assert "experimental anomaly scoring is disabled" in schema["info"]["description"].casefold()

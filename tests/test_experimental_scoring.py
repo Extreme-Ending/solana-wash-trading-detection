@@ -7,10 +7,13 @@ import json
 import math
 import shutil
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import httpx
+import joblib
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -21,7 +24,7 @@ from solana_risk.api.experimental_scoring import (
     TrustedExperimentalScorer,
 )
 from solana_risk.api.main import create_app
-from solana_risk.api.schemas import ScoreRequest
+from solana_risk.api.schemas import BatchScoreRequest, ScoreRequest
 from solana_risk.features.build import METADATA_COLUMNS, MODEL_FEATURE_COLUMNS
 from solana_risk.models.train_anomaly import AnomalyConfig, fit_experiment, save_bundle, sha256_file
 
@@ -47,13 +50,14 @@ def _event(
     *,
     time: str,
     amount: float = 100.0,
+    wallet: str = "synthetic-score-wallet",
 ) -> dict[str, Any]:
     return {
         "source_row_number": row,
-        "wallet": "synthetic-score-wallet",
+        "wallet": wallet,
         "block_time": time,
         "block_slot": 10_000 + row,
-        "tx_hash": f"synthetic-score-tx-{row}",
+        "tx_hash": f"{wallet}-synthetic-score-tx-{row}",
         "dex": "synthetic-dex",
         "token_pair": "TOKEN-A/TOKEN-B",
         "token_in": "synthetic-token-a",
@@ -74,6 +78,68 @@ def _payload() -> dict[str, Any]:
             _event(3, time="2025-11-01T00:00:00Z", amount=9_999.0),
         ],
     }
+
+
+def _batch_payload(*, review_budget: int | None = 2) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "as_of": "2025-11-01T00:00:00Z",
+        "wallet_histories": [
+            {
+                "wallet": "synthetic-batch-wallet-a",
+                "events": [
+                    _event(
+                        1,
+                        wallet="synthetic-batch-wallet-a",
+                        time="2025-09-15T00:00:00Z",
+                        amount=10.0,
+                    ),
+                    _event(
+                        2,
+                        wallet="synthetic-batch-wallet-a",
+                        time="2025-10-31T00:00:00Z",
+                        amount=25_000.0,
+                    ),
+                ],
+            },
+            {
+                "wallet": "synthetic-batch-wallet-b",
+                "events": [
+                    _event(
+                        1,
+                        wallet="synthetic-batch-wallet-b",
+                        time="2025-10-31T12:00:00Z",
+                        amount=75.0,
+                    )
+                ],
+            },
+            {
+                "wallet": "synthetic-batch-wallet-c",
+                "events": [
+                    _event(
+                        1,
+                        wallet="synthetic-batch-wallet-c",
+                        time="2025-10-01T00:00:00Z",
+                        amount=250.0,
+                    ),
+                    _event(
+                        2,
+                        wallet="synthetic-batch-wallet-c",
+                        time="2025-10-10T00:00:00Z",
+                        amount=275.0,
+                    ),
+                    _event(
+                        3,
+                        wallet="synthetic-batch-wallet-c",
+                        time="2025-11-01T00:00:00Z",
+                        amount=999_999.0,
+                    ),
+                ],
+            },
+        ],
+    }
+    if review_budget is not None:
+        payload["review_budget"] = review_budget
+    return payload
 
 
 def _request(app: Any, path: str, payload: dict[str, Any]) -> httpx.Response:
@@ -213,6 +279,331 @@ def test_single_event_history_returns_explicit_warnings(
     assert any("Less than seven days" in warning for warning in warnings)
 
 
+def test_batch_scores_match_single_scores_and_rank_descending(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    payload = _batch_payload()
+    response = _request(app, "/v1/score/batch", payload)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "experimental_batch_anomaly_ranking"
+    assert body["methodology_status"] == "experimental_unsupervised_research_only"
+    assert body["wallets_submitted"] == 3
+    assert body["wallets_scored"] == 3
+    assert body["wallets_rejected"] == 0
+    assert body["review_budget"] == 2
+    assert len(body["review_candidates"]) == 2
+    scores = [item["anomaly_score"] for item in body["ranked_wallets"]]
+    assert scores == sorted(scores, reverse=True)
+    assert [item["rank"] for item in body["ranked_wallets"]] == [1, 2, 3]
+    assert [item["selected_for_review"] for item in body["ranked_wallets"]] == [
+        True,
+        True,
+        False,
+    ]
+    for history in payload["wallet_histories"]:
+        single = _request(
+            app,
+            "/v1/score",
+            {"as_of": payload["as_of"], "events": history["events"]},
+        )
+        assert single.status_code == 200
+        batch_item = next(
+            item for item in body["ranked_wallets"] if item["wallet"] == history["wallet"]
+        )
+        assert batch_item["anomaly_score"] == single.json()["anomaly_score"]
+    serialized = json.dumps(body).casefold()
+    assert "fraud_probability" not in serialized
+    assert "risk_class" not in serialized
+
+
+def test_batch_requests_reuse_one_loaded_artifact(
+    trusted_files: tuple[Path, Path, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact, manifest, digest = trusted_files
+    original_load = joblib.load
+    load_calls = 0
+
+    def counting_load(*args: Any, **kwargs: Any) -> Any:
+        nonlocal load_calls
+        load_calls += 1
+        return original_load(*args, **kwargs)
+
+    monkeypatch.setattr("solana_risk.api.experimental_scoring.joblib.load", counting_load)
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    assert _request(app, "/v1/score/batch", _batch_payload()).status_code == 200
+    assert _request(app, "/v1/score/batch", _batch_payload()).status_code == 200
+    assert load_calls == 1
+
+
+def test_batch_results_are_reproducible_and_input_order_independent(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    original = _batch_payload()
+    reordered = _batch_payload()
+    reordered["wallet_histories"].reverse()
+    for history in reordered["wallet_histories"]:
+        history["events"].reverse()
+    first = _request(app, "/v1/score/batch", original)
+    second = _request(app, "/v1/score/batch", reordered)
+    third = _request(app, "/v1/score/batch", original)
+    assert first.status_code == second.status_code == third.status_code == 200
+    assert first.json() == second.json() == third.json()
+
+
+def test_batch_ties_use_wallet_identifier_as_stable_secondary_key() -> None:
+    class _ConstantModel:
+        calls = 0
+
+        def score_samples(self, matrix: pd.DataFrame) -> np.ndarray:
+            self.calls += 1
+            return np.full(len(matrix), -0.5, dtype=float)
+
+    model = _ConstantModel()
+    scorer = TrustedExperimentalScorer(
+        model=model,  # type: ignore[arg-type]
+        model_version="synthetic-test-version",
+        training_cutoff=datetime(2025, 9, 1, tzinfo=timezone.utc),
+    )
+    payload = BatchScoreRequest.model_validate(_batch_payload(review_budget=1))
+    response = scorer.score_batch(
+        payload,
+        max_wallets=20,
+        max_events=100,
+        max_events_per_wallet=50,
+    )
+    assert [item.anomaly_score for item in response.ranked_wallets] == [0.5, 0.5, 0.5]
+    assert [item.wallet for item in response.ranked_wallets] == sorted(
+        item.wallet for item in response.ranked_wallets
+    )
+    assert response.review_candidates == [response.ranked_wallets[0].wallet]
+    assert model.calls == 1
+
+
+def test_batch_partial_failure_is_explicit_and_feature_isolated(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    baseline_payload = _batch_payload(review_budget=1)
+    baseline_payload["wallet_histories"] = [baseline_payload["wallet_histories"][0]]
+    baseline = _request(app, "/v1/score/batch", baseline_payload)
+    assert baseline.status_code == 200
+    baseline_score = baseline.json()["ranked_wallets"][0]["anomaly_score"]
+
+    mixed = _batch_payload(review_budget=10)
+    mixed["wallet_histories"] = [
+        mixed["wallet_histories"][0],
+        {"wallet": "synthetic-empty-wallet", "events": []},
+        {
+            "wallet": "synthetic-future-wallet",
+            "events": [
+                _event(
+                    1,
+                    wallet="synthetic-future-wallet",
+                    time="2025-11-01T00:00:00Z",
+                )
+            ],
+        },
+        {
+            "wallet": "synthetic-group-wallet",
+            "events": [
+                _event(
+                    1,
+                    wallet="different-event-wallet",
+                    time="2025-10-01T00:00:00Z",
+                )
+            ],
+        },
+    ]
+    response = _request(app, "/v1/score/batch", mixed)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["wallets_scored"] == 1
+    assert body["wallets_rejected"] == 3
+    assert body["review_budget_requested"] == 10
+    assert body["review_budget"] == 1
+    assert body["ranked_wallets"][0]["anomaly_score"] == baseline_score
+    assert {item["code"] for item in body["rejected_wallets"]} == {
+        "EMPTY_WALLET_HISTORY",
+        "INSUFFICIENT_HISTORY",
+        "WALLET_EVENT_MISMATCH",
+    }
+
+
+def test_batch_duplicate_record_is_rejected_without_silent_deduplication(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    payload = _batch_payload(review_budget=1)
+    duplicate = dict(payload["wallet_histories"][0]["events"][0])
+    duplicate["source_row_number"] = 99
+    payload["wallet_histories"][0]["events"].append(duplicate)
+    response = _request(app, "/v1/score/batch", payload)
+    assert response.status_code == 200
+    rejected = response.json()["rejected_wallets"]
+    assert any(item["code"] == "DUPLICATE_EVENT_RECORD" for item in rejected)
+
+
+def test_batch_allows_repeated_transaction_hash_for_distinct_instructions(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    payload = _batch_payload(review_budget=1)
+    first = payload["wallet_histories"][0]["events"][0]
+    second = payload["wallet_histories"][0]["events"][1]
+    second["tx_hash"] = first["tx_hash"]
+    second["outer_instruction_index"] = 2
+    response = _request(app, "/v1/score/batch", payload)
+    assert response.status_code == 200, response.text
+    assert response.json()["wallets_scored"] == 3
+
+
+@pytest.mark.parametrize(
+    ("settings_overrides", "mutator", "expected_code"),
+    [
+        (
+            {"max_batch_wallets": 2},
+            lambda payload: payload,
+            "BATCH_WALLET_LIMIT_EXCEEDED",
+        ),
+        (
+            {"max_batch_events": 3},
+            lambda payload: payload,
+            "BATCH_EVENT_LIMIT_EXCEEDED",
+        ),
+        (
+            {"max_batch_events_per_wallet": 1},
+            lambda payload: payload,
+            "WALLET_EVENT_LIMIT_EXCEEDED",
+        ),
+        (
+            {"max_batch_wallets": 2},
+            lambda payload: {**payload, "review_budget": 3},
+            "BATCH_WALLET_LIMIT_EXCEEDED",
+        ),
+    ],
+)
+def test_batch_resource_limits_fail_closed(
+    trusted_files: tuple[Path, Path, str],
+    settings_overrides: dict[str, int],
+    mutator: Any,
+    expected_code: str,
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(
+        _settings(artifact, manifest, digest, **settings_overrides),
+        token_verifier=_Verifier(),
+    )
+    response = _request(app, "/v1/score/batch", mutator(_batch_payload()))
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == expected_code
+
+
+def test_batch_review_budget_limit_is_enforced(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    response = _request(
+        app,
+        "/v1/score/batch",
+        _batch_payload(review_budget=21),
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "REVIEW_BUDGET_LIMIT_EXCEEDED"
+
+
+def test_batch_structural_validation_and_all_rejected_behavior(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    malformed = _batch_payload()
+    malformed["wallet_histories"][0]["events"][0]["amount_usd"] = "not-numeric"
+    response = _request(app, "/v1/score/batch", malformed)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "REQUEST_VALIDATION_ERROR"
+
+    invalid_timestamp = _batch_payload()
+    invalid_timestamp["wallet_histories"][0]["events"][0]["block_time"] = (
+        "2025-09-15T03:00:00+03:00"
+    )
+    response = _request(app, "/v1/score/batch", invalid_timestamp)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "REQUEST_VALIDATION_ERROR"
+
+    all_empty = {
+        "as_of": "2025-11-01T00:00:00Z",
+        "wallet_histories": [{"wallet": "synthetic-empty-wallet", "events": []}],
+    }
+    response = _request(app, "/v1/score/batch", all_empty)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "NO_SCORABLE_WALLETS"
+
+
+def test_batch_scoring_time_and_security_gates(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    enabled = create_app(_settings(artifact, manifest, digest), token_verifier=_Verifier())
+    too_early = _batch_payload()
+    too_early["as_of"] = "2025-08-01T00:00:00Z"
+    response = _request(enabled, "/v1/score/batch", too_early)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "SCORING_TIME_PRECEDES_MODEL_REFERENCE"
+
+    disabled = create_app(
+        Settings(
+            firebase_project_id="test-project-123",
+            allowed_user_uids=frozenset({"approved-test-uid"}),
+        ),
+        token_verifier=_Verifier(),
+    )
+    response = _request(disabled, "/v1/score/batch", _batch_payload())
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "MODEL_NOT_APPROVED"
+
+    production = create_app(
+        _settings(
+            artifact,
+            manifest,
+            digest,
+            environment="production",
+            check_revoked_tokens=True,
+        ),
+        token_verifier=_Verifier(),
+    )
+    response = _request(production, "/v1/score/batch", _batch_payload())
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "MODEL_NOT_APPROVED"
+
+
+def test_batch_uid_allowlist_is_enforced(
+    trusted_files: tuple[Path, Path, str],
+) -> None:
+    artifact, manifest, digest = trusted_files
+    app = create_app(
+        _settings(
+            artifact,
+            manifest,
+            digest,
+            allowed_user_uids=frozenset({"different-approved-uid"}),
+        ),
+        token_verifier=_Verifier(),
+    )
+    response = _request(app, "/v1/score/batch", _batch_payload())
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "USER_NOT_ALLOWED"
+
+
 def test_missing_artifact_fails_closed_at_endpoint(tmp_path: Path) -> None:
     missing = tmp_path / "missing.joblib"
     app = create_app(
@@ -222,6 +613,9 @@ def test_missing_artifact_fails_closed_at_endpoint(tmp_path: Path) -> None:
     response = _request(app, "/v1/score", _payload())
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "EXPERIMENTAL_MODEL_UNAVAILABLE"
+    batch_response = _request(app, "/v1/score/batch", _batch_payload())
+    assert batch_response.status_code == 503
+    assert batch_response.json()["error"]["code"] == "EXPERIMENTAL_MODEL_UNAVAILABLE"
 
 
 def test_experimental_scoring_preserves_uid_allowlist_authorization(

@@ -4,6 +4,8 @@ import {
   type FeaturePreviewRequest,
   type FeaturePreviewResponse,
   type FeatureValue,
+  type BatchScoreRequest,
+  type ExperimentalBatchScoreResponse,
   type ExperimentalScoreResponse,
 } from "../api/types";
 
@@ -94,4 +96,76 @@ export const VALID_EXPERIMENTAL_SCORE: ExperimentalScoreResponse = {
   observable_history_days: 0,
   warnings: ["The submitted event history is user-supplied and may be incomplete or unverified."],
   interpretation: "Experimental anomaly score; not a probability or fraud determination.",
+};
+
+export const VALID_BATCH_REQUEST: BatchScoreRequest = {
+  as_of: "2025-11-01T00:00:00Z",
+  review_budget: 2,
+  wallet_histories: [
+    { wallet: "wallet-a", events: [{ ...VALID_REQUEST.events[0], wallet: "wallet-a" }] },
+    { wallet: "wallet-b", events: [{ ...VALID_REQUEST.events[0], wallet: "wallet-b" }] },
+    { wallet: "wallet-c", events: [{ ...VALID_REQUEST.events[0], wallet: "wallet-c" }] },
+  ],
+};
+
+export const VALID_EXPERIMENTAL_BATCH_SCORE: ExperimentalBatchScoreResponse = {
+  status: "experimental_batch_anomaly_ranking",
+  methodology_status: "experimental_unsupervised_research_only",
+  source: "user_supplied_unverified_events",
+  model_id: "isolation_forest",
+  model_version: "4B.1",
+  as_of: "2025-11-01T00:00:00Z",
+  training_cutoff: "2025-09-01T00:00:00Z",
+  score_direction: "higher_means_more_anomalous_relative_to_training_reference",
+  score_units: "model_specific_unitless_isolation_forest_score",
+  is_probability: false,
+  feature_rules_version: "1.0.0",
+  feature_registry_sha256: "synthetic-registry-digest",
+  wallets_submitted: 3,
+  wallets_scored: 3,
+  wallets_rejected: 0,
+  review_budget_requested: 2,
+  review_budget: 2,
+  review_candidates: ["wallet-a", "wallet-b"],
+  ranked_wallets: [
+    {
+      wallet: "wallet-a",
+      anomaly_score: 0.63,
+      rank: 1,
+      selected_for_review: true,
+      supplied_event_count: 1,
+      included_historical_event_count: 1,
+      excluded_at_or_after_cutoff_count: 0,
+      observable_history_days: 10,
+      warnings: [],
+    },
+    {
+      wallet: "wallet-b",
+      anomaly_score: 0.51,
+      rank: 2,
+      selected_for_review: true,
+      supplied_event_count: 1,
+      included_historical_event_count: 1,
+      excluded_at_or_after_cutoff_count: 0,
+      observable_history_days: 5,
+      warnings: [],
+    },
+    {
+      wallet: "wallet-c",
+      anomaly_score: 0.4,
+      rank: 3,
+      selected_for_review: false,
+      supplied_event_count: 1,
+      included_historical_event_count: 1,
+      excluded_at_or_after_cutoff_count: 0,
+      observable_history_days: 1,
+      warnings: ["Less than seven days of observable history are available."],
+    },
+  ],
+  rejected_wallets: [],
+  warnings: [
+    "Ranks are relative only to the wallets scored in this submitted batch.",
+    "The review budget represents analyst capacity, not a validated decision threshold.",
+  ],
+  interpretation: "Experimental statistical anomalies requiring review; not confirmed wash trading or fraud.",
 };

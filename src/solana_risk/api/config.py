@@ -91,6 +91,9 @@ class Settings:
     environment: str = "development"
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
     max_events: int = 100
+    max_batch_wallets: int = 20
+    max_batch_events: int = 100
+    max_batch_events_per_wallet: int = 50
     max_request_bytes: int = 262_144
     firebase_project_id: str | None = None
     allowed_user_uids: frozenset[str] = frozenset()
@@ -109,6 +112,14 @@ class Settings:
             raise ConfigurationError("environment must be nonempty")
         if not 1 <= self.max_events <= 10_000:
             raise ConfigurationError("max_events must be between 1 and 10000")
+        if not 1 <= self.max_batch_wallets <= 100:
+            raise ConfigurationError("max_batch_wallets must be between 1 and 100")
+        if not 1 <= self.max_batch_events <= 10_000:
+            raise ConfigurationError("max_batch_events must be between 1 and 10000")
+        if not 1 <= self.max_batch_events_per_wallet <= 10_000:
+            raise ConfigurationError(
+                "max_batch_events_per_wallet must be between 1 and 10000"
+            )
         if not 1 <= self.max_request_bytes <= 10_485_760:
             raise ConfigurationError("max_request_bytes must be between 1 and 10485760")
         if not 1 <= self.rate_limit_requests <= 10_000:
@@ -181,6 +192,21 @@ class Settings:
             max_events=_parse_positive_int(
                 values.get("SOLANA_RISK_MAX_EVENTS", "100"),
                 name="SOLANA_RISK_MAX_EVENTS",
+                maximum=10_000,
+            ),
+            max_batch_wallets=_parse_positive_int(
+                values.get("SOLANA_RISK_MAX_BATCH_WALLETS", "20"),
+                name="SOLANA_RISK_MAX_BATCH_WALLETS",
+                maximum=100,
+            ),
+            max_batch_events=_parse_positive_int(
+                values.get("SOLANA_RISK_MAX_BATCH_EVENTS", "100"),
+                name="SOLANA_RISK_MAX_BATCH_EVENTS",
+                maximum=10_000,
+            ),
+            max_batch_events_per_wallet=_parse_positive_int(
+                values.get("SOLANA_RISK_MAX_BATCH_EVENTS_PER_WALLET", "50"),
+                name="SOLANA_RISK_MAX_BATCH_EVENTS_PER_WALLET",
                 maximum=10_000,
             ),
             max_request_bytes=_parse_positive_int(

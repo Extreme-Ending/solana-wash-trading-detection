@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FeaturePreviewRequest, FeaturePreviewResponse } from "./api/types";
 import { useAuth } from "./auth/AuthContext";
+import { BatchScoring } from "./components/BatchScoring";
 import { EventWorkbench } from "./components/EventWorkbench";
 import { FeatureCharts } from "./components/FeatureCharts";
 import { FeatureResults } from "./components/FeatureResults";
@@ -55,6 +56,7 @@ export function App() {
           </section>
         )}
         <ModelStatus request={lastRequest} />
+        <BatchScoring />
         <Methodology />
       </main>
       <footer>

@@ -56,6 +56,17 @@ export interface FeaturePreviewRequest {
   events: EventInput[];
 }
 
+export interface BatchWalletHistory {
+  wallet: string;
+  events: EventInput[];
+}
+
+export interface BatchScoreRequest {
+  as_of: string;
+  wallet_histories: BatchWalletHistory[];
+  review_budget?: number;
+}
+
 export interface HealthResponse {
   status: "ok";
   service: string;
@@ -103,6 +114,58 @@ export interface ExperimentalScoreResponse {
   observable_history_days: number;
   warnings: string[];
   interpretation: string;
+}
+
+export type BatchWalletRejectionCode =
+  | "EMPTY_WALLET_HISTORY"
+  | "WALLET_EVENT_MISMATCH"
+  | "DUPLICATE_SOURCE_ROW"
+  | "DUPLICATE_EVENT_RECORD"
+  | "INSUFFICIENT_HISTORY"
+  | "FEATURE_INPUT_INVALID";
+
+export interface BatchWalletScore {
+  wallet: string;
+  anomaly_score: number;
+  rank: number;
+  selected_for_review: boolean;
+  supplied_event_count: number;
+  included_historical_event_count: number;
+  excluded_at_or_after_cutoff_count: number;
+  observable_history_days: number;
+  warnings: string[];
+}
+
+export interface BatchWalletRejection {
+  wallet: string;
+  code: BatchWalletRejectionCode;
+  message: string;
+  supplied_event_count: number;
+}
+
+export interface ExperimentalBatchScoreResponse {
+  status: "experimental_batch_anomaly_ranking";
+  methodology_status: "experimental_unsupervised_research_only";
+  source: "user_supplied_unverified_events";
+  model_id: "isolation_forest";
+  model_version: string;
+  as_of: string;
+  training_cutoff: string;
+  score_direction: "higher_means_more_anomalous_relative_to_training_reference";
+  score_units: "model_specific_unitless_isolation_forest_score";
+  is_probability: false;
+  feature_rules_version: string;
+  feature_registry_sha256: string;
+  wallets_submitted: number;
+  wallets_scored: number;
+  wallets_rejected: number;
+  review_budget_requested: number | null;
+  review_budget: number;
+  review_candidates: string[];
+  ranked_wallets: BatchWalletScore[];
+  rejected_wallets: BatchWalletRejection[];
+  warnings: string[];
+  interpretation: "Experimental statistical anomalies requiring review; not confirmed wash trading or fraud.";
 }
 
 export interface FeaturePreviewResponse {

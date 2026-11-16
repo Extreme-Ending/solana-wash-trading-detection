@@ -15,7 +15,9 @@ from solana_risk.api.auth import authenticate_authorization_header
 from solana_risk.api.errors import ApiError, api_error_response
 
 
-PROTECTED_PATHS = frozenset({"/v1/features/preview", "/v1/score"})
+PROTECTED_PATHS = frozenset(
+    {"/v1/features/preview", "/v1/score", "/v1/score/batch"}
+)
 
 
 class PerInstanceRateLimiter:

@@ -2,7 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClient } from "./client";
 import { resolveApiBaseUrl } from "./config";
 import { FEATURE_NAMES } from "./types";
-import { jsonResponse, MODEL_NOT_APPROVED, VALID_EXPERIMENTAL_SCORE, VALID_PREVIEW, VALID_REQUEST } from "../test/fixtures";
+import {
+  jsonResponse,
+  MODEL_NOT_APPROVED,
+  VALID_BATCH_REQUEST,
+  VALID_EXPERIMENTAL_BATCH_SCORE,
+  VALID_EXPERIMENTAL_SCORE,
+  VALID_PREVIEW,
+  VALID_REQUEST,
+} from "../test/fixtures";
 
 describe("API client", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -60,6 +68,40 @@ describe("API client", () => {
   it("preserves disabled experimental scoring as an availability state", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(MODEL_NOT_APPROVED, 503)));
     await expect(new ApiClient("/api", async () => "token").score(VALID_REQUEST)).resolves.toEqual({
+      available: false,
+      code: "MODEL_NOT_APPROVED",
+      message: "Prediction capability is unavailable.",
+    });
+  });
+
+  it("accepts a deterministic batch ranking and sends authorization", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(VALID_EXPERIMENTAL_BATCH_SCORE)));
+    const result = await new ApiClient("/api", async () => "token").scoreBatch(VALID_BATCH_REQUEST);
+    expect(result).toEqual(VALID_EXPERIMENTAL_BATCH_SCORE);
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/score/batch");
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer token");
+  });
+
+  it.each([
+    { ...VALID_EXPERIMENTAL_BATCH_SCORE, wallets_scored: 4 },
+    {
+      ...VALID_EXPERIMENTAL_BATCH_SCORE,
+      ranked_wallets: [...VALID_EXPERIMENTAL_BATCH_SCORE.ranked_wallets].reverse(),
+    },
+    { ...VALID_EXPERIMENTAL_BATCH_SCORE, review_candidates: ["wallet-c"] },
+  ])("rejects inconsistent experimental batch responses", async (payload) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(payload)));
+    await expect(
+      new ApiClient("/api", async () => "token").scoreBatch(VALID_BATCH_REQUEST),
+    ).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
+  });
+
+  it("preserves disabled batch scoring as an availability state", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(MODEL_NOT_APPROVED, 503)));
+    await expect(
+      new ApiClient("/api", async () => "token").scoreBatch(VALID_BATCH_REQUEST),
+    ).resolves.toEqual({
       available: false,
       code: "MODEL_NOT_APPROVED",
       message: "Prediction capability is unavailable.",

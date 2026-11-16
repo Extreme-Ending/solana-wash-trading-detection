@@ -345,6 +345,23 @@ textarea { resize: vertical; min-height: 300px; font-family: "SFMono-Regular", C
 .score-result dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, ui-monospace, monospace; font-size: 0.75rem; }
 .score-result ul { margin: 0.6rem 0 0; padding-left: 1.2rem; color: #bfd2c8; line-height: 1.6; }
 
+.batch-results { margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--line); }
+.batch-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
+.batch-summary p { margin: 0; padding: 1rem; border: 1px solid #dce1d9; border-radius: 0.7rem; background: #f8faf5; color: var(--muted); font-size: 0.8rem; }
+.batch-summary strong { display: block; color: var(--forest); font-size: 1.8rem; }
+.batch-interpretation { margin: 1rem 0; padding: 0.9rem 1rem; border-left: 4px solid var(--amber); background: #fcf5e7; color: #5f543f; font-weight: 700; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: #fffefa; font-size: 0.8rem; }
+caption { padding: 0.8rem 0; text-align: left; font-weight: 800; }
+th, td { padding: 0.8rem; border-bottom: 1px solid #e0e2da; text-align: left; vertical-align: top; }
+th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+td code { overflow-wrap: anywhere; }
+.wallet-warnings { margin: 0.45rem 0 0; padding-left: 1rem; color: var(--muted); font-size: 0.72rem; line-height: 1.4; }
+.review-badge { display: inline-block; padding: 0.25rem 0.45rem; border-radius: 999px; background: var(--mint); color: var(--forest-dark); font-size: 0.7rem; }
+.rejected-wallets, .batch-warnings { margin-top: 1.25rem; padding: 1rem; border: 1px solid #e5ddcc; border-radius: 0.7rem; background: #fcf8ef; }
+.rejected-wallets h3, .batch-warnings h3 { margin: 0; font-size: 0.95rem; }
+.rejected-wallets ul, .batch-warnings ul { margin: 0.7rem 0 0; padding-left: 1.2rem; color: #5f645f; font-size: 0.8rem; line-height: 1.6; }
+
 .principle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
 .principle-grid article { padding: 1.2rem; border-top: 3px solid var(--forest); background: #faf9f4; }
 .principle-grid article > span { font-family: "SFMono-Regular", Consolas, ui-monospace, monospace; color: var(--forest); font-size: 0.73rem; }
@@ -377,6 +394,7 @@ footer p { margin: 0.35rem; }
   h1 { font-size: clamp(2.6rem, 14vw, 4rem); }
   .section-heading, .feature-group-heading { align-items: flex-start; flex-direction: column; gap: 0.7rem; }
   .status-grid, .form-grid, .chart-grid, .feature-grid, .principle-grid { grid-template-columns: 1fr; }
+  .batch-summary { grid-template-columns: 1fr; }
   .result-context dl { grid-template-columns: 1fr; }
   .model-gate { grid-template-columns: 1fr; }
   .bar-row { grid-template-columns: 6rem 1fr 2.8rem; }
