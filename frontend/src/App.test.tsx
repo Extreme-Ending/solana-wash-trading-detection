@@ -31,7 +31,10 @@ describe("application", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Inspect wallet behaviour");
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
     expect(screen.getByText("No verified wash-trading labels")).toBeInTheDocument();
-    expect(screen.getByText("Experimental and not served")).toBeInTheDocument();
+    expect(screen.getByText("Experimental local mode only")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Separate observations from model outputs" })).toBeInTheDocument();
+    expect(screen.getByText("Synthetic examples:")).toBeInTheDocument();
+    expect(screen.getByText("0.049")).toBeInTheDocument();
     expect(await screen.findByText("Solana Wallet Feature Service v0.1.0")).toBeInTheDocument();
     expect(await screen.findByText("Unavailable by design")).toBeInTheDocument();
   });

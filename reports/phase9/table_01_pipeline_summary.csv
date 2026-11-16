@@ -1,0 +1,7 @@
+stage,records,notes
+source events,10800,Supplied DEX/swap event rows
+retained events,10798,Validated events used for feature construction
+quarantined events,2,Invalid essential evidence retained separately
+removed events,0,No silently removed rows
+wallet snapshots,5996,Three point-in-time cutoffs
+registered features,29,Per wallet and scoring timestamp

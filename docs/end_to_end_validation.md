@@ -79,7 +79,7 @@ The initial Docker smoke attempt built the image and passed content checks but c
 PYTHONPATH=src .venv/bin/python -m solana_risk.data.audit --input nft.csv --output-dir /tmp/phase8d/audit
 PYTHONPATH=src .venv/bin/python -m solana_risk.data.preprocess --input nft.csv --processed-dir /tmp/phase8d/processed --report-dir /tmp/phase8d/preprocess-report
 PYTHONPATH=src .venv/bin/python -m solana_risk.features.build \
-  --input /tmp/phase8d/processed/nft_events_clean.csv \
+  --input /tmp/phase8d/processed/cleaned_events.csv \
   --output /tmp/phase8d/wallet_snapshots.csv \
   --report-dir /tmp/phase8d/feature-report \
   --as-of 2025-09-01T00:00:00Z \

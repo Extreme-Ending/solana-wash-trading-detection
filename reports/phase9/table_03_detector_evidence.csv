@@ -1,0 +1,8 @@
+evidence,value,interpretation
+Isolation Forest trees,300,Registered primary configuration
+Isolation Forest max samples,256,Registered primary configuration
+Random seed,42,Deterministic local experiment
+IF vs LOF holdout Spearman,0.04884598675454837,Algorithm-dependent ranking
+IF vs robust MAD holdout Spearman,0.8662003588876486,"Comparator agreement, not correctness"
+LOF vs robust MAD holdout Spearman,-0.018689182309879513,Algorithm-dependent ranking
+Verified labels used,False,No fraud-effectiveness metric is available

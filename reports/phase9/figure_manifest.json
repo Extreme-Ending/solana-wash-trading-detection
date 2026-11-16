@@ -1,0 +1,35 @@
+{
+  "confirmed_outcomes_reported": false,
+  "contract": "phase9_label_free_research_evidence_v1",
+  "experiment_status": "EXPERIMENTAL UNSUPERVISED ANOMALY MODELLING",
+  "inputs": {
+    "cleaning": {
+      "path": "reports/preprocessing/cleaning_report.json",
+      "sha256": "21bc5c651874fcf242fc94a4ddd84eb0dded701fb56578932ae3ba5384fcac43"
+    },
+    "evaluation": {
+      "path": "reports/modelling/anomaly_evaluation.json",
+      "sha256": "d37426a7bc8ab478b165af7c84263283c91e46a2148bc82b146245b87383b145"
+    },
+    "features": {
+      "path": "reports/features/feature_report.json",
+      "sha256": "1546852e029f2522518683a26cd0058fa6d851574a52608174db9706f7ff0ca9"
+    },
+    "model_manifest": {
+      "path": "artifacts/experimental/anomaly_models_manifest.json",
+      "sha256": "1551d55f469ac3abd7a985d98055c69375968a2d9e28151e153aea2b61061ad0"
+    }
+  },
+  "interpretation": "Figures describe anomaly-score stability, agreement, cohorts and coverage; not fraud effectiveness.",
+  "labels_used": false,
+  "outputs": {
+    "figure_01_temporal_cohorts.svg": "91b86fd03d1840fd1ffe3992a1ca77722ffd02273edee7ff433144b5f504fee8",
+    "figure_02_isolation_score_summaries.svg": "c093a54037c46a8ba30f35bf50c7b76c38e70e142f6857bc9db36a41c98ba8a8",
+    "figure_03_holdout_rank_agreement.svg": "d1ff4a1c6156ce96035e36a3767daaf20a2dfe8646f474215a103527fd243674",
+    "figure_04_parameter_sensitivity.svg": "7695739503388577c70aff830284906539ce46379bee82285e98140cfde6f2dd",
+    "figure_05_coverage_score_context.svg": "0af3bdb8fa37040dde78e5fea245e5491e9c0e5680e77047455d2178215da104",
+    "table_01_pipeline_summary.csv": "0d1e211f7fb1431eb0db06fe6097a1132c6e372fee61192d35c365a7f82dc451",
+    "table_02_temporal_evaluation.csv": "410b37b86e20c3bdcb6f6034560a17be55d1421e02f0e1773ec0c90402f03458",
+    "table_03_detector_evidence.csv": "174fc65589a9e31c9064be425c591248cca3c802a7f8ac50f04859d4c753268d"
+  }
+}

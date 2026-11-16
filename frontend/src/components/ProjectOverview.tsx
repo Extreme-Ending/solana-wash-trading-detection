@@ -7,8 +7,8 @@ export function ProjectOverview() {
         <p className="hero-lede">
           This research interface transforms user-supplied Solana DEX swap events into
           29 registered, point-in-time wallet features. It supports transparent inspection;
-          it does not identify fraud or confirm wash trading. Anomaly detection remains a
-          separate experimental research stage and is not served here.
+          it does not identify fraud or confirm wash trading. Checksum-pinned anomaly scoring
+          is available only when explicitly enabled for the authenticated local demonstration.
         </p>
         <div className="hero-actions">
           <a className="button primary" href="#preview">Preview features</a>
@@ -20,9 +20,9 @@ export function ProjectOverview() {
         <dl>
           <div><dt>Data domain</dt><dd>Solana DEX swap events</dd></div>
           <div><dt>Unit</dt><dd>Wallet at a UTC cutoff</dd></div>
-          <div><dt>Output</dt><dd>Descriptive features only</dd></div>
+          <div><dt>Output</dt><dd>Features and gated anomaly scores</dd></div>
           <div><dt>Ground truth</dt><dd>No verified wash-trading labels</dd></div>
-          <div><dt>Anomaly methods</dt><dd>Experimental and not served</dd></div>
+          <div><dt>Anomaly methods</dt><dd>Experimental local mode only</dd></div>
         </dl>
         <p className="scope-note">
           The available data differs from the original NFT marketplace framing. Results must

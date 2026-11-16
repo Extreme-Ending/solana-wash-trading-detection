@@ -9,6 +9,7 @@ import { Header } from "./components/Header";
 import { Methodology } from "./components/Methodology";
 import { ModelStatus } from "./components/ModelStatus";
 import { ProjectOverview } from "./components/ProjectOverview";
+import { ResearchEvidence } from "./components/ResearchEvidence";
 import { ServiceStatus } from "./components/ServiceStatus";
 
 export function App() {
@@ -39,6 +40,7 @@ export function App() {
       <main id="main-content">
         <ProjectOverview />
         <ServiceStatus />
+        <ResearchEvidence />
         <EventWorkbench onPreview={handlePreview} onClear={clearPreview} />
         {preview ? (
           <>
