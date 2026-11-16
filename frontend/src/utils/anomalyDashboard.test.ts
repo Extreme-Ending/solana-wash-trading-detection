@@ -39,4 +39,22 @@ describe("anomaly dashboard transformations", () => {
     expect(robustComparison(true, { ...reference, mean: 0.25, is_binary: true })).toContain("25.0%");
     expect(robustComparison(2, { ...reference, quartile_1: 2, quartile_3: 2, is_constant: true })).toContain("IQR is zero");
   });
+
+  it("reports extreme skewed values descriptively without clipping or causal language", () => {
+    const skewed: FeatureReferenceStatistic = {
+      observed_count: 100,
+      missing_count: 0,
+      minimum: 1,
+      quartile_1: 1,
+      median: 2,
+      mean: 1002,
+      quartile_3: 4,
+      maximum: 100000,
+      is_binary: false,
+      is_constant: false,
+    };
+    const comparison = robustComparison(100000, skewed);
+    expect(comparison).toBe("+33332.67 training IQR from median");
+    expect(comparison).not.toMatch(/cause|contribution|fraud|probability/i);
+  });
 });

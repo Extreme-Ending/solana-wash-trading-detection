@@ -197,6 +197,26 @@ def test_feature_reference_records_missing_constant_and_binary_semantics() -> No
     assert reference["historical_event_count"]["is_binary"] is False
 
 
+def test_feature_reference_preserves_skewed_and_extreme_training_statistics() -> None:
+    frame = _snapshots()
+    first = sorted(frame["as_of"].unique())[0]
+    train_indices = frame.index[frame["as_of"].eq(first)]
+    frame.loc[train_indices, "total_usd_volume"] = 1.0
+    frame.loc[train_indices[-1], "total_usd_volume"] = 1_000_000.0
+    partitions, _ = chronological_partitions(frame)
+
+    statistic = build_feature_reference(partitions["train"])["statistics"][
+        "total_usd_volume"
+    ]
+
+    assert statistic["minimum"] == 1.0
+    assert statistic["median"] == 1.0
+    assert statistic["quartile_3"] == 1.0
+    assert statistic["maximum"] == 1_000_000.0
+    assert statistic["mean"] > statistic["median"]
+    assert statistic["is_constant"] is False
+
+
 def test_models_are_deterministic_and_scores_share_direction() -> None:
     frame = _snapshots()
     first = fit_experiment(frame)

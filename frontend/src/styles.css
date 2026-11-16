@@ -31,6 +31,17 @@ body {
     linear-gradient(180deg, #f8f6ef 0%, #f1f0e9 100%);
 }
 
+.startup-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.startup-error .empty-state {
+  width: min(42rem, 100%);
+}
+
 body, button, input, textarea { font: inherit; }
 
 a { color: inherit; }
