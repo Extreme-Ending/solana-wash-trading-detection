@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  describeFirebaseAuthFailure,
   getFirebaseAuthGateway,
   registerFirebaseAuthGateway,
   type AuthUser,
@@ -39,11 +40,15 @@ interface AuthProviderProps {
   gateway?: FirebaseAuthGateway;
 }
 
-function safeAuthMessage(action: "sign in" | "sign out", error: unknown): string {
-  if (error instanceof Error && error.message.toLowerCase().includes("configuration")) {
-    return "Authentication is not configured for this environment.";
+function handleAuthFailure(action: "sign in" | "sign out", error: unknown): string {
+  const failure = describeFirebaseAuthFailure(action, error);
+  if (import.meta.env.DEV) {
+    console.warn("Firebase authentication failed.", {
+      action,
+      code: failure.code ?? "unclassified",
+    });
   }
-  return `Unable to ${action}. Please try again or contact the project administrator.`;
+  return failure.message;
 }
 
 export function AuthProvider({ children, gateway }: AuthProviderProps) {
@@ -64,7 +69,7 @@ export function AuthProvider({ children, gateway }: AuthProviderProps) {
       });
     } catch (caught) {
       setLoading(false);
-      setError(safeAuthMessage("sign in", caught));
+      setError(handleAuthFailure("sign in", caught));
       return undefined;
     }
   }, []);
@@ -79,7 +84,7 @@ export function AuthProvider({ children, gateway }: AuthProviderProps) {
     try {
       await gatewayRef.current.signIn();
     } catch (caught) {
-      setError(safeAuthMessage("sign in", caught));
+      setError(handleAuthFailure("sign in", caught));
     } finally {
       setBusy(false);
     }
@@ -92,7 +97,7 @@ export function AuthProvider({ children, gateway }: AuthProviderProps) {
     try {
       await gatewayRef.current.signOut();
     } catch (caught) {
-      setError(safeAuthMessage("sign out", caught));
+      setError(handleAuthFailure("sign out", caught));
     } finally {
       setBusy(false);
     }

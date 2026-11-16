@@ -22,6 +22,11 @@ export interface FirebaseAuthGateway {
   getIdToken(): Promise<string | null>;
 }
 
+export interface FirebaseAuthFailure {
+  code: string | null;
+  message: string;
+}
+
 type FirebaseEnvironment = Partial<Record<
   | "VITE_FIREBASE_API_KEY"
   | "VITE_FIREBASE_AUTH_DOMAIN"
@@ -37,6 +42,64 @@ const REQUIRED_KEYS = [
   "VITE_FIREBASE_APP_ID",
 ] as const;
 
+const PLACEHOLDER_VALUE = /(?:^|[_<{])(your|replace|example|changeme)(?:[_>}]|$)/i;
+
+const SIGN_IN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  "auth/unauthorized-domain":
+    "Google sign-in is not authorized for this website. Ask the project administrator to add this hostname to Firebase Authentication.",
+  "auth/invalid-api-key":
+    "Firebase sign-in configuration is invalid. Ask the project administrator to verify the web app configuration.",
+  "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
+    "Firebase sign-in configuration is invalid. Ask the project administrator to verify the web app configuration.",
+  "auth/operation-not-allowed":
+    "Google sign-in is not enabled for this Firebase project. Ask the project administrator to enable the Google provider.",
+  "auth/popup-blocked":
+    "Your browser blocked the Google sign-in popup. Allow popups for this site and try again.",
+  "auth/popup-closed-by-user":
+    "Google sign-in was cancelled before completion. Try again when you are ready.",
+  "auth/cancelled-popup-request":
+    "A newer Google sign-in attempt replaced this one. Wait for the current attempt to finish, then try again.",
+  "auth/network-request-failed":
+    "Google sign-in could not reach Firebase. Check your connection and browser privacy settings, then try again.",
+  "auth/account-exists-with-different-credential":
+    "This email is already linked to a different sign-in method. Ask the project administrator for help linking the account.",
+  "auth/operation-not-supported-in-this-environment":
+    "This browser environment does not support Google popup sign-in. Use a standard HTTP or HTTPS browser window with web storage enabled.",
+  "auth/web-storage-unsupported":
+    "Google sign-in requires browser storage. Enable browser storage for this site and try again.",
+};
+
+function firebaseErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("code" in error)) return null;
+  const code = (error as { code?: unknown }).code;
+  if (typeof code !== "string" || !/^auth\/[a-z0-9.-]+$/i.test(code)) return null;
+  return code.toLowerCase();
+}
+
+export function describeFirebaseAuthFailure(
+  action: "sign in" | "sign out",
+  error: unknown,
+): FirebaseAuthFailure {
+  const code = firebaseErrorCode(error);
+  if (action === "sign in" && code !== null && code in SIGN_IN_ERROR_MESSAGES) {
+    return { code, message: SIGN_IN_ERROR_MESSAGES[code] };
+  }
+  if (
+    error instanceof Error &&
+    (error.message.toLowerCase().includes("configuration") ||
+      error.message.includes("VITE_FIREBASE_"))
+  ) {
+    return {
+      code,
+      message: "Authentication is not configured for this environment.",
+    };
+  }
+  return {
+    code,
+    message: `Unable to ${action}. Please try again or contact the project administrator.`,
+  };
+}
+
 export function loadFirebaseConfig(
   environment: FirebaseEnvironment,
   production = false,
@@ -48,6 +111,10 @@ export function loadFirebaseConfig(
   if (missing.length > 0) {
     const prefix = production ? "Production Firebase configuration" : "Firebase configuration";
     throw new Error(`${prefix} is incomplete: ${missing.join(", ")}`);
+  }
+  const placeholders = REQUIRED_KEYS.filter((key) => PLACEHOLDER_VALUE.test(values[key]));
+  if (placeholders.length > 0) {
+    throw new Error(`Firebase configuration contains placeholder values: ${placeholders.join(", ")}`);
   }
   if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(values.VITE_FIREBASE_PROJECT_ID)) {
     throw new Error("VITE_FIREBASE_PROJECT_ID is malformed");
@@ -65,6 +132,19 @@ export function loadFirebaseConfig(
     authDomain.pathname !== "/"
   ) {
     throw new Error("VITE_FIREBASE_AUTH_DOMAIN must be a hostname only");
+  }
+  const managedDomainSuffix = [".firebaseapp.com", ".web.app"].find((suffix) =>
+    values.VITE_FIREBASE_AUTH_DOMAIN.endsWith(suffix),
+  );
+  if (
+    managedDomainSuffix !== undefined &&
+    values.VITE_FIREBASE_AUTH_DOMAIN !==
+      `${values.VITE_FIREBASE_PROJECT_ID}${managedDomainSuffix}`
+  ) {
+    throw new Error("VITE_FIREBASE_AUTH_DOMAIN does not match VITE_FIREBASE_PROJECT_ID");
+  }
+  if (!/^1:\d+:web:[0-9a-f]+$/i.test(values.VITE_FIREBASE_APP_ID)) {
+    throw new Error("VITE_FIREBASE_APP_ID is malformed");
   }
   return {
     apiKey: values.VITE_FIREBASE_API_KEY,

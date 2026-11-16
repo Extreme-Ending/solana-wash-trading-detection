@@ -37,4 +37,26 @@ describe("authentication context", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to sign in");
     expect(screen.getByRole("alert")).not.toHaveTextContent("sensitive provider detail");
   });
+
+  it("renders an actionable popup-blocked message and logs only its safe code", async () => {
+    const user = userEvent.setup();
+    const gateway = authGateway(null);
+    gateway.signIn = vi.fn().mockRejectedValue({
+      code: "auth/popup-blocked",
+      message: "sensitive provider detail",
+      credential: "sensitive credential",
+    });
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    renderWithAuth(<AuthenticationProbe />, gateway);
+    await screen.findByText("signed-out");
+    await user.click(screen.getByRole("button", { name: "sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Your browser blocked the Google sign-in popup",
+    );
+    expect(warning).toHaveBeenCalledWith("Firebase authentication failed.", {
+      action: "sign in",
+      code: "auth/popup-blocked",
+    });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain("sensitive");
+  });
 });
