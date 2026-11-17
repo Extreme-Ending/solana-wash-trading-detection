@@ -346,3 +346,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Rationale:** A ranked score alone gives an analyst little reproducible context. Training-cutoff medians and IQRs support transparent descriptive comparison without claiming a model explanation, labelled outcome or causal driver. Fitting the reference on the training partition preserves the lab pattern that held-out data must not determine preprocessing or interpretation baselines.
 - **Dashboard contract:** Preserve server scores and original ranks; filters and sorts affect visibility only. Use actual numeric values, explicit small-batch displays, full identifiers, warnings and all registered features. A review-budget edit requires a new server request.
 - **Integrity boundary:** Robust IQR distance is unavailable for missing, binary, constant or zero-IQR fields and is never called SHAP, contribution, probability, threshold or fraud evidence. Production continues to return `MODEL_NOT_APPROVED`; no model promotion or deployment occurs.
+
+## D042 — Stop the Phase 11 deployment at the billing gate
+
+- **Date:** 2026-11-16
+- **Status:** Phase 11 deployment failed safely before cloud mutation
+- **Decision:** Select the existing `solana-wallet-risk` Firebase/Google Cloud project and `africa-south1` target, reduce the private pilot bound from min 0/max 2 to min 0/max 1, and retain the Invoker IAM check. Stop before API enablement, resource creation, image push or deployment because Cloud Billing reports disabled.
+- **Evidence:** Local release acceptance passed with 205 Python tests, 72 frontend tests, TypeScript/build checks, a non-root production image and container smoke results of health 200, readiness 503 and unauthenticated protected routes 401. Read-only cloud discovery found the runtime identity absent and the Cloud Run, Artifact Registry, Cloud Build and IAM Credentials APIs disabled.
+- **Authentication boundary:** A private Cloud Run service would require a Google-signed platform token in addition to the Firebase application token. Do not publish service-account credentials to the SPA or make the service public merely to unblock browser access.
+- **Claim boundary:** Deployment work does not approve the experimental detector or establish fraud/wash-trading effectiveness. Production scoring remains `MODEL_NOT_APPROVED`.
+- **Next gate:** The student must resolve billing ownership, budgets/spend-cap review and required identity/API/repository prerequisites. Then rerun Phase 11 from read-only preflight before any immutable image push or private deployment.

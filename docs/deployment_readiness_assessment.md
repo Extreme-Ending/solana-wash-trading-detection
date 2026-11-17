@@ -34,7 +34,7 @@ The browser audit found and fixed one startup defect: missing production API con
 2. Verify Firebase web app, Google provider, authorized domains/site and the exact UID allowlist. Never place a service-account key in the frontend or repository.
 3. Verify a dedicated Cloud Run runtime service account and the least privileges needed for Firebase user/revocation checks. Use ADC; do not download a private key.
 4. Configure Artifact Registry and immutable full-Git-SHA tagging. Keep datasets and the experimental artifact out of the production image unless a separately approved artifact policy exists.
-5. Configure the reviewed resource bounds (min 0, max 2, 1 CPU, 512 MiB, concurrency 20, timeout 30 s) and exact frontend CORS origin.
+5. Configure the Phase 11 resource bounds (min 0, max 1, 1 CPU, 512 MiB, concurrency 20, timeout 30 s) and exact frontend CORS origin.
 6. Configure and test budget alerts; separately determine whether a spend-cap budget is eligible and covers each service. Alerts are not a hard cap.
 7. Deploy privately first and preserve the Invoker IAM check. A static SPA cannot directly satisfy private Cloud Run IAM; select and review an identity-aware proxy/backend-for-frontend or explicitly approve the public-platform risk in a later phase. No public-access mutation is currently authorized.
 8. Run the private two-token smoke, inspect revision identity/config/image, then complete hosted Firebase-to-API acceptance before publishing the frontend.

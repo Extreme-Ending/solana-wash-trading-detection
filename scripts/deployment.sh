@@ -28,7 +28,7 @@ FIREBASE_WEB_API_KEY="${FIREBASE_WEB_API_KEY:-YOUR_FIREBASE_WEB_API_KEY}"
 FIREBASE_AUTH_DOMAIN="${FIREBASE_AUTH_DOMAIN:-${PROJECT_ID}.firebaseapp.com}"
 FIREBASE_APP_ID="${FIREBASE_APP_ID:-YOUR_FIREBASE_WEB_APP_ID}"
 CLOUD_RUN_URL="${CLOUD_RUN_URL:-}"
-MAX_INSTANCES="${MAX_INSTANCES:-2}"
+MAX_INSTANCES="${MAX_INSTANCES:-1}"
 CPU="${CPU:-1}"
 MEMORY="${MEMORY:-512Mi}"
 CONCURRENCY="${CONCURRENCY:-20}"
@@ -104,8 +104,8 @@ require_live_config() {
     printf 'REGION differs from the reviewed Phase 7A region (africa-south1).\n' >&2
     exit 1
   fi
-  if [[ "$MAX_INSTANCES" != "2" || "$CPU" != "1" || "$MEMORY" != "512Mi" || "$CONCURRENCY" != "20" || "$TIMEOUT" != "30s" ]]; then
-    printf 'Resource controls differ from the reviewed Phase 7A defaults; update the documented review before deployment.\n' >&2
+  if [[ "$MAX_INSTANCES" != "1" || "$CPU" != "1" || "$MEMORY" != "512Mi" || "$CONCURRENCY" != "20" || "$TIMEOUT" != "30s" ]]; then
+    printf 'Resource controls differ from the reviewed Phase 11 defaults; update the documented review before deployment.\n' >&2
     exit 1
   fi
   if [[ "$CHECK_REVOKED_TOKENS" != "true" || "$RATE_LIMIT_REQUESTS" != "30" || "$RATE_LIMIT_WINDOW_SECONDS" != "60" ]]; then

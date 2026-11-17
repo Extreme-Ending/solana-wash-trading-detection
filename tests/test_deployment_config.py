@@ -85,7 +85,7 @@ def test_cloud_defaults_are_private_bounded_and_exact_origin_only() -> None:
             key, value = line.split("=", maxsplit=1)
             values[key] = value
     assert values["REGION"] == "africa-south1"
-    assert values["MAX_INSTANCES"] == "2"
+    assert values["MAX_INSTANCES"] == "1"
     assert values["CPU"] == "1"
     assert values["MEMORY"] == "512Mi"
     assert values["CONCURRENCY"] == "20"
