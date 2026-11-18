@@ -101,6 +101,23 @@ def test_cloud_workflow_accepts_omitted_false_for_enabled_runtime_account() -> N
     assert "--format='value(disabled)' | grep -Fxq False" not in workflow
 
 
+def test_cloud_workflow_mints_audience_bound_acceptance_token_with_wif() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "deploy-cloud-run.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "id: deploy" in workflow
+    assert "service_url=%s" in workflow
+    assert "id: acceptance-auth" in workflow
+    assert "token_format: id_token" in workflow
+    assert "id_token_audience: ${{ steps.deploy.outputs.service_url }}" in workflow
+    assert "id_token_include_email: true" in workflow
+    assert "CLOUD_RUN_ID_TOKEN: ${{ steps.acceptance-auth.outputs.id_token }}" in workflow
+    assert "create_credentials_file: false" in workflow
+    assert "export_environment_variables: false" in workflow
+    assert "gcloud auth print-identity-token" not in workflow
+    assert '"404"' in workflow
+
+
 def test_release_contract_accepts_only_the_reviewed_targets() -> None:
     validator = _load("validate_release_config.py")
     validator.validate_cloud_run(_cloud())

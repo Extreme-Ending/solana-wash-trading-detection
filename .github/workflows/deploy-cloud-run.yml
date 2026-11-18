@@ -141,6 +141,7 @@ jobs:
           python3 scripts/validate_release_config.py --mode image-digest --image-digest "$digest"
           printf 'image_root=%s\nimage_tag=%s\ndigest=%s\n' "$image_root" "$image_tag" "$digest" >> "$GITHUB_OUTPUT"
       - name: Deploy the exact digest with the Invoker IAM check intact
+        id: deploy
         env:
           DEPLOY_REVISION: ${{ inputs.revision }}
           IMAGE_ROOT: ${{ steps.image.outputs.image_root }}
@@ -160,21 +161,39 @@ jobs:
             --revision-suffix "${DEPLOY_REVISION:0:12}" \
             --labels "managed-by=github-actions,git-sha=${DEPLOY_REVISION}" \
             --set-env-vars "^@^SOLANA_RISK_ENVIRONMENT=production@SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=false@SOLANA_RISK_CORS_ORIGINS=https://${FIREBASE_HOSTING_SITE}.web.app,https://${FIREBASE_HOSTING_SITE}.firebaseapp.com@SOLANA_RISK_MAX_EVENTS=100@SOLANA_RISK_MAX_BATCH_WALLETS=20@SOLANA_RISK_MAX_BATCH_EVENTS=100@SOLANA_RISK_MAX_BATCH_EVENTS_PER_WALLET=50@SOLANA_RISK_MAX_REQUEST_BYTES=262144@SOLANA_RISK_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}@SOLANA_RISK_ALLOWED_UIDS=${SOLANA_RISK_ALLOWED_UIDS}@SOLANA_RISK_CHECK_REVOKED_TOKENS=true@SOLANA_RISK_RATE_LIMIT_REQUESTS=30@SOLANA_RISK_RATE_LIMIT_WINDOW_SECONDS=60"
+          service_url="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
+          [[ "$service_url" == https://*.run.app ]]
+          printf 'service_url=%s\n' "$service_url" >> "$GITHUB_OUTPUT"
+      - name: Mint a short-lived Cloud Run acceptance token
+        id: acceptance-auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          create_credentials_file: false
+          export_environment_variables: false
+          token_format: id_token
+          id_token_audience: ${{ steps.deploy.outputs.service_url }}
+          id_token_include_email: true
       - name: Verify the private service and deployed digest
         env:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
+          CLOUD_RUN_ID_TOKEN: ${{ steps.acceptance-auth.outputs.id_token }}
         run: |
           set -euo pipefail
           deployed_image="$(gcloud run services describe "$CLOUD_RUN_SERVICE" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(spec.template.spec.containers[0].image)')"
           [[ "$deployed_image" == *@"$IMAGE_DIGEST" ]]
-          service_url="$(gcloud run services describe "$CLOUD_RUN_SERVICE" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
-          identity_token="$(gcloud auth print-identity-token --audiences="$service_url")"
-          curl --fail --silent --show-error --header "Authorization: Bearer ${identity_token}" "${service_url}/healthz" \
+          [[ "$SERVICE_URL" == https://*.run.app ]]
+          [[ -n "$CLOUD_RUN_ID_TOKEN" ]]
+          curl --fail --silent --show-error --header "Authorization: Bearer ${CLOUD_RUN_ID_TOKEN}" "${SERVICE_URL}/healthz" \
             | jq -e '.status == "ok"' >/dev/null
           ready_status="$(curl --silent --output "$RUNNER_TEMP/ready.json" --write-out '%{http_code}' \
-            --header "Authorization: Bearer ${identity_token}" "${service_url}/readyz")"
+            --header "Authorization: Bearer ${CLOUD_RUN_ID_TOKEN}" "${SERVICE_URL}/readyz")"
           [[ "$ready_status" == "503" ]]
           jq -e '.error.code == "MODEL_NOT_APPROVED"' "$RUNNER_TEMP/ready.json" >/dev/null
-          anonymous_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "${service_url}/healthz")"
-          [[ "$anonymous_status" == "401" || "$anonymous_status" == "403" ]]
-          printf 'Verified private Cloud Run service URL: %s\n' "$service_url"
+          anonymous_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "${SERVICE_URL}/healthz")"
+          [[ "$anonymous_status" == "401" || "$anonymous_status" == "403" || "$anonymous_status" == "404" ]]
+          printf 'Verified private Cloud Run service URL: %s\n' "$SERVICE_URL"

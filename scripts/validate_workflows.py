@@ -26,6 +26,7 @@ def validate() -> None:
         "service-account-key",
         "latest",
         "solana_risk_enable_experimental_scoring=true",
+        "gcloud auth print-identity-token --audiences",
     ):
         if forbidden in lowered:
             raise ValueError(f"forbidden workflow content: {forbidden}")
@@ -74,6 +75,10 @@ def validate() -> None:
         "iam.googleapis.com",
         "--min 0 --max \"$MAX_INSTANCES\"",
         "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=false",
+        "token_format: id_token",
+        "id_token_audience: ${{ steps.deploy.outputs.service_url }}",
+        "id_token_include_email: true",
+        "CLOUD_RUN_ID_TOKEN: ${{ steps.acceptance-auth.outputs.id_token }}",
         "private-pilot",
     ):
         if required not in cloud:
