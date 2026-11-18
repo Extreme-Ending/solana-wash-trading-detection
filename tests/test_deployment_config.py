@@ -40,6 +40,7 @@ def test_firebase_hosts_actual_vite_spa_with_cache_and_security_headers() -> Non
     assert security["X-Content-Type-Options"] == "nosniff"
     assert security["X-Frame-Options"] == "DENY"
     assert security["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert security["Cross-Origin-Opener-Policy"] == "same-origin-allow-popups"
     serialized = json.dumps(config).casefold()
     assert all(term not in serialized for term in ('"run"', "firestore", "authentication", "functions"))
 
