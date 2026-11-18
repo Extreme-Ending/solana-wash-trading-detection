@@ -1,70 +1,83 @@
 import { useEffect, useState } from "react";
-import type { FeaturePreviewRequest, FeaturePreviewResponse } from "./api/types";
+import type { BatchScoreRequest, ExperimentalBatchScoreResponse } from "./api/types";
 import { useAuth } from "./auth/AuthContext";
-import { BatchScoring } from "./components/BatchScoring";
-import { EventWorkbench } from "./components/EventWorkbench";
-import { FeatureCharts } from "./components/FeatureCharts";
-import { FeatureResults } from "./components/FeatureResults";
-import { Header } from "./components/Header";
-import { Methodology } from "./components/Methodology";
-import { ModelStatus } from "./components/ModelStatus";
-import { ProjectOverview } from "./components/ProjectOverview";
-import { ResearchEvidence } from "./components/ResearchEvidence";
-import { ServiceStatus } from "./components/ServiceStatus";
+import { AppShell, type AppView } from "./components/layout/AppShell";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage";
+
+function viewFromHash(): AppView {
+  return window.location.hash === "#analytics" ? "analytics" : "home";
+}
 
 export function App() {
-  const { user } = useAuth();
-  const [preview, setPreview] = useState<FeaturePreviewResponse | null>(null);
-  const [lastRequest, setLastRequest] = useState<FeaturePreviewRequest | null>(null);
+  const { user, loading } = useAuth();
+  const [view, setView] = useState<AppView>(viewFromHash);
+  const [result, setResult] = useState<ExperimentalBatchScoreResponse | null>(null);
+  const [lastRequest, setLastRequest] = useState<BatchScoreRequest | null>(null);
 
-  const handlePreview = (
-    response: FeaturePreviewResponse,
-    request: FeaturePreviewRequest,
+  useEffect(() => {
+    const synchronizeView = () => setView(viewFromHash());
+    window.addEventListener("hashchange", synchronizeView);
+    return () => window.removeEventListener("hashchange", synchronizeView);
+  }, []);
+
+  useEffect(() => {
+    setResult(null);
+    setLastRequest(null);
+    window.location.hash = "home";
+  }, [user?.uid]);
+
+  const navigate = (next: AppView) => {
+    window.location.hash = next;
+    setView(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleResult = (
+    response: ExperimentalBatchScoreResponse,
+    request: BatchScoreRequest,
   ) => {
-    setPreview(response);
+    setResult(response);
     setLastRequest(request);
   };
 
-  const clearPreview = () => {
-    setPreview(null);
-    setLastRequest(null);
-  };
+  if (loading) {
+    return (
+      <main className="auth-loading" id="main-content" aria-live="polite">
+        <span className="spinner" aria-hidden="true" />
+        <p>Checking secure access…</p>
+      </main>
+    );
+  }
 
-  useEffect(() => {
-    clearPreview();
-  }, [user?.uid]);
+  if (!user) return <LoginPage />;
 
   return (
-    <>
-      <Header />
-      <main id="main-content">
-        <ProjectOverview />
-        <ServiceStatus />
-        <ResearchEvidence />
-        <EventWorkbench onPreview={handlePreview} onClear={clearPreview} />
-        {preview ? (
-          <>
-            <FeatureResults preview={preview} />
-            <FeatureCharts preview={preview} />
-          </>
-        ) : (
-          <section className="empty-state" aria-labelledby="results-placeholder-heading">
-            <p className="eyebrow">Feature output</p>
-            <h2 id="results-placeholder-heading">No descriptive preview yet</h2>
-            <p>
-              Submit one wallet's historical DEX swap events to inspect the registered
-              point-in-time features. No anomaly score or fraud conclusion is generated.
-            </p>
-          </section>
-        )}
-        <ModelStatus request={lastRequest} />
-        <BatchScoring />
-        <Methodology />
-      </main>
-      <footer>
-        <p>DSA 8401 Applied Machine Learning capstone · Local research interface</p>
-        <p>Submitted events remain in this browser session and are sent only to the configured API.</p>
-      </footer>
-    </>
+    <AppShell view={view} hasAnalysis={Boolean(result)} onNavigate={navigate}>
+      {view === "analytics" ? (
+        <AnalyticsPage
+          result={result}
+          request={lastRequest}
+          onResult={handleResult}
+          onHome={() => navigate("home")}
+        />
+      ) : (
+        <HomePage
+          result={result}
+          onResult={handleResult}
+          onClear={() => {
+            setResult(null);
+            setLastRequest(null);
+          }}
+          onDetails={() => navigate("analytics")}
+        />
+      )}
+      {lastRequest && (
+        <span className="sr-only">
+          Latest analysis used a review capacity of {lastRequest.review_budget}.
+        </span>
+      )}
+    </AppShell>
   );
 }

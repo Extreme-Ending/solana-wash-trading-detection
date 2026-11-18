@@ -356,3 +356,12 @@ This log records decisions that constrain later implementation. It does not clai
 - **Authentication boundary:** A private Cloud Run service would require a Google-signed platform token in addition to the Firebase application token. Do not publish service-account credentials to the SPA or make the service public merely to unblock browser access.
 - **Claim boundary:** Deployment work does not approve the experimental detector or establish fraud/wash-trading effectiveness. Production scoring remains `MODEL_NOT_APPROVED`.
 - **Next gate:** The student must resolve billing ownership, budgets/spend-cap review and required identity/API/repository prerequisites. Then rerun Phase 11 from read-only preflight before any immutable image push or private deployment.
+
+## D043 — Unify one-wallet and batch analysis in the frontend only
+
+- **Date:** 2026-11-17
+- **Status:** accepted for the local frontend-revamp milestone
+- **Decision:** Present one authenticated **Analyze wallets** workflow that accepts either one or many bounded wallet histories and always uses the existing typed batch endpoint. Show an immediate API-derived summary on Home and retain the detailed ranking, distribution, filters and feature context under Analytics.
+- **Contract boundary:** Detect wallet count from validated input; do not introduce a single/batch mode selector. Preserve the 20-wallet, 100-total-event, 50-event-per-wallet and 256 KiB limits. A review-capacity change must resubmit the original histories and use the new server response rather than changing selections in the browser.
+- **Data boundary:** Require supplied DEX event history. Do not imply live address lookup, balances, holdings, verified fraud labels or automatic wallet flags. Synthetic histories remain opt-in and explicitly labelled demonstration data.
+- **Security/runtime boundary:** Preserve Google sign-in, Firebase ID-token requests, server UID allowlisting, exact response validation and production `MODEL_NOT_APPROVED`. Store the latest request/result only in React memory. Make no backend model, cloud, IAM, billing, deployment or Git change.

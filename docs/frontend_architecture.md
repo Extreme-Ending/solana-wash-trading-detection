@@ -1,100 +1,114 @@
-# Phase 6 frontend architecture
+# Frontend architecture
 
 ## Purpose and boundary
 
-The React frontend is a local research interface for the FastAPI feature and experimental-scoring service. The one-wallet flow accepts one identifier, one explicit UTC cutoff and bounded user-supplied Solana DEX swap events. The Phase 8B–8C batch flow accepts separated wallet histories, one shared cutoff and a bounded analyst review budget, then supports analysis of that exact response. It displays only schema-validated results from `POST /v1/features/preview`, `POST /v1/score` and `POST /v1/score/batch`; it calculates neither features nor model scores independently.
+The React application is an authenticated research interface for bounded, user-supplied Solana DEX event histories. Its primary journey is now:
 
-The interface does not fetch wallet history, persist input, call a blockchain provider, load a model artifact, or present a fraud probability, wash-trading verdict, threshold, severity or automatic wallet flag. `GET /readyz` and default/production score endpoints returning HTTP 503 `MODEL_NOT_APPROVED` are expected capability states, not frontend crashes. A successful local score is shown as a unitless, model-specific anomaly value. A batch rank is explicitly relative to that submitted batch and review selection represents analyst capacity only.
+```text
+Google sign-in → Analyze one or many wallet histories → Immediate summary → Detailed analytics
+```
+
+The browser does not retrieve live wallet history, calculate model scores, load model artifacts, persist analysis input, or infer a fraud class. It submits the existing typed `POST /v1/score/batch` contract for both one-wallet and multi-wallet input. This keeps one user workflow while preserving the backend's point-in-time feature builder, trusted-artifact checks, Firebase authorization, request limits, review-budget contract, and production `MODEL_NOT_APPROVED` gate.
+
+A successful local result is a unitless, model-specific anomaly score. Rank is relative only to the submitted wallets. Review selection represents analyst capacity, not a threshold, fraud probability, verified label, wash-trading conclusion, or evidence of intent.
 
 ## Runtime shape
 
 ```text
 Browser (React + TypeScript)
-  ├─ Firebase Web SDK: Google popup, auth-state observer, current ID token
-  ├─ local state: wallet, UTC cutoff, event JSON, latest preview
-  ├─ batch state: shared cutoff, isolated wallet-history JSON, review budget, latest ranking
-  ├─ client validation: closed schema, single/batch count limits, 256 KiB limit
-  └─ typed fetch client
-       └─ /api/* during development
-            └─ Vite loopback proxy
-                 └─ http://127.0.0.1:8080/* (Firebase-verifying FastAPI container)
+  ├─ Firebase Web SDK
+  │    └─ Google popup, auth-state observer, current ID token
+  ├─ App state (memory only)
+  │    └─ active view, latest validated request, latest API response
+  ├─ Unified input parser
+  │    ├─ grouped wallet-history arrays
+  │    ├─ raw event arrays grouped by their wallet field
+  │    └─ complete {as_of, review_budget, wallet_histories|events} payloads
+  ├─ typed authenticated API client
+  │    └─ POST /v1/score/batch
+  └─ hash navigation
+       ├─ #home
+       └─ #analytics
 ```
 
-The default `VITE_API_BASE_URL=/api` keeps local browser requests same-origin and lets the Vite development proxy reach the loopback-only Compose service. A simple root-relative path or an HTTP(S) base URL can be supplied at build time. Protocol-relative URLs, credentials, query strings, and fragments are rejected. The Firebase Web API key, auth domain, project ID, and app ID are intentionally public project configuration. ID tokens, service-account keys, Admin credentials, and other secrets never belong in a `VITE_*` variable because Vite exposes such values to the browser.
+The root-relative default `VITE_API_BASE_URL=/api` keeps local requests same-origin and lets the Vite proxy reach the loopback API. Production accepts only a validated HTTP(S) origin. Hash navigation requires no server route and remains compatible with the existing Firebase Hosting SPA rewrite.
 
-## Source responsibilities
+Firebase Web identifiers are public project configuration. Firebase ID tokens, service-account keys, Admin credentials and other secrets never belong in `VITE_*` variables or the static bundle.
+
+## Component responsibilities
 
 | Source | Responsibility |
 |---|---|
-| `src/api/types.ts` | Exact request, health, availability, feature, single-score and batch-score types |
-| `src/api/config.ts` | Safe API-base resolution with `/api` as the local default |
-| `src/api/client.ts` | Fetch calls, structured errors, response-schema and feature-order checks |
-| `src/auth/firebase.ts` | Validated public Firebase configuration, Google provider and ID-token access |
-| `src/auth/AuthContext.tsx` | Auth-state subscription, sign-in/out actions, loading and safe error state |
-| `src/utils/validation.ts` | Fail-closed local input/import validation and request-size enforcement |
-| `src/data/featureRegistry.ts` | Human-readable definitions and grouping for the 29 existing features |
-| `src/data/syntheticExample.ts` | Clearly synthetic, deterministic demonstration input |
-| `src/data/syntheticBatch.ts` | Three clearly synthetic, deterministic wallet-history patterns |
-| `src/components/EventWorkbench.tsx` | Event entry, local JSON import, submission, cancellation, and feedback |
-| `src/components/FeatureResults.tsx` | Complete grouped feature output with null and zero distinguished |
-| `src/components/FeatureCharts.tsx` | Dependency-free accessible comparisons derived only from API values |
-| `src/components/ServiceStatus.tsx` | Independent process-health and scoring-capability status |
-| `src/components/ModelStatus.tsx` | Local experimental scoring states, typed metadata, history warnings and non-probability interpretation |
-| `src/components/BatchScoring.tsx` | Authenticated batch input, loading/errors, review budget, ranked API results and explicit rejections |
-| `src/components/AnomalyDashboard.tsx` | Response summary, accessible score charts, filters/sorts, wallet selection and 29-feature detail |
-| `src/utils/anomalyDashboard.ts` | Pure deterministic filtering, sorting, distribution and descriptive-reference comparisons |
+| `src/App.tsx` | Auth gate, memory-only result/request state and Home/Analytics navigation |
+| `src/pages/LoginPage.tsx` | Burgundy-and-white Google-only sign-in experience |
+| `src/pages/HomePage.tsx` | Wallet-check hero, unified form, empty state and immediate summary |
+| `src/pages/AnalyticsPage.tsx` | Detailed result view and server-confirmed review-capacity resubmission |
+| `src/components/layout/AppShell.tsx` | Brand, responsive navigation, account menu and sign-out |
+| `src/components/forms/WalletAnalysisForm.tsx` | JSON import/paste, synthetic demo, validation, authenticated submission and safe errors |
+| `src/components/results/AnalysisSummary.tsx` | API-derived summary cards, concise interpretation and ranking preview |
+| `src/components/AnomalyDashboard.tsx` | Summary metrics, accurate charts, filters, table, warnings and wallet-detail drawer |
+| `src/utils/analysisInput.ts` | Supported input-shape normalization and browser-side limit/schema validation |
+| `src/utils/anomalyDashboard.ts` | Pure filtering, sorting, distribution and descriptive-reference comparisons |
+| `src/api/client.ts` | Token-bearing requests and strict response-contract validation |
+| `src/auth/*` | Firebase configuration, auth-state lifecycle and safe auth errors |
 
-`App.tsx` retains only the most recent response and its validated request in component memory. Reloading or clearing the page removes them. A local JSON file is read with the browser file API, limited to 256 KiB, and is not uploaded until the student explicitly submits the form.
+Earlier descriptive-preview and separate batch components remain covered by regression tests, but they are no longer separate primary user journeys.
 
-## Authentication flow
+## Unified analysis contract
 
-1. `AuthProvider` initializes the official modular Firebase Web SDK from four environment-provided public identifiers and subscribes with `onAuthStateChanged`.
-2. The header offers Google popup sign-in, sign-out, an initial loading state, the current display identity, and an accessible safe error message.
-3. The API client requests a current Firebase ID token immediately before preview, single-score or batch-score requests and sets `Authorization: Bearer <token>`. It does not send the token on health/readiness requests and does not persist or log it.
-4. A missing local user blocks submission. Backend 401 prompts reauthentication, 403 explains that the account is not approved, and authentication-related 503 reports temporary verification/configuration unavailability. `MODEL_NOT_APPROVED` and `EXPERIMENTAL_MODEL_UNAVAILABLE` are expected disabled/unavailable scoring states.
-5. Signing out clears the rendered feature preview and last scoring request from React state.
+The form accepts JSON only. It supports:
 
-## API contract and fail-closed behavior
+1. An array of `{wallet, events}` histories.
+2. A raw event array in which every event includes its wallet.
+3. A complete object containing `as_of`, optional `review_budget`, and either `wallet_histories` or `events`.
 
-The frontend mirrors the Phase 5A request schema rather than accepting arbitrary feature vectors. Each event requires the source row, UTC block time, slot, transaction hash, DEX, token pair, input/output tokens and positive USD amount; fee and instruction indices are optional/nullable according to the API contract. Additional fields, mixed wallets, duplicate source-row numbers, invalid UTC values, nonfinite numbers, and nonpositive required amounts are rejected.
+Raw events are grouped by exact wallet identifier in first-seen order. Grouped events must match their enclosing wallet; mismatches are rejected rather than repaired. Each event must retain the backend-supported closed schema: source row, UTC block time, slot, transaction hash, DEX, nullable token pair, input/output token, positive USD amount and supported optional fee/instruction indices.
 
-The response guard requires:
+The browser checks the existing defaults of 20 wallets, 100 total events, 50 events per wallet, 256 KiB, UTC timestamps and review capacity from 1 to 20. It also rejects malformed JSON, empty inputs, unsupported fields/values, duplicate source-row numbers inside a wallet, invalid numbers and invalid wallet identifiers. The backend remains authoritative and may reject duplicate records, at/after-cutoff evidence, insufficient history or other wallet-local issues.
 
-- `status=descriptive_features` and `source=user_supplied_unverified_events`;
-- the exact registered feature order, not merely 29 arbitrary values;
-- a finite number, boolean, or null for every registered field; and
-- required wallet, cutoff, and interpretation metadata.
+The effective initial review capacity is bounded by submitted wallets. If the user changes it in Analytics, the frontend resubmits the unchanged validated histories and displays only the new server-confirmed selection. It never relabels the saved response in browser state.
 
-Schema drift is shown as an error instead of being silently reformatted. Network errors do not create placeholder results. A successful experimental score is accepted only when its status/source, finite raw score, model identity/version, direction, unit, `is_probability=false`, cutoff, registry metadata, counts, observable history, warnings and interpretation match the typed contract. The batch response guard additionally enforces submitted/scored/rejected count consistency, unique wallet membership, sequential ranks, descending score/tie ordering, review-budget selection, exact candidates, known rejection codes and the fixed non-fraud interpretation. Phase 8C also requires every ranked wallet to contain the exact 29 feature keys and requires a training-reference object whose cutoff and registry fingerprint match the response, whose counts and ordered statistics are internally valid, and whose binary/constant declarations match the feature contract.
+## Result definitions
 
-## Interface and accessibility
+The immediate summary is derived only from the accepted API response:
 
-The responsive dashboard uses semantic landmarks, labelled controls, visible keyboard focus, a skip link, live status messages, disabled loading states, text equivalents for bar charts, labelled progress meters, and a reduced-motion rule. Charts use HTML and CSS instead of canvas, so their values remain available to assistive technology. Missing values display as `Unavailable`; numeric zero remains a real zero.
+- **Wallets analyzed:** `wallets_scored`, with rejected count disclosed.
+- **Historical events:** sum of `included_historical_event_count` for ranked wallets.
+- **Selected for review:** length of `review_candidates`.
+- **Anomaly score / highest score:** first ranked score under the validated descending-order contract.
 
-The visual hierarchy separates evidence from capability: project scope, process health, event entry, descriptive output, charts, single experimental score, batch ranking and methodological limits are distinct sections. Raw anomaly values are never percentage-formatted. The advanced batch view preserves original API ranks and values while applying client-side visibility and ordering controls. It uses a dot view for fewer than five visible scores and a histogram otherwise. Wallet detail reports observed values beside training median and interquartile range; robust IQR distance is descriptive only and is suppressed for missing, binary, constant or zero-IQR fields. The table and feature detail are horizontally scrollable at narrow widths, while form, filter, chart and summary layouts collapse responsively.
+The compact and detailed ranking bars use the returned raw scores. The detailed distribution uses a dot display for fewer than five visible wallets and a bounded histogram otherwise. Filters change visibility and client display order only; original score and rank values remain intact. Wallet detail reveals six overview features first, then user-selected feature groups or all 29 fields. Training median and interquartile-range comparisons are descriptive context—not SHAP values, model contributions or causal explanations.
 
-## Security and privacy
+## Authentication and failure behavior
 
-- No Admin credentials, analytics, telemetry, external fonts, or remote scripts are used. Firebase Authentication is the sole added third-party runtime API.
-- No `dangerouslySetInnerHTML`, browser storage, cookies, service worker, or raw-event logging is used.
-- React escapes displayed wallet and metadata strings.
-- Requests are explicit and are not retried automatically.
-- Firebase ID tokens remain in Firebase SDK/browser memory and request headers; they are not written to application storage or displayed.
-- In-flight preview, single-score and batch-score requests are cancellable on replacement or unmount.
-- Production CORS remains the backend's exact-origin responsibility; the local proxy does not justify a wildcard origin.
+1. `AuthProvider` initializes the official Firebase Web SDK from environment-provided public identifiers and subscribes to authentication state.
+2. Unauthenticated users see only the Google sign-in page. No email/password, anonymous, or bypass path is added.
+3. Before a protected request, the API client requests the current Firebase ID token and sends it as `Authorization: Bearer <token>`.
+4. FastAPI continues to verify token/project/email/provider/revocation requirements and the UID allowlist before protected processing.
+5. The frontend distinguishes validation failures, 401 session expiry, 403 UID denial, 413 size limits, 429 rate limits, disabled/unavailable models, authentication-infrastructure 503 and generic server/network failures.
+6. Signing out clears the latest request and result. Input and results are never written to browser storage.
 
-## Scientific interpretation
+Default and production scoring remain disabled. The UI does not convert `MODEL_NOT_APPROVED` into a successful result or placeholder score.
 
-The available records are DEX swap events, not authenticated NFT marketplace sales. The preview is derived from user-supplied, unverified event history and is only as complete as that history. Feature magnitude, concentration, recency, or unusualness cannot establish wash trading or fraud. The interface preserves this boundary in the overview, results, model gate, charts, and methodology section.
+## Accessibility and responsive behavior
 
-## Deployment limitation and reviewed future path
+Semantic landmarks, headings, visible labels, status regions, keyboard-focus styles, a skip link, disabled pending actions, text chart descriptions, non-color review labels and reduced-motion support are included. The wallet panel uses dialog semantics, an explicit close control, Escape dismissal and backdrop dismissal. Wide tables scroll rather than compress values into unreadable cells.
 
-Firebase authentication is application-layer authorization, not Cloud Run IAM authorization. The reviewed Cloud Run service remains private. A normal Firebase-hosted browser cannot supply the separate Google-signed Cloud Run invocation credential required by the platform, even though it can supply a Firebase end-user ID token to FastAPI. Phase 7B therefore does not claim a working hosted end-to-end path and does not enable public invocation.
+Breakpoints support the required approximate widths:
 
-Phase 7C.0 recommends, but does not activate, a future platform-public Cloud Run endpoint so the static browser can reach FastAPI. Protected calls would still require the Firebase token and UID allowlist. This exposes the application boundary and public health routes to untrusted traffic and can create request, verification and logging cost. App Check and distributed rate limiting are not enabled; the backend's limiter is per instance only. Public invocation therefore requires separate risk acceptance, IAM review, cost controls and a hosted one-token acceptance test.
+- **Desktop (1440px):** split login, two-column home hero, chart pairs and four summary cards.
+- **Tablet (768px):** single-column login/home content, collapsed navigation, stacked charts and two-column metrics/filters.
+- **Mobile (375px):** Google sign-in card, single-column form/cards/filters, horizontal result tables and a full-width detail drawer.
 
-## Deferred work
+## Security, privacy and scientific integrity
 
-Live Firebase/Google Cloud resource configuration, the Cloud Run browser-access architecture, distributed rate limiting/App Check, provider-backed wallet lookup, telemetry, model-artifact promotion, automated thresholds and fraud/wash-trading flags remain deferred. Phase 8C advanced analytics are local only and require a successful authenticated Phase 8B response.
+- No Admin credential, remote font, analytics script, raw-event log, token display or browser persistence was added.
+- No `dangerouslySetInnerHTML`, automatic retries, anonymous sign-in or authentication bypass is used.
+- React escapes rendered wallet and metadata strings.
+- Exact-origin CORS, backend byte/count limits, rate limits, UID authorization and trusted model loading remain backend controls.
+- The available inputs are user-supplied DEX swaps, not authenticated NFT marketplace transactions.
+- Incomplete histories can change scores, and unusualness cannot establish fraud or wash trading.
 
-The intended later deployment shape is a Vite production build published from `frontend/dist/` to standard Firebase Hosting with a single-page-app rewrite, while the existing container runs independently on Cloud Run. That phase would need an owned Google Cloud/Firebase project, billing and budget controls, an Artifact Registry/image release process, Cloud Run service identity and resource limits, HTTPS API configuration, the exact Firebase origin in backend CORS, environment-specific `VITE_API_BASE_URL`, access/log-retention review, and post-deployment health/readiness/preview tests. It must not place a credential in the static bundle or enable scoring merely because hosting exists.
+## Deployment boundary and deferred capability
+
+This redesign made no cloud, Firebase, IAM, billing, model-artifact or deployment change. The private Cloud Run/browser-access constraint remains unresolved. Live provider-backed address lookup, saved analysis history, telemetry, distributed rate limiting/App Check, model promotion, score thresholds and automated wallet flags remain deferred or unsupported.

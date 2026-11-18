@@ -1,54 +1,79 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FEATURE_NAMES } from "./api/types";
 import { App } from "./App";
-import { jsonResponse, MODEL_NOT_APPROVED, VALID_PREVIEW } from "./test/fixtures";
-import { renderWithAuth } from "./test/auth";
+import { authGateway, renderWithAuth } from "./test/auth";
+import { jsonResponse, VALID_EXPERIMENTAL_BATCH_SCORE } from "./test/fixtures";
 
-function installApiMock() {
-  const fetchMock = vi.fn((input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.endsWith("/healthz")) {
-      return Promise.resolve(jsonResponse({ status: "ok", service: "Solana Wallet Feature Service", version: "0.1.0" }));
-    }
-    if (url.endsWith("/readyz") || url.endsWith("/v1/score")) {
-      return Promise.resolve(jsonResponse(MODEL_NOT_APPROVED, 503));
-    }
-    if (url.endsWith("/v1/features/preview")) return Promise.resolve(jsonResponse(VALID_PREVIEW));
-    return Promise.resolve(jsonResponse({ error: { code: "NOT_FOUND", message: "Not found", details: null } }, 404));
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
-
-describe("application", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("renders the research boundary, navigation, and independent service states", async () => {
-    installApiMock();
-    renderWithAuth(<App />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Inspect wallet behaviour");
-    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
-    expect(screen.getByText("No verified wash-trading labels")).toBeInTheDocument();
-    expect(screen.getByText("Experimental local mode only")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Separate observations from model outputs" })).toBeInTheDocument();
-    expect(screen.getByText("Synthetic examples:")).toBeInTheDocument();
-    expect(screen.getByText("0.049")).toBeInTheDocument();
-    expect(await screen.findByText("Solana Wallet Feature Service v0.1.0")).toBeInTheDocument();
-    expect(await screen.findByText("Unavailable by design")).toBeInTheDocument();
+describe("redesigned application", () => {
+  afterEach(() => {
+    window.location.hash = "";
+    vi.unstubAllGlobals();
   });
 
-  it("completes the synthetic preview flow and displays the exact feature registry", async () => {
+  it("presents Google sign-in without exposing an email/password form", async () => {
     const user = userEvent.setup();
-    installApiMock();
+    renderWithAuth(<App />, authGateway(null));
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sign in to Wallet Insights" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Continue with Google" }));
+    expect(await screen.findByRole("heading", { name: "Check a wallet" })).toBeInTheDocument();
+  });
+
+  it("renders one protected workflow and a truthful pre-analysis state", async () => {
     renderWithAuth(<App />);
-    await screen.findByText("Approved Researcher");
-    await user.click(screen.getByRole("button", { name: "Load synthetic example" }));
-    await user.click(screen.getByRole("button", { name: "Generate feature preview" }));
-    expect(await screen.findByRole("heading", { name: "All 29 descriptive wallet features" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getAllByText(/^[a-z0-9_]+$/).length).toBeGreaterThanOrEqual(FEATURE_NAMES.length));
-    expect(screen.getByText("These descriptive features do not establish wash trading or fraud.")).toBeInTheDocument();
-    expect(screen.queryByText(/fraud probability/i)).not.toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { name: "Check a wallet" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyze wallets" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Historical events are required" })).toBeInTheDocument();
+    expect(screen.getByText(/does not look up live wallet activity/i)).toBeInTheDocument();
+    expect(screen.queryByText(/wallet balance/i)).not.toBeInTheDocument();
+  });
+
+  it("loads labelled demonstration data, submits an authenticated batch, and opens analytics", async () => {
+    const user = userEvent.setup();
+    const revisedBudget = {
+      ...VALID_EXPERIMENTAL_BATCH_SCORE,
+      review_budget_requested: 1,
+      review_budget: 1,
+      review_candidates: ["wallet-a"],
+      ranked_wallets: VALID_EXPERIMENTAL_BATCH_SCORE.ranked_wallets.map((wallet) => ({
+        ...wallet,
+        selected_for_review: wallet.rank === 1,
+      })),
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(VALID_EXPERIMENTAL_BATCH_SCORE))
+      .mockResolvedValueOnce(jsonResponse(revisedBudget));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithAuth(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Use demonstration data" }));
+    expect(screen.getByRole("status")).toHaveTextContent(/synthetic histories/i);
+    await user.click(screen.getByRole("button", { name: "Analyze wallets" }));
+
+    expect(await screen.findByRole("heading", { name: "Analysis summary" })).toBeInTheDocument();
+    expect(screen.getByText(/do not confirm fraud or wash trading/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(request.headers).toMatchObject({ Authorization: "Bearer valid-test-firebase-token" });
+
+    await user.click(screen.getByRole("button", { name: "View detailed analysis" }));
+    expect(await screen.findByRole("heading", { name: "Analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Wallet ranking" })).toBeInTheDocument();
+    await waitFor(() => expect(window.location.hash).toBe("#analytics"));
+
+    await user.clear(screen.getByLabelText("Wallets to select"));
+    await user.type(screen.getByLabelText("Wallets to select"), "1");
+    await user.click(screen.getByRole("button", { name: "Update capacity" }));
+    expect(await screen.findByText(/updated from a new authenticated API response/i)).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const revisedRequest = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
+    expect(revisedRequest.review_budget).toBe(1);
   });
 });
