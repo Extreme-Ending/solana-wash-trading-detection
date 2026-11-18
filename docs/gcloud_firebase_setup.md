@@ -26,6 +26,8 @@ On 2026-11-18 the guarded bootstrap completed. Cloud Run, Artifact Registry, IAM
 
 The second private-pilot attempt established that `cloudbilling.googleapis.com` must also be enabled so the deployer can confirm that billing remains attached before building an image. `roles/run.developer` already contains the API's required `resourcemanager.projects.get` permission; no billing mutation role is required or granted. The reviewed bootstrap now enables the API explicitly.
 
+The following preflight then established that `iam.googleapis.com` must be enabled for the runtime service-account status check. The deployer already has `iam.serviceAccounts.get` on that specific runtime identity through its existing `roles/iam.serviceAccountUser` binding. The workflow does not add a project-wide service-account viewer role, and it no longer performs the redundant self-description check after successful WIF impersonation.
+
 ## Bootstrap order
 
 1. Rotate the local Firebase CLI session before further work because a diagnostic command emitted credential material. Sign out and sign in again in the student's terminal; never copy its JSON credential output into an issue, report or repository.

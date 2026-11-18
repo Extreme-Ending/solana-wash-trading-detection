@@ -92,12 +92,12 @@ def test_workflows_use_the_node_version_required_by_locked_dependencies() -> Non
         assert "node-version: 22.22.2" in text
 
 
-def test_cloud_workflow_accepts_omitted_false_for_enabled_service_accounts() -> None:
+def test_cloud_workflow_accepts_omitted_false_for_enabled_runtime_account() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-cloud-run.yml").read_text(
         encoding="utf-8"
     )
     assert '[[ -z "$runtime_disabled" || "${runtime_disabled,,}" == "false" ]]' in workflow
-    assert '[[ -z "$deploy_disabled" || "${deploy_disabled,,}" == "false" ]]' in workflow
+    assert "deploy_disabled=" not in workflow
     assert "--format='value(disabled)' | grep -Fxq False" not in workflow
 
 
@@ -175,10 +175,12 @@ def test_bootstrap_is_plan_only_by_default_and_has_no_key_or_public_access_path(
     assert "roles/serviceusage.apiKeysViewer" in script
     assert "roles/apikeys.viewer" not in script
     assert "cloudbilling.googleapis.com" in script
+    assert "iam.googleapis.com" in script
     cloud_workflow = (ROOT / ".github" / "workflows" / "deploy-cloud-run.yml").read_text(
         encoding="utf-8"
     )
     assert "cloudbilling.googleapis.com" in cloud_workflow
+    assert "iam.googleapis.com" in cloud_workflow
     assert '[[ -z "$disabled" || "${disabled,,}" == "false" ]]' in script
     assert (
         'GITHUB_SUBJECT_PREFIX="repo:Extreme-Ending@296935112/'

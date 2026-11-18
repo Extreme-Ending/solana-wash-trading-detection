@@ -71,6 +71,7 @@ def validate() -> None:
         "--no-allow-unauthenticated",
         "@${IMAGE_DIGEST}",
         "cloudbilling.googleapis.com",
+        "iam.googleapis.com",
         "--min 0 --max \"$MAX_INSTANCES\"",
         "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=false",
         "private-pilot",

@@ -146,7 +146,7 @@ printf 'Phase 12 bootstrap %s\nProject: %s (%s)\nRepository: %s\n' \
 
 run_or_print gcloud services enable \
   artifactregistry.googleapis.com cloudbilling.googleapis.com firebasehosting.googleapis.com \
-  iamcredentials.googleapis.com run.googleapis.com sts.googleapis.com \
+  iam.googleapis.com iamcredentials.googleapis.com run.googleapis.com sts.googleapis.com \
   --project "$PROJECT_ID" --quiet
 
 ensure_service_account "$RUNTIME_ACCOUNT" "Solana wallet risk Cloud Run runtime"
