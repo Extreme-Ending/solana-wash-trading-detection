@@ -234,3 +234,31 @@ def test_private_pilot_operator_script_is_guarded_and_private() -> None:
         "git switch",
     ):
         assert forbidden not in script
+
+
+def test_local_private_deployment_is_guarded_digest_pinned_and_defers_http() -> None:
+    script = (ROOT / "scripts" / "deploy_private_local.sh").read_text(encoding="utf-8")
+    assert script.startswith("#!/usr/bin/env bash\nset -euo pipefail\n")
+    assert '[[ "$EXECUTE" == "--execute"' in script
+    assert "FULL_GIT_SHA must equal local HEAD" in script
+    assert "no successful completed CI run exists for the exact SHA" in script
+    assert "LOCAL-PRIVATE-DEPLOY/${REVISION}" in script
+    assert 'python3 scripts/container_smoke_test.py' in script
+    assert 'python3 "$ROOT_DIR/scripts/validate_release_config.py" --mode image-digest' in script
+    assert '--image "${image_root}@${digest}"' in script
+    assert "--no-allow-unauthenticated" in script
+    assert "--no-invoker-iam-check" not in script
+    assert "allUsers" in script and "allAuthenticatedUsers" in script
+    assert "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=false" in script
+    assert "HTTP check:  deferred" in script
+    assert "curl " not in script
+    for forbidden in (
+        "git add",
+        "git commit",
+        "git push",
+        "git reset",
+        "git rebase",
+        "git checkout",
+        "git switch",
+    ):
+        assert forbidden not in script
