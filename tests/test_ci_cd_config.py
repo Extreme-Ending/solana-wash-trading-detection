@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import re
 from pathlib import Path
 from types import ModuleType
 
@@ -73,6 +75,21 @@ def _firebase() -> dict[str, str]:
 
 def test_workflow_security_validator_passes() -> None:
     _load("validate_workflows.py").validate()
+
+
+def test_workflows_use_the_node_version_required_by_locked_dependencies() -> None:
+    package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
+    lock = json.loads((ROOT / "frontend" / "package-lock.json").read_text(encoding="utf-8"))
+    expected_engine = ">=22.22.2"
+    assert package["engines"]["node"] == expected_engine
+    assert lock["packages"][""]["engines"]["node"] == expected_engine
+    assert lock["packages"]["node_modules/undici"]["engines"]["node"] == ">=22.19.0"
+    assert lock["packages"]["node_modules/jsdom"]["engines"]["node"] == (
+        "^22.22.2 || ^24.15.0 || >=26.0.0"
+    )
+    for workflow in ("ci.yml", "deploy-firebase.yml"):
+        text = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+        assert "node-version: 22.22.2" in text
 
 
 def test_release_contract_accepts_only_the_reviewed_targets() -> None:
@@ -148,4 +165,8 @@ def test_bootstrap_is_plan_only_by_default_and_has_no_key_or_public_access_path(
     assert "roles/run.invoker" not in script
     assert "roles/serviceusage.apiKeysViewer" in script
     assert "roles/apikeys.viewer" not in script
+    assert '[[ -z "$disabled" || "${disabled,,}" == "false" ]]' in script
     assert "Editor" not in script and "Owner" not in script
+    display_name = re.search(r'^PROVIDER_DISPLAY_NAME="([^"]+)"$', script, re.MULTILINE)
+    assert display_name is not None
+    assert len(display_name.group(1)) <= 32

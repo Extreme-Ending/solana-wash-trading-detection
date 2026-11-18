@@ -14,7 +14,7 @@ Each deployment requires the full 40-character SHA, an exact confirmation phrase
 
 ## CI coverage
 
-The unprivileged workflow uses Python 3.11 and Node 22.12.0, matching `pyproject.toml` and `frontend/package.json`. It runs:
+The unprivileged workflow uses Python 3.11 and Node 22.22.2, matching `pyproject.toml`, `frontend/package.json` and the highest minimum required by the locked frontend dependencies. It runs:
 
 ```text
 python -m pytest -q

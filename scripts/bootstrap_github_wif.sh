@@ -9,6 +9,7 @@ REGION="africa-south1"
 GITHUB_REPOSITORY="Extreme-Ending/solana-wash-trading-detection"
 POOL_ID="github-actions"
 PROVIDER_ID="github"
+PROVIDER_DISPLAY_NAME="GitHub main deployments"
 ARTIFACT_REPOSITORY="solana-wallet-risk"
 RUNTIME_ACCOUNT="solana-wallet-risk-runtime"
 RUN_DEPLOY_ACCOUNT="github-cloud-run-deployer"
@@ -52,7 +53,9 @@ ensure_service_account() {
     local disabled
     disabled="$(gcloud iam service-accounts describe "$(service_account_email "$account_id")" \
       --project "$PROJECT_ID" --format='value(disabled)')"
-    [[ "$disabled" == "False" ]] || {
+    # The API commonly omits the field when the account is enabled, so gcloud
+    # returns an empty value rather than the literal "False".
+    [[ -z "$disabled" || "${disabled,,}" == "false" ]] || {
       printf 'Existing service account is disabled: %s\n' "$(service_account_email "$account_id")" >&2
       exit 1
     }
@@ -174,7 +177,7 @@ if [[ "$MODE" == "apply" ]] && gcloud iam workload-identity-pools providers desc
 else
   run_or_print gcloud iam workload-identity-pools providers create-oidc "$PROVIDER_ID" \
     --workload-identity-pool "$POOL_ID" --project "$PROJECT_ID" --location=global \
-    --display-name="GitHub repository main deployments" \
+    --display-name="$PROVIDER_DISPLAY_NAME" \
     --issuer-uri="https://token.actions.githubusercontent.com" \
     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
     --attribute-condition="assertion.repository=='${GITHUB_REPOSITORY}' && assertion.ref=='refs/heads/main'"

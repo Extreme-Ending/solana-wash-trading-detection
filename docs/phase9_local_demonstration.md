@@ -15,7 +15,7 @@ The scoring portion is available only in explicitly configured `development` mod
 ## Prerequisites
 
 - Linux/Bash; supported Python with the pinned `.venv` dependencies (Python 3.11 is the target container runtime).
-- Node.js 22.12 or later and installed `frontend/node_modules`.
+- Node.js 22.22.2 or later and installed `frontend/node_modules`.
 - Local ignored `nft.csv` with the expected SHA-256.
 - Local ignored model artifact and manifest, or permission to regenerate them offline.
 - For the interactive protected routes: the configured Firebase project, an approved Firebase UID, Google Application Default Credentials for the backend, and an approved Google sign-in account.

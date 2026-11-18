@@ -1,6 +1,6 @@
 # Google Cloud and Firebase setup for keyless deployment
 
-## Verified target
+## Initial discovery snapshot
 
 | Item | Value / observed state on 2026-11-18 |
 |---|---|
@@ -18,7 +18,11 @@
 | Cloud Run service | no verified service; API disabled |
 | Local default gcloud project | unrelated `seotranslate-507816`; never use implicitly |
 
-No resource above was created or changed during discovery.
+No resource above was created or changed during the initial discovery.
+
+## Post-bootstrap verification
+
+On 2026-11-18 the guarded bootstrap completed. Cloud Run, Artifact Registry, IAM Credentials, STS and Firebase Hosting APIs are enabled. The empty `solana-wallet-risk` Docker repository, three enabled user-managed service accounts, active `github-actions/github` provider, repository/main condition, exact environment-subject impersonation grants and intended project/repository roles were verified. All three accounts have zero user-managed keys. No Cloud Run service, container digest or Hosting release was created.
 
 ## Bootstrap order
 

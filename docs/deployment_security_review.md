@@ -2,7 +2,7 @@
 
 ## Decision
 
-**NO-GO for deployment; PASS for local CI/CD implementation.** Billing is enabled and Firebase Hosting exists, but budget evidence, protected GitHub environments, branch protection, required APIs, WIF, deployment/runtime identities, Artifact Registry and a private Cloud Run service are missing. No live workflow has run.
+**NO-GO for deployment; PASS for cloud bootstrap.** Required APIs, keyless WIF, separate runtime/deployment identities and the empty Docker repository are verified. Deployment remains blocked by missing protected GitHub environments, budget attestation and a successful hosted CI run for the exact corrected SHA. No Cloud Run service or Hosting release exists.
 
 ## Trust boundaries
 
@@ -44,9 +44,9 @@ Do not log bearer tokens, Firebase claims, raw event payloads, wallet histories 
 
 1. Rotate local Firebase CLI credentials.
 2. Create and verify the budget/alerts and separately assess spend-cap availability.
-3. Run and review the guarded bootstrap.
-4. Configure protected GitHub environments/reviewers and `main` protection.
-5. Run CI on the committed SHA and inspect every job.
+3. Configure protected GitHub environments/reviewers and `main` protection.
+4. Commit and push the Node/bootstrap corrections, then require successful CI for that exact SHA.
+5. Inspect every hosted CI job and retain its run URL as evidence.
 6. Deploy the private pilot only; record image digest, revision and URL.
 7. Complete two-token operator testing for protected routes and inspect logs.
 8. Publish an expiring Hosting preview; verify sign-in domain, SPA refreshes and accurate API restriction.
