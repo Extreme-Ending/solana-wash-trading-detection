@@ -193,3 +193,27 @@ def test_bootstrap_is_plan_only_by_default_and_has_no_key_or_public_access_path(
     display_name = re.search(r'^PROVIDER_DISPLAY_NAME="([^"]+)"$', script, re.MULTILINE)
     assert display_name is not None
     assert len(display_name.group(1)) <= 32
+
+
+def test_private_pilot_operator_script_is_guarded_and_private() -> None:
+    script = (ROOT / "scripts" / "run_private_pilot.sh").read_text(encoding="utf-8")
+    assert script.startswith("#!/usr/bin/env bash\nset -euo pipefail\n")
+    assert '[[ "$EXECUTE" == "--execute"' in script
+    assert "FULL_GIT_SHA must equal local HEAD" in script
+    assert "no successful completed CI run exists for the exact SHA" in script
+    assert "confirmation=PRIVATE-PILOT" in script
+    assert "gh run watch" in script
+    assert "allUsers" in script and "allAuthenticatedUsers" in script
+    assert "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING" in script
+    assert "--allow-unauthenticated" not in script
+    assert "--no-invoker-iam-check" not in script
+    for forbidden in (
+        "git add",
+        "git commit",
+        "git push",
+        "git reset",
+        "git rebase",
+        "git checkout",
+        "git switch",
+    ):
+        assert forbidden not in script

@@ -12,6 +12,14 @@ Phase 12 defines three independent workflows. None commits source, changes Git h
 
 Each deployment requires the full 40-character SHA, an exact confirmation phrase, and a successful completed `CI` run for the same SHA. Deployment jobs use concurrency groups and do not cancel an in-progress release. Third-party actions are pinned to immutable reviewed commits. Checkout never persists a repository credential.
 
+The student can launch and monitor the private pilot from the repository root with the guarded operator script:
+
+```bash
+./scripts/run_private_pilot.sh FULL_GIT_SHA --execute
+```
+
+The script requires a clean `main` checkout matching the locally known `origin/main`, rechecks exact-SHA CI, asks for a SHA-specific confirmation, enables only the required IAM API if absent, dispatches the existing workflow and verifies the resulting service remains private with experimental scoring disabled. Codex must not execute this script; it is reserved for the student-operated deployment checkpoint.
+
 ## CI coverage
 
 The unprivileged workflow uses Python 3.11 and Node 22.22.2, matching `pyproject.toml`, `frontend/package.json` and the highest minimum required by the locked frontend dependencies. It runs:
