@@ -145,7 +145,7 @@ printf 'Phase 12 bootstrap %s\nProject: %s (%s)\nRepository: %s\n' \
   "$MODE" "$PROJECT_ID" "$PROJECT_NUMBER" "$GITHUB_REPOSITORY"
 
 run_or_print gcloud services enable \
-  artifactregistry.googleapis.com firebasehosting.googleapis.com \
+  artifactregistry.googleapis.com cloudbilling.googleapis.com firebasehosting.googleapis.com \
   iamcredentials.googleapis.com run.googleapis.com sts.googleapis.com \
   --project "$PROJECT_ID" --quiet
 

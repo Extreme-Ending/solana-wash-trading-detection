@@ -174,6 +174,11 @@ def test_bootstrap_is_plan_only_by_default_and_has_no_key_or_public_access_path(
     assert "roles/run.invoker" not in script
     assert "roles/serviceusage.apiKeysViewer" in script
     assert "roles/apikeys.viewer" not in script
+    assert "cloudbilling.googleapis.com" in script
+    cloud_workflow = (ROOT / ".github" / "workflows" / "deploy-cloud-run.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "cloudbilling.googleapis.com" in cloud_workflow
     assert '[[ -z "$disabled" || "${disabled,,}" == "false" ]]' in script
     assert (
         'GITHUB_SUBJECT_PREFIX="repo:Extreme-Ending@296935112/'

@@ -22,7 +22,9 @@ No resource above was created or changed during the initial discovery.
 
 ## Post-bootstrap verification
 
-On 2026-11-18 the guarded bootstrap completed. Cloud Run, Artifact Registry, IAM Credentials, STS and Firebase Hosting APIs are enabled. The empty `solana-wallet-risk` Docker repository, three enabled user-managed service accounts, active `github-actions/github` provider, repository/main condition, exact environment-subject impersonation grants and intended project/repository roles were verified. All three accounts have zero user-managed keys. No Cloud Run service, container digest or Hosting release was created.
+On 2026-11-18 the guarded bootstrap completed. Cloud Run, Artifact Registry, IAM Credentials, STS and Firebase Hosting APIs are enabled. The immutable-subject WIF correction was subsequently applied and verified. The empty `solana-wallet-risk` Docker repository, three enabled user-managed service accounts, active `github-actions/github` provider, repository/main condition, exact environment-subject impersonation grants and intended project/repository roles were verified. All three accounts have zero user-managed keys. No Cloud Run service, container digest or Hosting release was created.
+
+The second private-pilot attempt established that `cloudbilling.googleapis.com` must also be enabled so the deployer can confirm that billing remains attached before building an image. `roles/run.developer` already contains the API's required `resourcemanager.projects.get` permission; no billing mutation role is required or granted. The reviewed bootstrap now enables the API explicitly.
 
 ## Bootstrap order
 
