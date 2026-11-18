@@ -118,13 +118,14 @@ def app() -> Any:
 
 
 def test_health_is_independent_of_prediction_readiness(app: Any) -> None:
-    response = _request(app, "GET", "/healthz")
-    assert response.status_code == 200
-    assert response.json() == {
-        "status": "ok",
-        "service": "Solana Wallet Feature Service",
-        "version": "0.1.0",
-    }
+    for path in ("/healthz", "/v1/health"):
+        response = _request(app, "GET", path)
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "ok",
+            "service": "Solana Wallet Feature Service",
+            "version": "0.1.0",
+        }
 
 
 def test_readiness_returns_structured_model_not_approved(app: Any) -> None:
@@ -430,6 +431,7 @@ def test_openapi_documents_health_features_and_unavailable_scoring(app: Any) -> 
     schema = response.json()
     assert {
         "/healthz",
+        "/v1/health",
         "/readyz",
         "/v1/features/preview",
         "/v1/score",

@@ -110,7 +110,9 @@ def main() -> None:
         parser.error("the selected mode requires non-empty short-lived tokens")
 
     payload = _payload()
-    health_status, health = _request(base_url, cloud_run_token, firebase_token, "GET", "/healthz")
+    health_status, health = _request(
+        base_url, cloud_run_token, firebase_token, "GET", "/v1/health"
+    )
     ready_status, ready = _request(base_url, cloud_run_token, firebase_token, "GET", "/readyz")
     preview_status, preview = _request(base_url, cloud_run_token, firebase_token, "POST", "/v1/features/preview", payload)
     score_status, score = _request(base_url, cloud_run_token, firebase_token, "POST", "/v1/score", payload)

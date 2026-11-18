@@ -11,18 +11,20 @@ usage() {
 Usage: ./scripts/deploy_full_stack.sh FULL_GIT_SHA preview|live --execute
 
 Deploy one reviewed, pushed main-branch commit to both application tiers:
-  1. build, smoke-test, publish, and deploy the private Cloud Run backend;
-  2. build and publish the same commit through the guarded Firebase workflow.
+  1. build, smoke-test, publish, and deploy the Cloud Run backend;
+  2. require explicit confirmation before enabling browser reachability;
+  3. build and publish the same commit through the guarded Firebase workflow.
 
 Backend configuration is loaded by deploy_private_local.sh from the ignored
 root .env by default. Public frontend build configuration is read from the
 selected GitHub environment (hosting-preview or production), with repository
 variables used as a fallback.
 
-This script does not write to Git, change IAM, make Cloud Run public, bypass
-CI, enable experimental scoring, or weaken Firebase/UID authorization. Because
-Cloud Run remains IAM-private, a Firebase-hosted browser cannot call the API
-until a separate access-architecture change is explicitly reviewed and approved.
+This script does not write to Git, add public IAM principals, bypass CI, enable
+experimental scoring, or weaken Firebase/UID authorization. It disables the
+Cloud Run Invoker IAM check only after a separate exact confirmation so that a
+Firebase-hosted browser can reach FastAPI. Protected endpoints still require a
+valid Firebase token and an approved UID.
 EOF
 }
 
@@ -153,24 +155,47 @@ python3 "$ROOT_DIR/scripts/validate_release_config.py" --mode "firebase-${RELEAS
 printf 'Full-stack deployment plan\n'
 printf '  Repository:  %s\n' "$REPOSITORY"
 printf '  Revision:    %s\n' "$REVISION"
-printf '  Backend:     private Cloud Run\n'
+printf '  Backend:     browser-reachable Cloud Run with FastAPI Firebase authorization\n'
 printf '  Frontend:    Firebase Hosting (%s)\n' "$RELEASE"
 printf '  Environment: %s\n' "$GITHUB_ENVIRONMENT"
 printf '  Site:        https://%s.web.app\n' "$FIREBASE_HOSTING_SITE"
 printf '  Scoring:     experimental model disabled\n'
-printf '  Browser API: blocked while Cloud Run remains IAM-private\n\n'
+printf '  Browser API: public platform reachability; protected routes remain authenticated\n\n'
 
-printf '[1/3] Starting the guarded private backend deployment.\n'
+printf '[1/4] Starting the guarded backend deployment.\n'
 printf 'The backend script will request its own exact confirmation.\n\n'
 DEPLOY_ENV_FILE="$ENV_FILE" "$ROOT_DIR/scripts/deploy_private_local.sh" "$REVISION" --execute
 
-service_url="$(gcloud run services describe solana-wallet-risk-api \
-  --project "$GCP_PROJECT_ID" --region africa-south1 --format='value(status.url)')"
+printf '\n[2/4] Browser reachability is a separate security and cost mutation.\n'
+printf 'Type PUBLIC-PLATFORM/%s to disable the Cloud Run Invoker IAM check: ' "$REVISION"
+read -r public_confirmation
+[[ "$public_confirmation" == "PUBLIC-PLATFORM/${REVISION}" ]] || \
+  fail "public-platform confirmation did not match; the backend remains IAM-private."
+
+gcloud run services update solana-wallet-risk-api \
+  --project "$GCP_PROJECT_ID" \
+  --region africa-south1 \
+  --no-invoker-iam-check \
+  --quiet
+
+service_json="$(gcloud run services describe solana-wallet-risk-api \
+  --project "$GCP_PROJECT_ID" --region africa-south1 --format=json)"
+service_url="$(jq -r '.status.url // empty' <<< "$service_json")"
+invoker_iam_disabled="$(jq -r '.metadata.annotations["run.googleapis.com/invoker-iam-disabled"] // "false"' \
+  <<< "$service_json")"
 [[ "$service_url" == https://*.run.app ]] || fail "deployed Cloud Run service URL is unavailable."
+[[ "$invoker_iam_disabled" == "true" ]] || fail "Cloud Run Invoker IAM check is still enabled."
 [[ "${VITE_API_BASE_URL%/}" == "${service_url%/}" ]] || \
   fail "GitHub VITE_API_BASE_URL does not match the deployed Cloud Run service URL. Update the variable before publishing Hosting."
+curl --fail --silent --show-error --max-time 30 "${service_url}/v1/health" \
+  | jq -e '.status == "ok"' >/dev/null
+protected_status="$(curl --silent --show-error --max-time 30 --output /dev/null \
+  --write-out '%{http_code}' --request POST --header 'Content-Type: application/json' \
+  --data '{}' "${service_url}/v1/features/preview")"
+[[ "$protected_status" == "401" ]] || \
+  fail "an unauthenticated protected request returned HTTP ${protected_status}, expected 401."
 
-printf '\n[2/3] Backend verified. Firebase Hosting is the next live mutation.\n'
+printf '\n[3/4] Backend reachability and application authentication verified. Firebase Hosting is next.\n'
 printf 'Type FULL-STACK-%s/%s to publish Hosting: ' "${RELEASE^^}" "$REVISION"
 read -r hosting_confirmation
 [[ "$hosting_confirmation" == "FULL-STACK-${RELEASE^^}/${REVISION}" ]] || \
@@ -197,10 +222,10 @@ printf 'Monitoring Firebase workflow: %s\n' "$run_url"
 if ! gh run watch "$run_id" --repo "$REPOSITORY" --exit-status; then
   printf '\nFirebase deployment failed. Failed-step log follows.\n' >&2
   gh run view "$run_id" --repo "$REPOSITORY" --log-failed >&2 || true
-  fail "Firebase workflow failed; the private backend remains deployed."
+  fail "Firebase workflow failed; the browser-reachable backend remains deployed."
 fi
 
-printf '\n[3/3] Verifying deployment outcome...\n'
+printf '\n[4/4] Verifying deployment outcome...\n'
 hosting_url="https://${FIREBASE_HOSTING_SITE}.web.app"
 if [[ "$RELEASE" == "live" ]]; then
   http_status="$(curl --silent --show-error --location --output /dev/null \
@@ -214,8 +239,8 @@ fi
 
 printf '\nFull-stack deployment completed for the same reviewed Git SHA.\n'
 printf '  Revision: %s\n' "$REVISION"
-printf '  Backend:  %s (IAM-private)\n' "$service_url"
+printf '  Backend:  %s (platform-public; protected routes require Firebase)\n' "$service_url"
 printf '  Frontend: %s\n' "$hosting_url"
 printf '  Workflow: %s\n' "$run_url"
 printf '  Scoring:  experimental model disabled\n'
-printf '  Warning:  the hosted browser cannot invoke the IAM-private backend.\n'
+printf '  Warning:  public traffic can reach the container and incur usage costs.\n'

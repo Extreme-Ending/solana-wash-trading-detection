@@ -161,7 +161,8 @@ describe("API client", () => {
     vi.stubGlobal("fetch", fetchMock);
     await new ApiClient("/api", tokenProvider).health();
     expect(tokenProvider).not.toHaveBeenCalled();
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/health");
     expect(new Headers(init.headers).has("Authorization")).toBe(false);
   });
 });

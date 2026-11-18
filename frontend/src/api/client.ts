@@ -366,7 +366,7 @@ export class ApiClient {
   }
 
   async health(signal?: AbortSignal): Promise<HealthResponse> {
-    const response = await this.request("/healthz", { signal });
+    const response = await this.request("/v1/health", { signal });
     const payload = await readJson(response);
     if (!response.ok) throw toApiError(response.status, payload);
     if (

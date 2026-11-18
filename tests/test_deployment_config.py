@@ -302,6 +302,7 @@ def test_future_public_smoke_is_separate_and_never_changes_iam() -> None:
     assert "smoke-public-candidate" in deployment
     assert "--firebase-token-stdin" in deployment
     assert "--firebase-token-stdin" in smoke
+    assert '"/v1/health"' in smoke
     assert "mutually_exclusive_group(required=True)" in smoke
     assert all(fragment not in deployment for fragment in (
         "--no-invoker-iam-check",

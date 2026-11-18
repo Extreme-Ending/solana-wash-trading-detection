@@ -16,6 +16,12 @@ router = APIRouter(tags=["service status"])
     summary="Process health",
     description="Reports that the API process is running; it makes no model-readiness claim.",
 )
+@router.get(
+    "/v1/health",
+    response_model=HealthResponse,
+    summary="Application health",
+    description="Hosted-browser health alias; it makes no model-readiness claim.",
+)
 async def healthz(request: Request) -> HealthResponse:
     settings = request.app.state.settings
     return HealthResponse(status="ok", service=settings.service_name, version=settings.api_version)

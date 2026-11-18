@@ -264,7 +264,7 @@ def test_local_private_deployment_is_guarded_digest_pinned_and_defers_http() -> 
         assert forbidden not in script
 
 
-def test_full_stack_deployment_orchestrates_private_backend_and_firebase() -> None:
+def test_full_stack_deployment_preserves_app_auth_with_public_platform_access() -> None:
     script = (ROOT / "scripts" / "deploy_full_stack.sh").read_text(encoding="utf-8")
     assert script.startswith("#!/usr/bin/env bash\nset -euo pipefail\n")
     assert '[[ "$EXECUTE" == "--execute"' in script
@@ -278,9 +278,10 @@ def test_full_stack_deployment_orchestrates_private_backend_and_firebase() -> No
     assert "HOSTING-PREVIEW" in script and "HOSTING-LIVE" in script
     assert "gh run watch" in script
     assert "VITE_API_BASE_URL does not match" in script
-    assert "Cloud Run remains IAM-private" in script
+    assert "PUBLIC-PLATFORM/${REVISION}" in script
+    assert "an unauthenticated protected request returned HTTP" in script
     assert "--allow-unauthenticated" not in script
-    assert "--no-invoker-iam-check" not in script
+    assert "--no-invoker-iam-check" in script
     assert "allUsers" not in script
     for forbidden in (
         "git add",
