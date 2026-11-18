@@ -115,10 +115,12 @@ jobs:
           gcloud artifacts repositories describe "$ARTIFACT_REGISTRY_REPOSITORY" \
             --project "$GCP_PROJECT_ID" --location "$GCP_REGION" \
             --format='value(format)' | grep -Fxq DOCKER
-          gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" \
-            --project "$GCP_PROJECT_ID" --format='value(disabled)' | grep -Fxq False
-          gcloud iam service-accounts describe "$GCP_DEPLOY_SERVICE_ACCOUNT" \
-            --project "$GCP_PROJECT_ID" --format='value(disabled)' | grep -Fxq False
+          runtime_disabled="$(gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" \
+            --project "$GCP_PROJECT_ID" --format='value(disabled)')"
+          deploy_disabled="$(gcloud iam service-accounts describe "$GCP_DEPLOY_SERVICE_ACCOUNT" \
+            --project "$GCP_PROJECT_ID" --format='value(disabled)')"
+          [[ -z "$runtime_disabled" || "${runtime_disabled,,}" == "false" ]]
+          [[ -z "$deploy_disabled" || "${deploy_disabled,,}" == "false" ]]
       - name: Build and smoke-test the production image
         env:
           DEPLOY_REVISION: ${{ inputs.revision }}

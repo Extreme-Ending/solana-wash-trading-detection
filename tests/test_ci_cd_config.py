@@ -92,6 +92,15 @@ def test_workflows_use_the_node_version_required_by_locked_dependencies() -> Non
         assert "node-version: 22.22.2" in text
 
 
+def test_cloud_workflow_accepts_omitted_false_for_enabled_service_accounts() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "deploy-cloud-run.yml").read_text(
+        encoding="utf-8"
+    )
+    assert '[[ -z "$runtime_disabled" || "${runtime_disabled,,}" == "false" ]]' in workflow
+    assert '[[ -z "$deploy_disabled" || "${deploy_disabled,,}" == "false" ]]' in workflow
+    assert "--format='value(disabled)' | grep -Fxq False" not in workflow
+
+
 def test_release_contract_accepts_only_the_reviewed_targets() -> None:
     validator = _load("validate_release_config.py")
     validator.validate_cloud_run(_cloud())
