@@ -365,3 +365,13 @@ This log records decisions that constrain later implementation. It does not clai
 - **Contract boundary:** Detect wallet count from validated input; do not introduce a single/batch mode selector. Preserve the 20-wallet, 100-total-event, 50-event-per-wallet and 256 KiB limits. A review-capacity change must resubmit the original histories and use the new server response rather than changing selections in the browser.
 - **Data boundary:** Require supplied DEX event history. Do not imply live address lookup, balances, holdings, verified fraud labels or automatic wallet flags. Synthetic histories remain opt-in and explicitly labelled demonstration data.
 - **Security/runtime boundary:** Preserve Google sign-in, Firebase ID-token requests, server UID allowlisting, exact response validation and production `MODEL_NOT_APPROVED`. Store the latest request/result only in React memory. Make no backend model, cloud, IAM, billing, deployment or Git change.
+
+## D044 — Add manual, keyless and fail-closed CI/CD boundaries
+
+- **Date:** 2026-11-18
+- **Status:** accepted for Phase 12 implementation; live deployment remains NO-GO
+- **Decision:** Add unprivileged pull-request/push CI plus separately dispatched private Cloud Run and Firebase Hosting workflows. Require a full `main` SHA, successful matching CI, exact confirmation and named GitHub environment before WIF credentials are issued. Never deploy on every push.
+- **Identity boundary:** Trust only `Extreme-Ending/solana-wash-trading-detection` on `refs/heads/main`, with exact environment OIDC subjects. Separate Cloud Run deployer, Hosting deployer and runtime identities. Use ADC/WIF only; create no service-account key or Firebase refresh token.
+- **Artifact/runtime boundary:** Tag the image with the full Git SHA, resolve the registry digest and deploy by digest. Preserve private invocation, request-based min 0/max 2 resources and explicit production experimental-scoring disablement. Hosting publishes only the scanned static bundle.
+- **Architecture boundary:** Hosting preview/live does not make the IAM-private API browser-callable. A BFF/proxy or separate approval of public invocation remains a later security decision; Phase 12 provides neither.
+- **Observed gate:** Billing is now enabled and the Firebase site exists, but budget evidence, required APIs, identities, WIF, Artifact Registry, Cloud Run, protected GitHub environments and branch protection are absent. No deployment or Git write occurred.

@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Python tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install the tested Python dependencies
+        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+      - name: Run the complete Python suite
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend tests and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      VITE_API_BASE_URL: https://api.example.invalid
+      VITE_FIREBASE_API_KEY: AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      VITE_FIREBASE_AUTH_DOMAIN: solana-wallet-risk-ci.firebaseapp.com
+      VITE_FIREBASE_PROJECT_ID: solana-wallet-risk-ci
+      VITE_FIREBASE_APP_ID: 1:000000000000:web:0000000000000000000000
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.12.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --run
+      - name: Validate TypeScript
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Build the production bundle
+        working-directory: frontend
+        run: npm run build
+      - name: Inspect the bundle for private content
+        run: python3 scripts/validate_deployment_bundle.py frontend/dist
+
+  container:
+    name: Production container smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build and exercise the production image
+        run: >-
+          python3 scripts/container_smoke_test.py
+          --image "solana-wallet-risk-api:ci-${GITHUB_SHA}"
+          --host-port 18082
+          --custom-host-port 18083
+
+  workflow-security:
+    name: Workflow and shell security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out full history for whitespace validation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check changed lines for whitespace errors
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --check "${BASE_SHA}...${HEAD_SHA}"
+          else
+            git show --check --oneline --no-renames "${HEAD_SHA}"
+          fi
+      - name: Validate Bash syntax and lint shell scripts
+        run: |
+          set -euo pipefail
+          bash -n commit.sh scripts/*.sh
+          # commit.sh intentionally keeps overlapping credential filename guards.
+          docker run --rm --volume "$PWD:/mnt:ro" --workdir /mnt \
+            koalaman/shellcheck:v0.10.0@sha256:2097951f02e735b613f4a34de20c40f937a6c8f18ecb170612c88c34517221fb \
+            --exclude=SC2221,SC2222 commit.sh scripts/*.sh
+      - name: Validate workflow security contracts
+        run: python3 scripts/validate_workflows.py
+      - name: Validate GitHub Actions syntax
+        run: >-
+          docker run --rm --volume "$PWD:/repo:ro" --workdir /repo
+          rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9
+          -color

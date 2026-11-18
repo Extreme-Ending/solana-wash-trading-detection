@@ -80,3 +80,7 @@ Before any separately authorized mutation:
 8. require a separate architecture, cost and data-use decision before BFF/Hosting publication.
 
 No item above is claimed complete from local tests.
+
+## Phase 12 CI/CD boundary
+
+Phase 12 automates validation and prepares manual keyless deployment, but does not alter the access architecture. CI has no cloud credential. Cloud Run and Hosting deployments require exact-SHA successful CI, named GitHub environments and WIF-bound service accounts. The first API pilot remains IAM-private and production scoring remains disabled. Hosting preview/live is a separate permission boundary and cannot be described as end-to-end analysis while the browser cannot satisfy Cloud Run IAM. See [`github_actions_deployment.md`](github_actions_deployment.md) and [`deployment_security_review.md`](deployment_security_review.md).

@@ -37,7 +37,7 @@ Repository preparation is locally testable and non-destructive. A live deploymen
 - [ ] Build and inspect the commit-SHA image locally.
 - [ ] Confirm image contents: non-root, no datasets/artifacts/private files, no model libraries.
 - [ ] Tag and push only that exact SHA image.
-- [ ] Deploy Cloud Run privately with the Phase 11 limit of min 0/max 1 and the reviewed runtime identity.
+- [ ] Deploy Cloud Run privately with the Phase 12 limit of min 0/max 2 and the reviewed runtime identity.
 - [ ] Verify the deployed service with separate short-lived Cloud Run and approved-user Firebase tokens plus synthetic request only.
 - [ ] Build the frontend using the exact HTTPS Cloud Run origin and rescan `frontend/dist`.
 - [ ] Deploy Hosting only after checking the selected project/site.

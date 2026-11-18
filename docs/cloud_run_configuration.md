@@ -19,7 +19,7 @@ The SHA is read with `git rev-parse --verify HEAD`; the deployment helper perfor
 | Region | `africa-south1` | Cloud Run and Artifact Registry support, regional proximity to Nairobi, current Tier 1 pricing |
 | Billing mode | request-based (`--cpu-throttling`) | CPU is allocated for request handling rather than instance-based idle work |
 | Minimum instances | `0` | scale to zero during academic inactivity |
-| Maximum instances | `1` | Phase 11 pilot limit; bounds accidental fan-out and cost but is not a hard spending cap |
+| Maximum instances | `2` | Phase 12 private-pilot limit; bounds accidental fan-out and cost but is not a hard spending cap |
 | CPU / memory | `1` / `512Mi` | conservative initial API allocation, to be adjusted only from observed evidence |
 | Concurrency | `20` | modest bounded concurrency for a CPU/dataframe endpoint |
 | Timeout | `30s` | bounds individual requests |
@@ -90,7 +90,7 @@ The local file is Git-ignored and must not contain credentials; it holds identif
 ./scripts/deployment.sh deploy-cloud-run --execute
 ```
 
-Each action prints the target and effect, and requires the exact interactive phrase `PROJECT_ID/africa-south1/ACTION`. The deployment uses `--no-allow-unauthenticated`, request-based billing, min 0/max 1, the controlled identity and the actual Hosting site's matching `web.app`/`firebaseapp.com` CORS origins. It sets existing request/event limits, the matching Firebase project and the approved UID allowlist explicitly and does not load or promote a model.
+Each action prints the target and effect, and requires the exact interactive phrase `PROJECT_ID/africa-south1/ACTION`. The deployment uses `--no-allow-unauthenticated`, request-based billing, min 0/max 2, the controlled identity and the actual Hosting site's matching `web.app`/`firebaseapp.com` CORS origins. It sets existing request/event limits, the matching Firebase project and the approved UID allowlist explicitly and does not load or promote a model.
 
 ## Authenticated verification and rollback
 

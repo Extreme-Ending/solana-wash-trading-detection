@@ -85,7 +85,7 @@ def test_cloud_defaults_are_private_bounded_and_exact_origin_only() -> None:
             key, value = line.split("=", maxsplit=1)
             values[key] = value
     assert values["REGION"] == "africa-south1"
-    assert values["MAX_INSTANCES"] == "1"
+    assert values["MAX_INSTANCES"] == "2"
     assert values["CPU"] == "1"
     assert values["MEMORY"] == "512Mi"
     assert values["CONCURRENCY"] == "20"
@@ -251,22 +251,29 @@ def test_deployment_files_are_excluded_from_api_image_context() -> None:
     assert "COPY ." not in dockerfile
 
 
-def test_firebase_sdk_has_no_telemetry_or_automatic_cloud_publish() -> None:
+def test_firebase_sdk_has_no_telemetry_and_deployments_are_manual_only() -> None:
     package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
     assert set(package["dependencies"]) == {"firebase", "react", "react-dom"}
     dependency_names = set(package["dependencies"]) | set(package["devDependencies"])
     assert dependency_names.isdisjoint({"@sentry/react", "@vercel/analytics", "posthog-js"})
 
     workflows = ROOT / ".github" / "workflows"
-    if workflows.is_dir():
-        text = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in workflows.rglob("*")
-            if path.is_file()
-        ).casefold()
-        assert "firebase deploy" not in text
-        assert "gcloud run deploy" not in text
-        assert "docker push" not in text
+    deployment_files = (
+        workflows / "deploy-cloud-run.yml",
+        workflows / "deploy-firebase.yml",
+    )
+    for path in deployment_files:
+        text = path.read_text(encoding="utf-8")
+        trigger_block = text.split("permissions:", maxsplit=1)[0]
+        assert "workflow_dispatch:" in trigger_block
+        assert "push:" not in trigger_block
+        assert "pull_request:" not in trigger_block
+        assert "Require a successful CI run for the exact SHA" in text
+        assert "environment:" in text
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in deployment_files)
+    assert "--allow-unauthenticated" not in combined
+    assert "--no-invoker-iam-check" not in combined
+    assert "allUsers" not in combined
 
 
 def test_required_deployment_runbooks_exist_and_do_not_claim_a_live_deployment() -> None:
