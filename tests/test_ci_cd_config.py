@@ -175,6 +175,13 @@ def test_bootstrap_is_plan_only_by_default_and_has_no_key_or_public_access_path(
     assert "roles/serviceusage.apiKeysViewer" in script
     assert "roles/apikeys.viewer" not in script
     assert '[[ -z "$disabled" || "${disabled,,}" == "false" ]]' in script
+    assert (
+        'GITHUB_SUBJECT_PREFIX="repo:Extreme-Ending@296935112/'
+        'solana-wash-trading-detection@1452262108"' in script
+    )
+    assert "subject/${GITHUB_SUBJECT_PREFIX}:environment:" in script
+    assert "principalSet://" not in script
+    assert "remove_service_account_binding_if_present" in script
     assert "Editor" not in script and "Owner" not in script
     display_name = re.search(r'^PROVIDER_DISPLAY_NAME="([^"]+)"$', script, re.MULTILINE)
     assert display_name is not None

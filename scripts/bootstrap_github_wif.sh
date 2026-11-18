@@ -7,6 +7,9 @@ PROJECT_ID="solana-wallet-risk"
 PROJECT_NUMBER="441056127470"
 REGION="africa-south1"
 GITHUB_REPOSITORY="Extreme-Ending/solana-wash-trading-detection"
+# GitHub has immutable OIDC subjects enabled for this repository. The account
+# and repository numeric IDs keep this trust stable across future renames.
+GITHUB_SUBJECT_PREFIX="repo:Extreme-Ending@296935112/solana-wash-trading-detection@1452262108"
 POOL_ID="github-actions"
 PROVIDER_ID="github"
 PROVIDER_DISPLAY_NAME="GitHub main deployments"
@@ -74,6 +77,27 @@ project_binding() {
 service_account_binding() {
   run_or_print gcloud iam service-accounts add-iam-policy-binding "$1" \
     --project "$PROJECT_ID" --member "$2" --role "$3" --condition=None --quiet
+}
+
+remove_service_account_binding_if_present() {
+  local service_account="$1" member="$2" role="$3"
+  if [[ "$MODE" == "plan" ]]; then
+    run_or_print gcloud iam service-accounts remove-iam-policy-binding "$service_account" \
+      --project "$PROJECT_ID" --member "$member" --role "$role" --condition=None --quiet
+    return
+  fi
+
+  local policy_json
+  policy_json="$(gcloud iam service-accounts get-iam-policy "$service_account" \
+    --project "$PROJECT_ID" --format=json)"
+  if jq -e --arg member "$member" --arg role "$role" \
+    '.bindings[]? | select(.role == $role) | .members[]? | select(. == $member)' \
+    <<<"$policy_json" >/dev/null; then
+    gcloud iam service-accounts remove-iam-policy-binding "$service_account" \
+      --project "$PROJECT_ID" --member "$member" --role "$role" --condition=None --quiet
+  else
+    printf 'Legacy WIF binding already absent: %s\n' "$service_account"
+  fi
 }
 
 if [[ "$MODE" == "help" || "$MODE" == "-h" || "$MODE" == "--help" ]]; then
@@ -199,13 +223,24 @@ run_or_print gcloud artifacts repositories add-iam-policy-binding "$ARTIFACT_REP
   --role roles/artifactregistry.writer --condition=None --quiet
 service_account_binding "$runtime_email" "$run_deployer" roles/iam.serviceAccountUser
 
-principal_prefix="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/subject/repo:${GITHUB_REPOSITORY}:environment:"
+principal_prefix="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/subject/${GITHUB_SUBJECT_PREFIX}:environment:"
 service_account_binding "$(service_account_email "$RUN_DEPLOY_ACCOUNT")" \
   "${principal_prefix}private-pilot" roles/iam.workloadIdentityUser
 service_account_binding "$(service_account_email "$HOSTING_DEPLOY_ACCOUNT")" \
   "${principal_prefix}hosting-preview" roles/iam.workloadIdentityUser
 service_account_binding "$(service_account_email "$HOSTING_DEPLOY_ACCOUNT")" \
   "${principal_prefix}production" roles/iam.workloadIdentityUser
+
+# Remove the name-only subjects used before immutable GitHub OIDC subjects were
+# discovered. They cannot authenticate this repository and should not remain as
+# misleading trust entries after the corrected bindings are installed.
+legacy_principal_prefix="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/subject/repo:${GITHUB_REPOSITORY}:environment:"
+remove_service_account_binding_if_present "$(service_account_email "$RUN_DEPLOY_ACCOUNT")" \
+  "${legacy_principal_prefix}private-pilot" roles/iam.workloadIdentityUser
+remove_service_account_binding_if_present "$(service_account_email "$HOSTING_DEPLOY_ACCOUNT")" \
+  "${legacy_principal_prefix}hosting-preview" roles/iam.workloadIdentityUser
+remove_service_account_binding_if_present "$(service_account_email "$HOSTING_DEPLOY_ACCOUNT")" \
+  "${legacy_principal_prefix}production" roles/iam.workloadIdentityUser
 
 printf '\nNo service-account key is created. No Cloud Run or Firebase deployment is performed.\n'
 printf 'Create and verify the USD 10 budget separately before setting COST_CONTROL_ATTESTATION.\n'

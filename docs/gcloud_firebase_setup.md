@@ -66,13 +66,20 @@ assertion.repository == 'Extreme-Ending/solana-wash-trading-detection'
 assertion.ref == 'refs/heads/main'
 ```
 
-Service-account impersonation uses exact OIDC subjects, not organization-wide trust:
+GitHub immutable OIDC subjects are enabled for this repository. The verified
+subject prefix includes the account and repository numeric IDs, so trust does
+not silently follow a rename. Service-account impersonation uses these exact
+subjects, not organization-wide trust:
 
 ```text
-repo:Extreme-Ending/solana-wash-trading-detection:environment:private-pilot
-repo:Extreme-Ending/solana-wash-trading-detection:environment:hosting-preview
-repo:Extreme-Ending/solana-wash-trading-detection:environment:production
+repo:Extreme-Ending@296935112/solana-wash-trading-detection@1452262108:environment:private-pilot
+repo:Extreme-Ending@296935112/solana-wash-trading-detection@1452262108:environment:hosting-preview
+repo:Extreme-Ending@296935112/solana-wash-trading-detection@1452262108:environment:production
 ```
+
+The bootstrap removes the obsolete name-only bindings after adding the
+immutable-subject bindings. It does not replace them with repository-wide or
+organization-wide impersonation.
 
 ## GitHub environment configuration
 
