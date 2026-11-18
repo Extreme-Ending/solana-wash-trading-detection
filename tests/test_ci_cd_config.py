@@ -262,3 +262,33 @@ def test_local_private_deployment_is_guarded_digest_pinned_and_defers_http() -> 
         "git switch",
     ):
         assert forbidden not in script
+
+
+def test_full_stack_deployment_orchestrates_private_backend_and_firebase() -> None:
+    script = (ROOT / "scripts" / "deploy_full_stack.sh").read_text(encoding="utf-8")
+    assert script.startswith("#!/usr/bin/env bash\nset -euo pipefail\n")
+    assert '[[ "$EXECUTE" == "--execute"' in script
+    assert "FULL_GIT_SHA must equal local HEAD" in script
+    assert "no successful completed CI run exists for the exact SHA" in script
+    assert 'ENV_FILE="${DEPLOY_ENV_FILE:-${ROOT_DIR}/.env}"' in script
+    assert "check-ignore" in script
+    assert '"$ROOT_DIR/scripts/deploy_private_local.sh" "$REVISION" --execute' in script
+    assert 'python3 "$ROOT_DIR/scripts/validate_release_config.py"' in script
+    assert 'gh workflow run "$FIREBASE_WORKFLOW"' in script
+    assert "HOSTING-PREVIEW" in script and "HOSTING-LIVE" in script
+    assert "gh run watch" in script
+    assert "VITE_API_BASE_URL does not match" in script
+    assert "Cloud Run remains IAM-private" in script
+    assert "--allow-unauthenticated" not in script
+    assert "--no-invoker-iam-check" not in script
+    assert "allUsers" not in script
+    for forbidden in (
+        "git add",
+        "git commit",
+        "git push",
+        "git reset",
+        "git rebase",
+        "git checkout",
+        "git switch",
+    ):
+        assert forbidden not in script
