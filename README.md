@@ -1,45 +1,182 @@
-# Detecting Coordinated Wash Trading on Solana
+# Solana Wallet Risk
 
-This repository supports the DSA 8401 Applied Machine Learning capstone **“Detecting Coordinated Wash Trading on Solana: A Reproducible Wallet-Risk Scoring Service.”** The intended modelling unit is `(wallet, as_of)`: any future feature must use only events with `block_time < as_of`.
+_Unsupervised Wallet Anomaly Detection on Solana_
 
-Phase 7B added Google sign-in with Firebase Authentication and verifies Firebase ID tokens in FastAPI before descriptive preview or scoring requests. The backend also requires a verified Google email and an explicit Firebase UID allowlist. Health and readiness remain public. That milestone kept authorized scoring at `MODEL_NOT_APPROVED`; Phase 8A's later local-only exception is described below. Deployment remains preparation only: no cloud or Firebase resource, public invocation, or IAM policy was created or changed.
+Solana Wallet Risk analyzes user-supplied Solana decentralized exchange swap histories. It builds point-in-time wallet features, applies an unsupervised Isolation Forest, and returns non-probabilistic anomaly scores, ranked review candidates, and descriptive comparisons. Results identify statistically unusual activity and do not establish fraud.
 
-Phase 7C.0 hardens that boundary locally: production disables API documentation/schema routes, revocation checks are mandatory, protected authentication occurs before body parsing, and approved UIDs receive a per-instance 30-request/60-second limit. The reviewed future static-browser architecture requires platform-public Cloud Run plus application-layer Firebase authorization, but public invocation is **not enabled** and the deployment verdict remains **NO-GO**. See [`docs/phase_7c_deployment_security_review.md`](docs/phase_7c_deployment_security_review.md).
+## Live application
 
-Phase 8A integrates the existing Isolation Forest behind an explicit local-development gate. The server verifies a configured artifact SHA-256, sidecar metadata, package/model version, September 2025 training cutoff, registry fingerprint and exact 29-feature order before use. The returned value is a unitless experimental anomaly score—not a probability, fraud label or wash-trading conclusion. Production, `/readyz`, the slim Docker image and cloud configuration remain scoring-disabled. See [`docs/experimental_scoring_integration.md`](docs/experimental_scoring_integration.md).
+[**Open the Live Application**](https://solana-wallet-risk.web.app/#home)
 
-Phase 8B extends that same local-only scorer to bounded multi-wallet requests. It preserves isolated point-in-time features, returns a deterministic within-batch ranking, supports a bounded analyst review budget, and reports wallet-local rejections explicitly. A rank or review-candidate marker is not a fraud class, probability, threshold, or real-world performance result. Default and production modes still return `MODEL_NOT_APPROVED`.
+The application uses Google sign-in. Protected analysis features require a verified account whose Firebase UID is approved by the service operator. Users supply transaction-history JSON; the application does not retrieve live blockchain history from a wallet address. On 19 November 2026, the live readiness endpoint reported checksum-verified experimental anomaly scoring as available and explicitly marked the output as non-probabilistic.
 
-Phase 8C adds a responsive analysis dashboard over the authenticated batch response: actual-score charts, stable filters/sorts, rejected-history visibility and a full 29-feature wallet detail. Descriptive comparisons use versioned aggregates fitted only on the earliest training cutoff; they are not SHAP values, causal explanations or fraud evidence. Changing review capacity requires a new API request, and production behavior is unchanged.
+## Key features
 
-The frontend revamp replaces the separate preview/single/batch presentation with one protected wallet-analysis journey. One JSON input accepts either one or many bounded wallet histories, the home page shows an immediate API-derived summary, and detailed analytics provide rankings, distributions, filters and progressive wallet inspection. This is a presentation and interaction change only: the UI still requires supplied event history, submits the existing authenticated batch contract, resubmits review-capacity changes to the server, and does not provide live address lookup or fraud flags. See [`docs/frontend_revamp_validation.md`](docs/frontend_revamp_validation.md).
+- Single-wallet and bounded multi-wallet analysis from supplied DEX event histories
+- Isolation Forest anomaly scoring and within-batch ranking
+- Analyst-selected review capacity and clearly marked review candidates
+- Interactive score, feature, distribution, ranking, and wallet-detail views
+- Strict point-in-time feature generation with 29 registered features
+- Firebase Authentication and server-side UID authorization
+- FastAPI model serving in a checksum-verified container
+- React frontend hosted on Firebase and backend hosted on Google Cloud Run
 
-## Phase 4A evidence and blockers
+## Technology stack
 
-The audited file contains 10,800 rows, 18 columns, and 2,312 unique wallets between 1 January and 30 November 2025 UTC. Its columns and source values support DEX/swap-event semantics, not verified NFT marketplace-sale semantics. Despite the filename, no NFT-specific column is present.
+| Area | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite |
+| Backend | Python, FastAPI, Pydantic, Uvicorn |
+| Data and ML | pandas, NumPy, scikit-learn, joblib |
+| Authentication | Firebase Authentication, Firebase Admin SDK |
+| Deployment | Docker, Artifact Registry, Google Cloud Run, Firebase Hosting |
+| CI/CD | GitHub Actions, Google Workload Identity Federation |
 
-There is no verified wash-trading target and no buyer, seller, or wallet-counterparty field. Supervised wash-trading classification and graph-based coordination features therefore remain blocked. The data also has very limited longitudinal wallet coverage: 2,302 wallets occur in one calendar month and only 10 occur in two months. See [`docs/data_audit_findings.md`](docs/data_audit_findings.md) for the Phase 1 evidence and [`docs/preprocessing_findings.md`](docs/preprocessing_findings.md) for the Phase 2 rules and results.
+## Dataset
 
-Phase 2 retains 10,798 events and quarantines 2 records whose `amount_in` and `amount_usd` are both zero. It permanently removes zero records: quarantined source evidence remains in a separate output with explicit reason codes. The 7,303 missing fees remain missing with indicators rather than being replaced with zero. All 1,099 IQR review flags remain uncapped and retained. Formatting-only DEX normalization reduces 48 raw spellings to 41 canonical labels without merging differently named protocol variants.
+**Data source: Dune Analytics**
 
-Phase 3 produces 29 registered behavioral/data-quality fields for explicit `(wallet, as_of)` cutoffs. At `2025-09-01`, `2025-10-01`, and `2025-12-01` UTC it produces 1,754, 1,930, and 2,312 wallet rows respectively. Strict cutoff, window-boundary, missing-history, determinism, registry, and no-target tests are automated. See [`docs/feature_registry.md`](docs/feature_registry.md) and [`docs/feature_engineering_findings.md`](docs/feature_engineering_findings.md).
+The private source export contains Solana wallet-attributed DEX swap events. It is excluded from Git because redistribution permission has not been verified.
 
-Phase 4A traces the historical “249 flagged wallets” to a weak-supervision notebook rule based on `burst_ratio`, `alternation_ratio`, and `mean_time_gap`. A separate four-condition heuristic produces 18 candidates in the saved notebook output, although an old roadmap incorrectly attributes 249 to it. Neither rule is independent evidence, both reuse candidate predictors to create the target, and no persisted wallet evidence register or timestamps exist. See [`docs/label_evidence_and_readiness.md`](docs/label_evidence_and_readiness.md) and [`docs/modelling_evaluation_plan.md`](docs/modelling_evaluation_plan.md).
+| Property | Verified value |
+| --- | ---: |
+| Source rows | 10,800 |
+| Columns | 18 |
+| Wallet identifiers | 2,312 |
+| Transaction hashes | 9,221 |
+| Observation period | 1 January to 30 November 2025 UTC |
+| Retained events | 10,798 |
+| Quarantined events | 2 |
 
-Phase 4B fits Isolation Forest, novelty-enabled Local Outlier Factor, and a robust median/MAD baseline on the 1 September 2025 reference only. October is exploratory validation and December is final holdout. All 1,754 training wallets recur later, so full-period comparisons are longitudinal rather than independent; the 176 and 382 later entrants are wallet-disjoint diagnostics affected by shorter observed history. See [`docs/experimental_modelling_findings.md`](docs/experimental_modelling_findings.md) and [`docs/anomaly_model_comparison.md`](docs/anomaly_model_comparison.md).
+Fields cover wallet, block time and slot, transaction hash, DEX, directional token information, amounts, USD value, fee, instruction indices, source, and supplied history fields. The cleaner preserves raw lineage, normalizes timestamps to UTC, applies formatting-only DEX normalization, retains missing fees as missing, retains large-value review flags, and quarantines two records with nonpositive required amounts.
 
-The approved NFT proposal is not present under a local `references/` directory. A local DSA 8401 rubric was reviewed outside the repository, while other locally named proposal files concern a different cross-chain scam-token study. `AI_USE.md` is absent by student decision, although the rubric identifies an AI-use statement as required submission evidence. Provider/API, extraction query, collection method, licence, source snapshot, approved target wording, and independent label provenance remain unresolved.
+The exact Dune query URL or identifier, SQL, export method, extraction date, licence, sampling procedure, and redistribution permission are not recorded in the repository. See [data pipeline and provenance](docs/data_pipeline.md).
 
-## Install and run
+## Machine-learning pipeline
 
-Python 3.11 is the baseline. From the repository root:
+```mermaid
+flowchart LR
+    A[Dune CSV export] --> B[Schema and quality audit]
+    B --> C[Deterministic preprocessing]
+    C --> D[Point-in-time wallet features]
+    D --> E[Chronological training and evaluation]
+    E --> F[Checksum-verified artifact]
+    F --> G[FastAPI inference]
+```
+
+1. The audit verifies the expected 18-column schema, identifiers, timestamps, amounts, missingness, duplication, and event grain.
+2. Preprocessing retains valid events, quarantines unsupported records with reason codes, preserves raw values, and sorts events deterministically.
+3. Feature engineering aggregates each wallet only from events satisfying `block_time < as_of`.
+4. Three cutoffs produce 1,754 training, 1,930 validation, and 2,312 holdout wallet snapshots. There are 5,996 snapshots in total.
+5. Missing model inputs are imputed with medians learned from the training reference only. LOF also uses a training-fitted robust scaler.
+6. Three unsupervised methods are fitted on the 1 September 2025 reference. October is used for exploratory validation and December for the final descriptive holdout.
+7. The selected Isolation Forest, feature order, reference statistics, versions, and hashes are serialized to a local joblib bundle and manifest.
+8. FastAPI validates the artifact checksum and compatibility metadata before serving protected scoring requests.
+
+## Models
+
+| Model | Role | Verified comparison |
+| --- | --- | --- |
+| Isolation Forest | Selected application ranker | Stable validation rankings across tested tree and sample settings |
+| Local Outlier Factor | Local-density comparator | More sensitive to neighbor choice and weakly aligned with the other holdout rankings |
+| Robust median absolute deviation | Transparent baseline | Strong holdout rank agreement with Isolation Forest |
+
+On the 2,312-wallet holdout, Spearman rank correlation was `0.8662` for Isolation Forest versus robust MAD, `0.0488` for Isolation Forest versus LOF, and `-0.0187` for LOF versus robust MAD. Isolation Forest validation sensitivity correlations ranged from `0.9923` to `0.9980`; LOF alternatives produced `0.6052` and `0.7827`. All three methods shared no top-10 wallets and seven top-100 wallets.
+
+Isolation Forest was selected because its rankings were stable under the tested parameter variations and broadly agreed with the transparent robust baseline. These measurements compare ranking behavior only. They are not fraud-detection accuracy, and no verified fraud outcomes were available. See [model training and evaluation](docs/model_training_and_evaluation.md).
+
+## Feature engineering
+
+Each wallet snapshot contains 29 features grouped into:
+
+- activity, frequency, and observed history
+- USD volume and trade-size behavior
+- timing, recency, and 24-hour, 7-day, and 30-day windows
+- token and DEX diversity and concentration
+- missingness and multi-instruction transaction context
+- history coverage indicators
+
+Wallet, transaction, and token identifiers are metadata, not direct model inputs. Strict cutoffs and training-only fitted transformations prevent future information from entering a score. The [feature registry](docs/feature_registry.md) defines every field and its lineage.
+
+## Results
+
+| Stage | Verified result |
+| --- | --- |
+| Data reconciliation | 10,800 input = 10,798 retained + 2 quarantined |
+| Feature generation | 5,996 snapshots, 29 features, 3 chronological cutoffs |
+| Training reference | 1,754 wallets at 1 September 2025 UTC |
+| Validation | 1,930 wallets, including 176 later entrants |
+| Holdout | 2,312 wallets, including 382 later entrants |
+| Reproducibility | Two clean reruns produced byte-identical model and manifest files in the pinned environment |
+| Selected ranker | Isolation Forest with 300 trees, `max_samples=256`, seed 42 |
+
+All 1,754 training wallets occur again in later cumulative snapshots, so full-period comparisons are longitudinal diagnostics rather than wallet-independent tests. Synthetic demonstration data validates software behavior only and is not research outcome evidence.
+
+## Application architecture
+
+```mermaid
+flowchart LR
+    U[Browser] --> H[React on Firebase Hosting]
+    H --> A[Google sign-in via Firebase]
+    A --> T[Firebase ID token]
+    T --> API[FastAPI on Cloud Run]
+    API --> Z[UID allowlist and request controls]
+    Z --> FE[Point-in-time feature builder]
+    FE --> M[Checksum-verified Isolation Forest]
+    M --> R[Scores, rankings, and descriptive results]
+```
+
+Cloud Run is reachable through its platform URL, while protected endpoints still require a valid Firebase ID token and an approved UID. Firebase authentication does not grant Cloud Run IAM access. The application enforces authorization inside FastAPI.
+
+## Local setup
 
 ```bash
-python3.11 -m venv .venv
+git clone https://github.com/Extreme-Ending/solana-wash-trading-detection.git
+cd solana-wash-trading-detection
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
-pytest -q
+cp .env.example .env
+```
+
+Replace placeholders in the ignored `.env` file. Protected requests require the Firebase project ID, Application Default Credentials, and an approved UID. Do not put service-account keys in the repository.
+
+Start the API:
+
+```bash
+set -a
+source .env
+set +a
+uvicorn solana_risk.api.main:app --host 127.0.0.1 --port 8080
+```
+
+Start the frontend in another terminal:
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm ci
+npm run dev
+```
+
+Vite serves the frontend at `http://127.0.0.1:5173` and proxies `/api` to the local API on port 8080.
+
+Run the main checks:
+
+```bash
+python -m pytest -q
+npm --prefix frontend test -- --run
+npm --prefix frontend run typecheck
+npm --prefix frontend run build
+docker compose config --quiet
+```
+
+## Reproduce the ML pipeline
+
+Obtain the authorized Dune export separately and place the verified file at `nft.csv` in the repository root. The current default pipeline expects the audited source checksum. A different export requires a separately reviewed data contract.
+
+```bash
 python -m solana_risk.data.audit
 python -m solana_risk.data.preprocess
 python -m solana_risk.features.build \
@@ -48,100 +185,10 @@ python -m solana_risk.features.build \
   --as-of 2025-12-01T00:00:00Z
 python -m solana_risk.models.train_anomaly
 python -m solana_risk.models.evaluate_anomaly
-```
-
-Start the local API after installation:
-
-```bash
-uvicorn solana_risk.api.main:app --reload
-```
-
-Open `http://127.0.0.1:8000/docs` for generated OpenAPI documentation. Optional non-secret configuration is shown in `.env.example`; export values into the process environment before starting Uvicorn.
-
-## API endpoints
-
-| Endpoint | Current behavior |
-|---|---|
-| `GET /healthz` | HTTP 200 when the process is responsive; no model-readiness claim |
-| `GET /readyz` | HTTP 503 `MODEL_NOT_APPROVED` while prediction is unavailable |
-| `POST /v1/features/preview` | Firebase Bearer token plus approved UID required; returns a descriptive 29-feature snapshot using `block_time < as_of` |
-| `POST /v1/score` | Firebase Bearer token plus approved UID required; default/production returns `MODEL_NOT_APPROVED`; explicit local development may return a checksum-pinned experimental score |
-| `POST /v1/score/batch` | Same authentication/gate; explicit local development may rank at most 20 isolated wallet histories with at most 100 total events |
-
-Feature preview uses the same `build_wallet_snapshots` implementation as offline Phase 3. Wallet identifiers remain metadata, at-cutoff and future events are excluded, and unavailable single-event gap features remain null. The endpoint does not verify that submitted events are authentic or complete and does not fetch blockchain history from a wallet address. See [`docs/api_contract.md`](docs/api_contract.md) and [`docs/api_implementation_findings.md`](docs/api_implementation_findings.md).
-
-## Phase 5B local container
-
-Docker Engine with Compose is required. Build and wait for the single API service:
-
-```bash
-docker compose config --quiet
-docker compose up --detach --build --wait
-docker compose ps
-```
-
-The API is available only on `http://127.0.0.1:8080`. `/healthz` returns 200 and public `/readyz` returns 503 `MODEL_NOT_APPROVED`. Preview and scoring require a valid approved Firebase user; without a Bearer token they return 401, while an authorized scoring request in this production-shaped container returns 503 `MODEL_NOT_APPROVED`. View logs and stop the temporary resources with:
-
-```bash
-docker compose logs --follow api
-docker compose down
-```
-
-Run the complete direct-image smoke suite when port 8080 is free:
-
-```bash
-python3 scripts/container_smoke_test.py
-```
-
-If an existing local service owns port 8080, preserve it and select unused loopback ports for the smoke containers, for example `--host-port 18080 --custom-host-port 18082`.
-
-The image uses the official digest-pinned Python 3.11 slim base, installs the `api` dependency extra from `pyproject.toml`, runs as UID/GID 10001, honors `PORT`, and contains no research dataset or experimental artifact. See [`docs/containerization_and_local_deployment.md`](docs/containerization_and_local_deployment.md) and [`docs/container_validation_results.md`](docs/container_validation_results.md).
-
-## Phase 6 local frontend
-
-Install the locked frontend dependencies and start the Vite development server:
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-Open `http://127.0.0.1:5173`. By default, Vite proxies `/api` to the loopback-only Docker API at `http://127.0.0.1:8080`, so start the Phase 5B service with `docker compose up --detach --wait` first. Copy the Firebase Web identifiers from `frontend/.env.example` into an ignored local environment file. These identifiers, including the Firebase Web API key, are browser-visible project configuration rather than an Admin credential; service-account keys and tokens must never be placed in `VITE_*` variables.
-
-For authenticated local API calls, export `SOLANA_RISK_FIREBASE_PROJECT_ID` and a comma-separated `SOLANA_RISK_ALLOWED_UIDS`. Firebase Admin obtains credentials through Application Default Credentials (ADC), for example a local developer ADC login or the future Cloud Run runtime identity. Do not download or store a service-account JSON key in this repository. A development API without authentication configuration still starts for public health checks; a protected request with a submitted token then fails closed with HTTP 503.
-
-After Google sign-in, the primary home page provides one **Analyze wallets** form for either one or many histories. Paste a supported JSON array, import a JSON file no larger than 256 KiB, or load the visibly labelled synthetic demonstration. Supply one UTC scoring timestamp and a review capacity. The application detects wallets, validates the bounded schema, submits the authenticated batch endpoint and shows an immediate summary before the optional detailed analytics page.
-
-The interface displays actual typed API rankings, score distributions, deterministic filters/sorts, progressive 29-feature wallet detail and explicit rejections. Input and results stay in React memory and disappear on sign-out or reload. No wallet history is fetched from an address, no anomaly score is percentage-formatted, and no result is presented as a fraud or wash-trading finding. Default/production scoring remains `MODEL_NOT_APPROVED`. See [`docs/frontend_architecture.md`](docs/frontend_architecture.md), [`docs/frontend_revamp_validation.md`](docs/frontend_revamp_validation.md), [`docs/frontend_validation_results.md`](docs/frontend_validation_results.md) and [`docs/anomaly_dashboard_validation.md`](docs/anomaly_dashboard_validation.md).
-
-Frontend verification commands are:
-
-```bash
-cd frontend
-npm run typecheck
-npm test
-npm run build
-```
-
-## Phase 8A–8C local experimental scoring
-
-Keep the normal gate disabled unless the local generated artifact is intentionally being inspected. To enable it, install the `api` and `models` extras, calculate the artifact SHA-256, and export the development-only paths/digest before starting Uvicorn on the Vite proxy target:
-
-```bash
-python -m pip install -e '.[api,models]'
 sha256sum artifacts/experimental/anomaly_models.joblib
-export SOLANA_RISK_ENVIRONMENT=development
-export SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=true
-export SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT=artifacts/experimental/anomaly_models.joblib
-export SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST=artifacts/experimental/anomaly_models_manifest.json
-export SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256='<verified digest from sha256sum>'
-uvicorn solana_risk.api.main:app --host 127.0.0.1 --port 8080
 ```
 
-Existing Firebase project, ADC and allowed-UID settings are still required. The artifact and manifest stay Git-ignored. Do not place them in the Docker image or frontend. Set the enable flag back to `false` to restore the normal 503 behavior.
-
-The batch endpoint defaults to 20 wallets, 100 total events and 50 events per wallet, in addition to the 256 KiB body limit. Reproduce the trusted-artifact demonstration without starting the API:
+Run checksum-gated synthetic inference:
 
 ```bash
 python scripts/demonstrate_batch_scoring.py \
@@ -150,193 +197,39 @@ python scripts/demonstrate_batch_scoring.py \
   --sha256 "$(sha256sum artifacts/experimental/anomaly_models.joblib | cut -d' ' -f1)"
 ```
 
-This uses only synthetic transaction histories. It verifies repeat determinism, descending ranking, top-two review-budget selection and exact equality with separately scored single-wallet inputs. It does not evaluate fraud detection.
+Generated data, reports, and model artifacts remain ignored. See the [reproducibility guide](docs/reproducibility.md) for artifact fingerprints and environment constraints.
 
-## Phase 7A deployment preparation
+## API
 
-Inspect the non-destructive deployment plan from the repository root:
+| Endpoint | Access | Purpose |
+| --- | --- | --- |
+| `GET /v1/health` | Public | Hosted application process health |
+| `GET /healthz` | Public | Container process health |
+| `GET /readyz` | Public | Experimental scoring readiness |
+| `POST /v1/features/preview` | Firebase token and approved UID | Build one 29-feature snapshot |
+| `POST /v1/score` | Firebase token and approved UID | Score one supplied wallet history |
+| `POST /v1/score/batch` | Firebase token and approved UID | Rank a bounded submitted wallet batch |
 
-```bash
-./scripts/deployment.sh prerequisites
-./scripts/deployment.sh plan
-```
+Production OpenAPI routes are disabled. Development mode exposes `/docs`. Request schemas, limits, error codes, and authentication behavior are documented in the [API contract](docs/api_contract.md).
 
-`firebase.json` publishes only `frontend/dist` as a static SPA. The proposed backend image uses an Artifact Registry URI in `africa-south1`, tagged by the full Git commit SHA. The proposed Cloud Run service uses request-based billing, scales from 0 to at most 2 instances, runs with 1 CPU/512 MiB and a dedicated no-role runtime identity, and remains private through `--no-allow-unauthenticated`.
+## Deployment
 
-Future mutating actions require both `--execute` and an interactive exact confirmation showing the project, region and effect. Phase 7A did not execute them. Copy `deployment/deployment.env.example` to the Git-ignored `deployment/deployment.env.local` and replace every placeholder before any later use; browser-visible Vite variables must contain only the exact HTTPS API origin, never a credential.
+Firebase Hosting serves the static React application. Google Cloud Run runs the scoring container in `africa-south1`, using a checksum-pinned artifact packaged by `Dockerfile.scoring`. Artifact Registry stores container images. GitHub Actions runs tests and controlled Firebase releases through Workload Identity Federation. The tracked Cloud Run workflow remains a conservative model-disabled private-pilot path, while the current scoring release was performed through the guarded local deployment script. Long-lived Google Cloud keys are not stored in GitHub.
 
-Direct production API-origin routing preserves `/healthz`, `/readyz`, `/v1/features/preview`, and `/v1/score` without a duplicate `/api`. The local Vite proxy remains unchanged. A hosted static SPA cannot invoke the private IAM-protected API without a separate access design, so end-to-end public deployment remains blocked; exact CORS is not authentication. See [`docs/google_cloud_deployment_plan.md`](docs/google_cloud_deployment_plan.md) and [`docs/deployment_readiness_checklist.md`](docs/deployment_readiness_checklist.md).
+Deployment remains an operator-controlled action. See the [deployment guide](docs/deployment.md) for current architecture, release controls, and known operational issues.
 
-## Phase 7B authentication preparation
+## Limitations
 
-The React application uses the official Firebase Web SDK with `GoogleAuthProvider` and popup sign-in. It observes authentication state, provides accessible loading/error/sign-out controls, and requests a current Firebase ID token only for protected API calls. Public health/readiness requests carry no Firebase token. The API verifies the token signature and time/project claims through Firebase Admin, then explicitly checks audience, issuer, subject/UID, expiration, verified email, Google provider, and the server-side UID allowlist. CORS now permits the `Authorization` header only from exact configured origins.
+- Anomaly scores are model-specific rankings, not fraud probabilities or confirmed wash-trading findings.
+- No independently verified fraud outcomes are available for accuracy, precision, recall, or calibration evaluation.
+- Results depend on the completeness and coverage of the supplied event history.
+- The application does not retrieve live wallet histories from Solana.
+- Dune query metadata, extraction details, licence, and redistribution permission remain unresolved.
 
-The private Cloud Run design remains unchanged. Firebase end-user tokens authenticate to the application, but they do not grant Cloud Run IAM invocation. The guarded deployment smoke utility therefore supports separate `X-Serverless-Authorization` (Cloud Run caller token) and `Authorization` (Firebase user token) headers for an authorized operator. A normal hosted browser cannot obtain the Cloud Run IAM credential, so Phase 7C still needs an explicit access architecture decision; Phase 7B does not enable anonymous invocation or alter IAM.
+## Documentation
 
-## Phase 7C.0 security readiness
+Start with the [documentation index](docs/README.md). It links to the authoritative data, feature, model, API, architecture, deployment, reproducibility, and limitation references. Historical milestone records remain in `docs/` for auditability but are not current operating instructions.
 
-The recommended future hosted path is Firebase Hosting to a platform-public Cloud Run URL, with FastAPI continuing to require Firebase ID tokens and the server-side UID allowlist on both protected endpoints. This is a recommendation for a later explicitly approved deployment action, not current public access. `scripts/deployment.sh` still deploys privately, contains no public-IAM command, and requires dry-run review plus exact interactive confirmation for existing mutations.
+## Licence and data use
 
-Production configuration must keep token revocation checks enabled and uses a local per-instance limiter. That limiter is not a distributed quota and cannot stop invalid-token traffic before Firebase verification. Firebase App Check was evaluated but not enabled because it requires live project/domain/key setup, cost/quota acceptance and observe-before-enforce validation. The proposed academic budget is USD 10/month with 50/80/100% alerts; alerts are not a spending cap, and any enforced spend-cap feature must be confirmed as eligible and covering all used services. Live deployment remains **NO-GO** pending the checklist in the Phase 7C.0 review.
-
-The CLI resolves `<repository-root>/nft.csv` from the installed module location, so it does not depend on the terminal's current directory. An explicit path is supported for reproducibility and testing:
-
-```bash
-python -m solana_risk.data.audit --input /path/to/input.csv
-```
-
-It writes deterministic `audit.json` and `audit.md` files to `reports/data_audit/`. That directory and the root dataset are Git-ignored. Reports contain the source SHA-256 but no generation timestamp or absolute source path; wallet, transaction, and token samples are redacted where appropriate. The audit reads only `nft.csv`, never `nft_trades.csv`, and does not modify its input.
-
-The preprocessing CLI writes:
-
-- `data/processed/cleaned_events.csv` — retained, typed, UTC-normalized and deterministically sorted events;
-- `data/processed/quarantined_events.csv` — excluded rows with reason codes;
-- `reports/preprocessing/cleaning_report.json` — structured rules, counts, mappings and output hashes; and
-- `reports/preprocessing/preprocessing_summary.md` — concise human-readable evidence.
-
-Both output directories are Git-ignored. Every original source field is retained under a `raw__` prefix, along with its one-based source row and content hash. The default CLI verifies the approved root-file SHA-256 before preprocessing.
-
-The feature CLI verifies the cleaned CSV against the Phase 2 report hash and writes Git-ignored `data/features/wallet_snapshots.csv`, `reports/features/feature_report.json`, and `reports/features/feature_summary.md`. Repeat `--as-of` for multiple timezone-aware cutoffs. Optional `--input`, `--output`, and `--report-dir` paths support controlled tests without weakening the validation contract.
-
-The notebooks are tracked without outputs. Run them from the repository root after installing development dependencies and generating the Phase 2 files:
-
-```bash
-jupyter nbconvert --to notebook --execute notebooks/01_exploratory_data_analysis.ipynb \
-  --output 01_exploratory_data_analysis.executed.ipynb --output-dir /tmp/solana-risk-notebooks
-jupyter nbconvert --to notebook --execute notebooks/02_feature_engineering.ipynb \
-  --output 02_feature_engineering.executed.ipynb --output-dir /tmp/solana-risk-notebooks
-jupyter nbconvert --to notebook --execute notebooks/03_unsupervised_anomaly_modelling.ipynb \
-  --output 03_unsupervised_anomaly_modelling.executed.ipynb --output-dir /tmp/solana-risk-notebooks
-```
-
-Using a temporary output directory keeps generated plots and tables out of the assessed source notebook files.
-
-For a source checkout that has not yet been installed and a system that exposes only `python3`, the equivalent development invocation is:
-
-```bash
-PYTHONPATH=src python3 -m solana_risk.data.audit
-PYTHONPATH=src python3 -m solana_risk.data.preprocess
-PYTHONPATH=src python3 -m solana_risk.features.build --as-of 2025-12-01T00:00:00Z
-```
-
-## Scientific and leakage contract
-
-- The raw file is immutable evidence. Missingness and anomalies are reported, not repaired in Phase 1.
-- Repeated transaction hashes are not automatically duplicates: a transaction can contain multiple legitimate instructions.
-- Wallets and transaction hashes are identifiers, not predictors.
-- `prev_event_time`, `seconds_since_prev`, and `source_week` require lineage validation and must not be accepted as leakage-safe merely because they are supplied.
-- Future preprocessing must fit transformations inside training folds and use chronological validation appropriate to the scoring question.
-- Phase 2 performs no fitted imputation, scaling, encoding, resampling, or feature selection. Missing fees remain unavailable, and the IQR flag is review-only rather than a model input.
-- Phase 3 filters strictly before every scoring cutoff and uses closed-open lookback windows. A wallet with no prior event gets no snapshot row; single-event gap values remain missing.
-- Phase 3 recomputes temporal history from validated event time and does not use supplied `prev_event_time`, `seconds_since_prev`, or `source_week`.
-- Phase 4A accepts only externally supplied, independently verified binary labels with matching wallets/domain, explicit scoring/evidence/knowledge times, a mature outcome window, a stable evidence reference, and a versioned definition.
-- The historical 249 and 18 heuristic candidates are not ground truth and must not be used for supervised evaluation.
-- Random row-level splitting of repeated wallet snapshots is prohibited; a future primary evaluation must be chronological and wallet-disjoint unless a different estimand is explicitly approved.
-- No label, counterparty edge, fraudulent behaviour, probability, metric, or model result is fabricated.
-- Phase 4B fits every imputer, scaler and detector on the earliest cutoff only. Later full-cutoff scores are dependent longitudinal diagnostics, and wallet-disjoint entrant cohorts are reported separately.
-- Phase 4B model scores and top-budget lists are unverified anomaly-screening outputs, never confirmed fraud, wash-trading outcomes or calibrated probabilities.
-
-## Approved architecture
-
-All assessed components remain in one repository with clear boundaries:
-
-- Local Python ingestion, audit, point-in-time features, training, evaluation, serialization, and shared inference transformations live in `src/solana_risk/`.
-- The FastAPI service imports the shared feature builder. Phase 8A–8B may load one already-created checksum-pinned artifact only in explicit local development and may score one wallet or a bounded isolated batch; it never trains at startup or prediction time. Phase 5B's production-shaped Docker/Compose runtime still contains no model dependency or artifact.
-- The React + Vite frontend communicates only through the typed HTTP/JSON API, uses Firebase Google sign-in for end-user identity, and contains no model logic or Admin credentials. Phase 7A prepares hosting; Phase 7B adds token-bearing protected calls without deploying either component.
-- Core Python stays provider-neutral. Configuration uses environment variables; frontend code contains no credentials; CORS is restricted to approved deployed and local origins.
-
-Local Docker/Compose, frontend, authentication-contract and deployment-configuration validation are complete. Google Cloud Run and Firebase configuration is prepared but no live deployment is claimed. Public-invocation approval, App Check/distributed abuse controls, provider-backed wallet retrieval and promotion of predictive scoring remain unresolved or out of scope; the implemented request limiter is per instance only.
-
-## Repository layout
-
-```text
-README.md                       Scope, setup, constraints, and phase status
-pyproject.toml                  Python package and test dependencies
-src/solana_risk/data/audit.py  Deterministic Phase 1 audit and CLI
-src/solana_risk/data/preprocess.py  Deterministic Phase 2 cleaning and CLI
-src/solana_risk/features/build.py  Point-in-time feature registry, builder, reports, and CLI
-src/solana_risk/labels/validate.py  Fail-closed external-label evidence contract
-src/solana_risk/models/          Provisional anomaly training, evaluation, and robust baseline
-src/solana_risk/api/             FastAPI schemas, configuration, feature adapter, routes, and app factory
-Dockerfile                       Multi-stage non-root API image
-docker-compose.yml               One-service local deployment with health and security controls
-.dockerignore                    Private/generated build-context exclusions
-scripts/container_smoke_test.py  Synthetic image/runtime/endpoint validation
-scripts/deployment.sh           Dry-run-first student deployment lifecycle helper
-scripts/deployment_smoke_test.py  Authenticated synthetic Cloud Run contract check
-scripts/validate_deployment_bundle.py  Static bundle privacy/security gate
-frontend/                       React/TypeScript/Vite descriptive-feature dashboard and tests
-firebase.json                   Firebase static SPA, cache, and security-header configuration
-deployment/                     Placeholder settings and Artifact Registry cleanup policy
-notebooks/01_exploratory_data_analysis.ipynb  Reproducible descriptive EDA
-notebooks/02_feature_engineering.ipynb  Reusable-module feature analysis and leakage check
-notebooks/03_unsupervised_anomaly_modelling.ipynb  Provisional anomaly experiment
-tests/                          Scaffold, audit, preprocessing, feature, and label-contract tests
-docs/data_audit_findings.md     Tracked findings from the immutable root dataset
-docs/preprocessing_findings.md  Versioned Phase 2 rules, counts, and limitations
-docs/feature_registry.md        Versioned feature definitions, units, missingness, and lineage
-docs/feature_engineering_findings.md  Phase 3 results, controls, and blockers
-docs/label_evidence_and_readiness.md  Phase 4A provenance findings and readiness decision
-docs/modelling_evaluation_plan.md  Conditional target, split, and metric plan
-docs/experimental_modelling_findings.md  Phase 4B evidence and limitations
-docs/anomaly_model_comparison.md  Detector configuration and stability comparison
-docs/experimental_scoring_integration.md  Phase 8A–8C local artifact, batch ranking/dashboard, interpretation, and production boundaries
-docs/anomaly_dashboard_validation.md  Phase 8C interaction, reference provenance, visual checks, and scientific boundaries
-docs/api_contract.md              Phase 5A endpoints, validation, examples, and errors
-docs/api_implementation_findings.md  Feature parity, security decisions, and limitations
-docs/containerization_and_local_deployment.md  Build, Compose, and future Cloud Run compatibility
-docs/container_validation_results.md  Observed local image and endpoint evidence
-docs/frontend_architecture.md   Phase 6 component, API, privacy, and accessibility design
-docs/frontend_validation_results.md  Frontend test, build, and local integration evidence
-docs/google_cloud_deployment_plan.md  Prepared architecture, routing, and access blocker
-docs/firebase_hosting_configuration.md  Static hosting configuration and student workflow
-docs/cloud_run_configuration.md  Region, image, IAM, runtime, rollout, and rollback plan
-docs/cloud_cost_and_security_controls.md  Cost, logging, bundle, and cleanup controls
-docs/deployment_readiness_checklist.md  Preflight, release, access, rollback, and cleanup gates
-docs/lab_traceability.md        Verified lecturer-example mapping
-docs/decision_log.md            Decisions and unresolved evidence requirements
-reports/data_audit/             Generated local reports (Git-ignored)
-```
-
-## Student-operated Git helper
-
-The executable `commit.sh` lets the student review, stage, commit, and push one genuine milestone interactively:
-
-```bash
-./commit.sh
-```
-
-The student must run it personally. The helper checks the local Git identity, displays pending and staged files, blocks private instructions, secrets, raw datasets, and generated artifacts, and pushes without force. It does not amend, reset, rebase, bypass hooks, rewrite history, delete files, or store credentials.
-
-## Gated milestones
-
-1. **Phase 0 — foundation:** documentation, package scaffold, lab mapping, and test runner. Complete.
-2. **Phase 1 — data integrity:** audit the single root dataset, record checksum and provenance gaps, and enforce label/edge readiness gates. Complete.
-3. **Phase 2 — preprocessing:** deterministic parsing, ordering, invalid-row handling, and event-grain policy. Implemented; scientific blockers remain documented.
-4. **Phase 3 — features:** strict point-in-time wallet features and reproducible notebooks. Complete.
-5. **Phase 4A — label evidence/readiness:** trace candidate-label provenance, define the target/evaluation contract, and validate external evidence fail-closed. Complete; decision is **REVISION REQUIRED** and supervised training remains **BLOCKED**.
-6. **Phase 4B — unsupervised experiment:** reproducible label-free detectors, chronological diagnostics, sensitivity, drift, and notebook. Implemented experimentally; no model is production-approved.
-7. **Phase 5A — service foundation:** FastAPI health/readiness gates, descriptive shared-code feature preview, bounded validation, OpenAPI, and HTTP tests. Complete; prediction remains unavailable and no model artifact is loaded.
-8. **Phase 5B — container delivery:** non-root Docker image, restricted Compose service, content checks, endpoint smoke tests, configurable port, and graceful shutdown. Complete locally; no cloud deployment was performed.
-9. **Phase 6 — React frontend:** typed event entry, descriptive 29-feature output, status/model gates, accessible charts, responsive layout, tests, and local API integration. Complete locally; no hosting or model scoring was enabled.
-10. **Phase 7A — Google Cloud deployment preparation:** Firebase static SPA configuration, private Cloud Run/Artifact Registry plan, SHA-tagged guarded commands, exact CORS/HTTPS contracts, cost/security controls, and local deployment tests. Preparation complete; no resource was created and public browser-to-private-API access remains blocked.
-11. **Phase 7B — Firebase authentication and secure API integration:** Google sign-in, Firebase ID-token verification, verified-email/provider checks, UID allowlist, protected preview/scoring, auth-aware frontend errors, and local/deployment contracts. Complete locally; no resource or IAM change was made and hosted browser access to private Cloud Run remains blocked.
-12. **Phase 8A — experimental anomaly scoring integration:** checksum-pinned local Isolation Forest loading, shared point-in-time features, typed non-probability responses, history warnings, frontend states and production refusal. Complete locally; no artifact promotion or deployment was performed.
-13. **Phase 8B — batch scoring and anomaly ranking:** bounded isolated wallet histories, deterministic within-batch ranking, analyst review-budget candidates, explicit partial failures and typed frontend results. Complete locally; no threshold, classification, artifact promotion or deployment was performed.
-14. **Phase 8C — advanced anomaly analysis dashboard:** actual-score charts, deterministic filters/sorts, complete wallet detail and training-only descriptive feature reference. Complete locally; no threshold, classification, model explanation, artifact promotion or deployment was performed.
-
-Each phase stops for student review and a student-authored commit before the next begins.
-
-## Lecturer alignment
-
-The audit, preprocessing, EDA, feature implementation, Phase 4A gate, Phase 4B experiment, API, local container, and frontend follow the verified lab sequence for inspection before treatment, explicit parsing, strict `SCORING_TS` filtering, point-in-time entity aggregation, leakage-by-lineage reasoning, fitted transformations inside pipelines, validation/test separation, typed serving, runtime-only packaging, endpoint smoke testing, and cautious anomaly-score interpretation. The frontend extends the labs' schema/order and validation discipline to the browser without transferring lecturer data, results, or model assumptions. Exact repository commits, notebook cells, adaptations, and test evidence are recorded in [`docs/lab_traceability.md`](docs/lab_traceability.md).
-
-## Status
-
-**Current phase:** Phase 8C — advanced wallet anomaly analysis dashboard.
-
-**Implementation:** an explicit local-development process can verify and load the existing experimental Isolation Forest, rebuild the exact 29 point-in-time features, and return finite unitless single-wallet or bounded batch scores with model/history metadata and scientific warnings. Batch results are deterministically ranked within that request and a bounded top-N can be marked for manual review. The React dashboard renders typed summaries, actual-score charts, stable filters/sorts, rejections and all 29 wallet features with a training-only aggregate reference. Default and production modes remain unavailable, and the generated artifact is not copied into Git, Docker or the frontend.
-
-**Model readiness:** **REVISION REQUIRED** overall and **BLOCKED** for supervised learning by absent verified wash-trading labels, NFT-versus-DEX domain mismatch, absent wallet-counterparty edges, sparse cross-month wallet history, and unresolved provenance/licensing.
-
-**Next action:** review Phase 8C evidence. Do not begin threshold/flag design, model promotion, cloud deployment or final-report work without an explicit next-phase instruction.
+No public data licence or redistribution permission is established by this repository. The raw Dune export and generated model artifacts are excluded from version control. Confirm data rights before sharing either asset.

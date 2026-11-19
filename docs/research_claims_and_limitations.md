@@ -1,52 +1,51 @@
 # Research claims and limitations
 
-## Permitted claims
+## Supported claims
 
-Subject to the unresolved source/licence qualification, the repository evidence supports these claims:
+Repository evidence supports the following statements:
 
-- the supplied local file contains 10,800 wallet-attributed Solana DEX/swap-event records for 2,312 wallet identifiers over the observed 2025 interval;
-- the deterministic cleaner retained 10,798 records and quarantined two under documented rules;
-- 29 registered wallet features are constructed using only events before an explicit scoring timestamp;
-- the fitted Isolation Forest, LOF and robust comparator produce reproducible experimental anomaly rankings under pinned local inputs and dependencies;
-- detector agreement, parameter sensitivity, longitudinal stability and cohort/coverage associations were measured without labels;
-- the API and dashboard explicitly present anomaly scores and review candidates rather than probabilities or fraud decisions; and
-- production configuration fails closed and does not load the experimental artifact.
+- The private input contains 10,800 Solana wallet-attributed DEX swap events for 2,312 wallet identifiers between January and November 2025.
+- Deterministic preprocessing retains 10,798 events and quarantines two records with explicit reasons.
+- The point-in-time builder produces 29 registered features using only `block_time < as_of`.
+- Three unsupervised methods were fitted on the 1 September 2025 reference and compared on later cumulative snapshots.
+- Isolation Forest produced stable validation rankings across the tested tree and sample settings and was selected for application scoring.
+- The model artifact and manifest are reproducible in the pinned environment and are validated before API loading.
+- The application can score and rank bounded, user-supplied wallet histories for manual review.
 
-## Prohibited or unsupported claims
+## Interpretation boundary
 
-The evidence does **not** support statements that:
+An anomaly score indicates that a wallet snapshot differs from the training reference according to one fitted model. It is not a fraud probability, legal conclusion, confirmed wash-trading label, or estimate of malicious prevalence. A high rank is a candidate for investigation only.
 
-- a wallet committed fraud, wash trading, market manipulation or misconduct;
-- a score is a fraud probability, calibrated risk, severity, monetary loss or confidence level;
-- the system detects NFT wash trading or coordinated wallet networks;
-- “249 flagged wallets” are verified positives;
-- the detector has measured accuracy, precision, recall, F1, PR-AUC, ROC-AUC, MCC or calibration;
-- top-ranked cases are true positives, model errors or representative of the wider Solana population;
-- feature associations explain why a wallet is anomalous or caused its score;
-- longitudinal stability is independent test performance;
-- synthetic demonstration cases validate real-world effectiveness; or
-- the system, artifact, deployment or methodology is production-approved merely because software tests pass.
+## Data limitations
 
-## Principal limitations
+- The source is identified as Dune Analytics, but the query URL or ID, SQL, export date, sampling method, licence, and redistribution permission remain unrecorded.
+- The file contains no independently verified fraud outcome, case evidence, or evidence timestamp.
+- No direct buyer, seller, sender, receiver, or counterparty-wallet edge is present.
+- Wallet histories are sparse. Most wallets occur in one event month, and later entrants have shorter observable histories.
+- The dataset ends on 30 November 2025, so it cannot support a later outcome window after the December scoring cutoff.
+- The application analyzes supplied events and does not establish their completeness or retrieve live chain history.
 
-1. **No independent outcomes.** There is no timestamped, independently reviewed wash-trading label register. Effectiveness against fraud cannot be measured.
-2. **Domain mismatch.** The observed schema is DEX swap-oriented, not an NFT marketplace schema. Buyer/seller and NFT fields are absent.
-3. **Unresolved provenance/licence.** The provider, acquisition query, sampling frame, completeness and reuse rights are unknown.
-4. **No counterparty graph.** A shared transaction or token is not direct evidence of a wallet-to-wallet transfer or collusion link.
-5. **Longitudinal dependence.** Every training wallet appears in later full snapshots. Later ranks partly reflect accumulated history for the same entities.
-6. **Cohort/history confounding.** New entrants and limited-history wallets have shorter observable histories. Differences may reflect coverage rather than behavioural risk.
-7. **Detector dependence.** Rank agreement varies substantially across algorithms and settings. There is no label-based basis to select the detector that is “most accurate.”
-8. **Arbitrary review budgets.** Top-*k* membership is a workload convention, not a learned or validated fraud threshold.
-9. **Feature sensitivity is descriptive.** Score associations with feature/coverage strata are not causal explanations and do not isolate individual feature effects.
-10. **Synthetic demonstrations are contract tests.** They validate request handling and rendering only; they are not empirical research cases.
-11. **Local-only acceptance.** Hosted Firebase identity, private-service routing, distributed abuse protection and operational monitoring have not been accepted live.
+## Evaluation limitations
 
-## Required language in reports and interfaces
+- Precision, recall, accuracy, PR-AUC, MCC, calibration, and fraud-detection effectiveness cannot be measured without verified outcomes.
+- All 1,754 training wallets recur in the later cumulative snapshots. Full-period comparisons are longitudinal rather than wallet-independent tests.
+- Rank agreement and top-K overlap compare algorithms, not correctness.
+- Sensitivity checks cover a predeclared set of parameter alternatives and do not prove stability under every dataset or feature representation.
+- Correlated features and coverage indicators can influence detector rankings.
+- Synthetic demonstration histories validate software behavior only.
 
-Use: “experimental anomaly score,” “unusual relative to the fitted reference,” “review candidate,” “supplied DEX swap-event sample,” and “no verified fraud label.”
+## Operational limitations
 
-Avoid: “fraud probability,” “wash trader,” “confirmed suspicious wallet,” “accuracy,” “prediction confidence,” “ground truth,” and “production ready” unless future evidence specifically warrants the term.
+- Access to protected live analysis requires Google sign-in and an approved Firebase UID.
+- Cloud Run platform reachability is separate from FastAPI authentication and authorization.
+- The per-instance rate limiter is not a distributed abuse-control system.
+- Model loading is intentionally unavailable if the artifact or configuration fails validation.
+- The live `/healthz` path has previously returned an edge-level 404 while `/v1/health` remained available. This requires operational investigation.
 
-## What would permit stronger conclusions
+## Appropriate use
 
-Stronger fraud-detection claims require an independently sourced label schema with wallet identity, transaction domain, evidence timestamp, outcome/decision timestamp, evidence provenance, label definition, reviewer/audit information and explicit unknown/negative handling. Labels must predate or be separated appropriately from scoring, match the same population, and not be derived from the evaluated features. A chronological, wallet-aware protocol with enough positives in each split would then be required. Dataset provenance and use rights must also be resolved.
+Use results to inspect supplied DEX histories, compare wallets within a submitted batch, and prioritize analyst review. Do not use the system alone to accuse a wallet owner, block a transaction, report confirmed fraud, or claim validated wash-trading detection.
+
+## Evidence needed for stronger claims
+
+Outcome evaluation would require independently verified wallet labels for the same transaction domain, a clear label definition, evidence and knowledge timestamps, wallet identity matching, documented adjudication, and enough positives across chronological splits. Direct coordination analysis would additionally require time-bounded wallet-to-wallet relationship evidence.
