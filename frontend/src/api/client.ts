@@ -386,12 +386,21 @@ export class ApiClient {
     if (response.status === 503 && isErrorResponse(payload) && payload.error.code === "MODEL_NOT_APPROVED") {
       return { available: false, code: "MODEL_NOT_APPROVED", message: payload.error.message };
     }
+    if (response.status === 503 && isErrorResponse(payload) && payload.error.code === "EXPERIMENTAL_MODEL_UNAVAILABLE") {
+      return { available: false, code: "EXPERIMENTAL_MODEL_UNAVAILABLE", message: payload.error.message };
+    }
     if (!response.ok) throw toApiError(response.status, payload);
-    throw new ApiClientError(
-      "An unexpected model-ready response was received and will not be displayed.",
-      response.status,
-      "UNSUPPORTED_MODEL_RESPONSE",
-    );
+    if (
+      isRecord(payload) &&
+      payload.status === "ready" &&
+      payload.available === true &&
+      payload.capability === "experimental_anomaly_scoring" &&
+      payload.methodology_status === "experimental_unsupervised_research_only" &&
+      payload.is_probability === false &&
+      typeof payload.message === "string" &&
+      payload.message.length > 0
+    ) return payload as unknown as AvailabilityResponse;
+    throw new ApiClientError("The readiness response is invalid.", response.status, "SCHEMA_MISMATCH");
   }
 
   async preview(

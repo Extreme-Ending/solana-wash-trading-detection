@@ -54,15 +54,15 @@ export function ModelStatus({ request }: ModelStatusProps) {
       <div className="model-icon" aria-hidden="true">◇</div>
       <div>
         <p className="eyebrow">Experimental model capability</p>
-        <h2 id="model-heading">Local anomaly scoring</h2>
+        <h2 id="model-heading">Anomaly scoring</h2>
         <p>
-          When explicitly enabled in the local API, this section submits the same validated event
-          history to the checksum-pinned Phase 4B Isolation Forest. Production and default local
-          configurations keep scoring unavailable.
+          When explicitly enabled, this section submits the same validated event history to the
+          checksum-pinned Phase 4B Isolation Forest. The service refuses scoring if the artifact
+          or its release configuration fails validation.
         </p>
         <p className="model-rule"><strong>Interpretation rule:</strong> a larger model-specific score means more unusual relative to the training reference. It is not a probability, label, or fraud determination.</p>
         <button className="button secondary" type="button" onClick={check} disabled={!request || checking || loading || !user}>
-          {checking ? "Scoring locally…" : "Request experimental score"}
+          {checking ? "Scoring…" : "Request experimental score"}
         </button>
         {!user && !loading
           ? <small>Sign in with an approved Google account to use the protected endpoint.</small>

@@ -3,6 +3,7 @@ import { ApiClient } from "./client";
 import { resolveApiBaseUrl } from "./config";
 import { FEATURE_NAMES } from "./types";
 import {
+  EXPERIMENTAL_SCORING_READY,
   jsonResponse,
   MODEL_NOT_APPROVED,
   VALID_BATCH_REQUEST,
@@ -30,6 +31,19 @@ describe("API client", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(MODEL_NOT_APPROVED, 503)));
     const result = await new ApiClient("/api").readiness();
     expect(result).toEqual({ available: false, code: "MODEL_NOT_APPROVED", message: "Prediction capability is unavailable." });
+  });
+
+  it("accepts an honest experimental scoring readiness response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(EXPERIMENTAL_SCORING_READY)));
+    await expect(new ApiClient("/api").readiness()).resolves.toEqual(EXPERIMENTAL_SCORING_READY);
+  });
+
+  it("rejects a success response that overstates readiness", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({
+      ...EXPERIMENTAL_SCORING_READY,
+      is_probability: true,
+    })));
+    await expect(new ApiClient("/api").readiness()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
   });
 
   it("returns all registered features from a schema-compatible preview", async () => {

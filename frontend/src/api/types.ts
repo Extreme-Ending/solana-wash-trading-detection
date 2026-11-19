@@ -87,11 +87,22 @@ export interface ErrorResponse {
   };
 }
 
-export interface AvailabilityResponse {
+export interface UnavailableResponse {
   available: false;
   code: "MODEL_NOT_APPROVED" | "EXPERIMENTAL_MODEL_UNAVAILABLE";
   message: string;
 }
+
+export interface ExperimentalReadinessResponse {
+  status: "ready";
+  available: true;
+  capability: "experimental_anomaly_scoring";
+  methodology_status: "experimental_unsupervised_research_only";
+  is_probability: false;
+  message: string;
+}
+
+export type AvailabilityResponse = UnavailableResponse | ExperimentalReadinessResponse;
 
 export interface ExperimentalScoreResponse {
   status: "experimental_anomaly_score";

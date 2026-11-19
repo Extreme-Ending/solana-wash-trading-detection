@@ -1,4 +1,4 @@
-"""Protected, development-gated experimental anomaly-scoring interface."""
+"""Protected, explicitly gated experimental anomaly-scoring interface."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _experimental_scorer(request: Request):
         raise ApiError(
             status_code=503,
             code="EXPERIMENTAL_MODEL_UNAVAILABLE",
-            message="The local experimental model is unavailable or failed validation.",
+            message="The experimental model is unavailable or failed validation.",
             details={"experimental_scoring_available": False},
         )
     return scorer
@@ -46,11 +46,11 @@ def _experimental_scorer(request: Request):
         429: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },
-    summary="Development-gated experimental wallet anomaly scoring",
+    summary="Experimental wallet anomaly scoring",
     description=(
         "Returns a model-specific, non-probabilistic anomaly score only when a checksum-pinned "
-        "Phase 4B artifact is explicitly enabled in local development. Production remains "
-        "unavailable."
+        "Phase 4B artifact is explicitly enabled and passes integrity validation. This is "
+        "unsupervised research output, not a fraud prediction."
     ),
 )
 async def score(
@@ -68,7 +68,7 @@ async def score(
         raise ApiError(
             status_code=503,
             code="EXPERIMENTAL_SCORING_FAILED",
-            message="The local experimental scorer could not produce a valid result.",
+            message="The experimental scorer could not produce a valid result.",
             details={"experimental_scoring_available": False},
         ) from exc
 
@@ -84,7 +84,7 @@ async def score(
         429: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },
-    summary="Development-gated experimental multi-wallet anomaly ranking",
+    summary="Experimental multi-wallet anomaly ranking",
     description=(
         "Scores bounded, explicitly separated wallet histories with the already-loaded local "
         "Isolation Forest and ranks them within only the submitted batch. Rankings are not "
@@ -112,6 +112,6 @@ async def score_batch(
         raise ApiError(
             status_code=503,
             code="EXPERIMENTAL_SCORING_FAILED",
-            message="The local experimental scorer could not produce a valid batch result.",
+            message="The experimental scorer could not produce a valid batch result.",
             details={"experimental_scoring_available": False},
         ) from exc

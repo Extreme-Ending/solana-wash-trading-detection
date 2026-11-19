@@ -93,6 +93,7 @@ def _settings(artifact: Path, manifest: Path, digest: str, *, production: bool =
         firebase_project_id="phase8d-project",
         allowed_user_uids=frozenset({"phase8d-auditor"}),
         experimental_scoring_enabled=True,
+        allow_production_experimental_scoring=production,
         experimental_model_artifact=artifact,
         experimental_model_manifest=manifest,
         experimental_artifact_sha256=digest,

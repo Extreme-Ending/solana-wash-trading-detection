@@ -170,6 +170,15 @@ def _request(app: Any, path: str, payload: dict[str, Any]) -> httpx.Response:
     return asyncio.run(run())
 
 
+def _get(app: Any, path: str) -> httpx.Response:
+    async def run() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=True)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get(path)
+
+    return asyncio.run(run())
+
+
 def _snapshot_frame() -> pd.DataFrame:
     records: list[dict[str, Any]] = []
     cutoffs = ("2025-09-01T00:00:00Z", "2025-10-01T00:00:00Z", "2025-12-01T00:00:00Z")
@@ -628,12 +637,13 @@ def test_batch_scoring_time_and_security_gates(
             digest,
             environment="production",
             check_revoked_tokens=True,
+            allow_production_experimental_scoring=True,
         ),
         token_verifier=_Verifier(),
     )
     response = _request(production, "/v1/score/batch", _batch_payload())
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "MODEL_NOT_APPROVED"
+    assert response.status_code == 200
+    assert response.json()["methodology_status"] == "experimental_unsupervised_research_only"
 
 
 def test_batch_uid_allowlist_is_enforced(
@@ -772,14 +782,19 @@ def test_incompatible_training_reference_is_rejected_after_checksum_verification
         )
 
 
-def test_production_refuses_scoring_even_when_local_flags_are_set(
+def test_production_scoring_requires_two_explicit_flags(
     trusted_files: tuple[Path, Path, str],
 ) -> None:
     artifact, manifest, digest = trusted_files
 
-    class _ForbiddenScorer:
-        def score(self, _: Any) -> Any:
-            raise AssertionError("Production must not use an injected experimental scorer")
+    with pytest.raises(ValueError, match="ALLOW_PRODUCTION_EXPERIMENTAL_SCORING"):
+        _settings(
+            artifact,
+            manifest,
+            digest,
+            environment="production",
+            check_revoked_tokens=True,
+        )
 
     app = create_app(
         _settings(
@@ -788,14 +803,34 @@ def test_production_refuses_scoring_even_when_local_flags_are_set(
             digest,
             environment="production",
             check_revoked_tokens=True,
+            allow_production_experimental_scoring=True,
         ),
         token_verifier=_Verifier(),
-        experimental_scorer=_ForbiddenScorer(),
     )
     response = _request(app, "/v1/score", _payload())
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "MODEL_NOT_APPROVED"
-    assert app.state.experimental_scorer is None
+    assert response.status_code == 200
+    assert response.json()["methodology_status"] == "experimental_unsupervised_research_only"
+    readiness = _get(app, "/readyz")
+    assert readiness.status_code == 200
+    assert readiness.json() == {
+        "status": "ready",
+        "available": True,
+        "capability": "experimental_anomaly_scoring",
+        "methodology_status": "experimental_unsupervised_research_only",
+        "is_probability": False,
+        "message": "Experimental unsupervised anomaly scoring is available.",
+    }
+
+
+def test_production_scoring_requires_complete_pinned_artifact_configuration() -> None:
+    with pytest.raises(ValueError, match="checksum-pinned artifact"):
+        Settings(
+            environment="production",
+            firebase_project_id="test-project-123",
+            allowed_user_uids=frozenset({"approved-test-uid"}),
+            experimental_scoring_enabled=True,
+            allow_production_experimental_scoring=True,
+        )
 
 
 def test_default_configuration_never_loads_experimental_module(

@@ -101,6 +101,7 @@ class Settings:
     rate_limit_requests: int = 30
     rate_limit_window_seconds: int = 60
     experimental_scoring_enabled: bool = False
+    allow_production_experimental_scoring: bool = False
     experimental_model_artifact: Path | None = None
     experimental_model_manifest: Path | None = None
     experimental_artifact_sha256: str | None = None
@@ -161,6 +162,29 @@ class Settings:
                 raise ConfigurationError(
                     "SOLANA_RISK_CHECK_REVOKED_TOKENS must be true in production"
                 )
+            if (
+                self.experimental_scoring_enabled
+                and not self.allow_production_experimental_scoring
+            ):
+                raise ConfigurationError(
+                    "production experimental scoring requires "
+                    "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING=true"
+                )
+            if self.allow_production_experimental_scoring:
+                if not self.experimental_scoring_enabled:
+                    raise ConfigurationError(
+                        "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING requires "
+                        "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=true"
+                    )
+                if (
+                    self.experimental_model_artifact is None
+                    or self.experimental_model_manifest is None
+                    or self.experimental_artifact_sha256 is None
+                ):
+                    raise ConfigurationError(
+                        "production experimental scoring requires checksum-pinned artifact "
+                        "and manifest paths"
+                    )
 
     @property
     def authentication_configured(self) -> bool:
@@ -170,11 +194,12 @@ class Settings:
 
     @property
     def experimental_scoring_allowed(self) -> bool:
-        """Return whether this process may load the local experimental artifact."""
+        """Return whether this process may load the configured experimental artifact."""
 
-        return (
-            self.experimental_scoring_enabled
-            and self.environment.strip().lower() == "development"
+        environment = self.environment.strip().lower()
+        return self.experimental_scoring_enabled and (
+            environment == "development"
+            or (environment == "production" and self.allow_production_experimental_scoring)
         )
 
     @classmethod
@@ -233,6 +258,13 @@ class Settings:
             experimental_scoring_enabled=_parse_bool(
                 values.get("SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING", "false"),
                 name="SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING",
+            ),
+            allow_production_experimental_scoring=_parse_bool(
+                values.get(
+                    "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING",
+                    "false",
+                ),
+                name="SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING",
             ),
             experimental_model_artifact=(
                 Path(values["SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT"])

@@ -244,12 +244,16 @@ def test_local_private_deployment_is_guarded_digest_pinned_and_defers_http() -> 
     assert "no successful completed CI run exists for the exact SHA" in script
     assert "LOCAL-PRIVATE-DEPLOY/${REVISION}" in script
     assert 'python3 scripts/container_smoke_test.py' in script
+    assert "--dockerfile Dockerfile.scoring --expect-experimental-scoring" in script
     assert 'python3 "$ROOT_DIR/scripts/validate_release_config.py" --mode image-digest' in script
     assert '--image "${image_root}@${digest}"' in script
     assert "--no-allow-unauthenticated" in script
     assert "--no-invoker-iam-check" not in script
     assert "allUsers" in script and "allAuthenticatedUsers" in script
-    assert "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=false" in script
+    assert "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=true" in script
+    assert "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING=true" in script
+    assert "SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256" in script
+    assert "3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035" in script
     assert "HTTP check:  deferred" in script
     assert "curl " not in script
     for forbidden in (
@@ -279,6 +283,9 @@ def test_full_stack_deployment_preserves_app_auth_with_public_platform_access() 
     assert "gh run watch" in script
     assert "VITE_API_BASE_URL does not match" in script
     assert "PUBLIC-PLATFORM/${REVISION}" in script
+    assert '"${service_url}/readyz"' in script
+    assert 'methodology_status == "experimental_unsupervised_research_only"' in script
+    assert "--expect-experimental-scoring" in script
     assert "an unauthenticated protected request returned HTTP" in script
     assert "--allow-unauthenticated" not in script
     assert "--no-invoker-iam-check" in script

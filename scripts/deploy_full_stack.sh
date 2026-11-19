@@ -20,11 +20,12 @@ root .env by default. Public frontend build configuration is read from the
 selected GitHub environment (hosting-preview or production), with repository
 variables used as a fallback.
 
-This script does not write to Git, add public IAM principals, bypass CI, enable
-experimental scoring, or weaken Firebase/UID authorization. It disables the
+This script does not write to Git, add public IAM principals, bypass CI, or
+weaken Firebase/UID authorization. It deploys the checksum-pinned experimental
+anomaly scorer and disables the
 Cloud Run Invoker IAM check only after a separate exact confirmation so that a
 Firebase-hosted browser can reach FastAPI. Protected endpoints still require a
-valid Firebase token and an approved UID.
+valid Firebase token and an approved UID. Scores are not fraud probabilities.
 EOF
 }
 
@@ -159,7 +160,7 @@ printf '  Backend:     browser-reachable Cloud Run with FastAPI Firebase authori
 printf '  Frontend:    Firebase Hosting (%s)\n' "$RELEASE"
 printf '  Environment: %s\n' "$GITHUB_ENVIRONMENT"
 printf '  Site:        https://%s.web.app\n' "$FIREBASE_HOSTING_SITE"
-printf '  Scoring:     experimental model disabled\n'
+printf '  Scoring:     checksum-pinned experimental anomaly scoring\n'
 printf '  Browser API: public platform reachability; protected routes remain authenticated\n\n'
 
 printf '[1/4] Starting the guarded backend deployment.\n'
@@ -189,6 +190,11 @@ invoker_iam_disabled="$(jq -r '.metadata.annotations["run.googleapis.com/invoker
   fail "GitHub VITE_API_BASE_URL does not match the deployed Cloud Run service URL. Update the variable before publishing Hosting."
 curl --fail --silent --show-error --max-time 30 "${service_url}/v1/health" \
   | jq -e '.status == "ok"' >/dev/null
+curl --fail --silent --show-error --max-time 30 "${service_url}/readyz" \
+  | jq -e '.status == "ready" and .available == true and
+      .capability == "experimental_anomaly_scoring" and
+      .methodology_status == "experimental_unsupervised_research_only" and
+      .is_probability == false' >/dev/null
 protected_status="$(curl --silent --show-error --max-time 30 --output /dev/null \
   --write-out '%{http_code}' --request POST --header 'Content-Type: application/json' \
   --data '{}' "${service_url}/v1/features/preview")"
@@ -242,5 +248,7 @@ printf '  Revision: %s\n' "$REVISION"
 printf '  Backend:  %s (platform-public; protected routes require Firebase)\n' "$service_url"
 printf '  Frontend: %s\n' "$hosting_url"
 printf '  Workflow: %s\n' "$run_url"
-printf '  Scoring:  experimental model disabled\n'
+printf '  Scoring:  experimental anomaly scoring enabled; not a fraud probability\n'
 printf '  Warning:  public traffic can reach the container and incur usage costs.\n'
+printf '  Manual authenticated check:\n'
+printf '    python3 scripts/deployment_smoke_test.py --base-url %s --firebase-token-stdin --expect-experimental-scoring\n' "$service_url"

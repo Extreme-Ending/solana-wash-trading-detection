@@ -26,14 +26,15 @@ def create_app(
     token_verifier: TokenVerifier | None = None,
     experimental_scorer: Any | None = None,
 ) -> FastAPI:
-    """Create the API; experimental deserialization is explicit and development-only."""
+    """Create the API; experimental deserialization requires explicit trusted configuration."""
 
     selected = settings or Settings.from_env()
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-        application.state.prediction_available = False
         yield
+        application.state.experimental_scorer = None
+        application.state.experimental_scoring_available = False
         application.state.prediction_available = False
 
     production = selected.environment.strip().lower() == "production"
@@ -42,8 +43,9 @@ def create_app(
         version=selected.api_version,
         description=(
             "Descriptive point-in-time wallet feature previews. Process health is separate "
-            "from prediction readiness. Experimental anomaly scoring is disabled unless an "
-            "explicit development-only artifact configuration is valid."
+            "from scoring readiness. Experimental unsupervised anomaly scoring is disabled "
+            "unless an explicit checksum-pinned artifact configuration is valid. Scores are "
+            "not probabilities or fraud determinations."
         ),
         lifespan=lifespan,
         docs_url=None if production else "/docs",
@@ -67,6 +69,10 @@ def create_app(
                 )
             except (ImportError, ValueError):
                 application.state.experimental_scoring_load_failed = True
+    application.state.experimental_scoring_available = (
+        selected.experimental_scoring_allowed
+        and application.state.experimental_scorer is not None
+    )
     application.state.token_verifier = token_verifier
     if application.state.token_verifier is None and selected.firebase_project_id is not None:
         application.state.token_verifier = FirebaseTokenVerifier(

@@ -14,6 +14,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IMAGE = "solana-wallet-risk-api:phase7b"
+EXPERIMENTAL_ARTIFACT_SHA256 = (
+    "3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035"
+)
 
 
 def _run(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -131,8 +134,9 @@ def _start_container(
     image: str,
     host_port: int,
     container_port: int,
+    experimental_scoring: bool = False,
 ) -> None:
-    _run(
+    command = [
         "docker",
         "run",
         "--detach",
@@ -143,7 +147,11 @@ def _start_container(
         "--env",
         f"PORT={container_port}",
         "--env",
-        "SOLANA_RISK_ENVIRONMENT=container-test",
+        (
+            "SOLANA_RISK_ENVIRONMENT=production"
+            if experimental_scoring
+            else "SOLANA_RISK_ENVIRONMENT=container-test"
+        ),
         "--read-only",
         "--tmpfs",
         "/tmp:size=16m,mode=1777",
@@ -151,18 +159,89 @@ def _start_container(
         "ALL",
         "--security-opt",
         "no-new-privileges:true",
-        image,
-    )
+    ]
+    if experimental_scoring:
+        command.extend(
+            [
+                "--env",
+                "SOLANA_RISK_FIREBASE_PROJECT_ID=container-test-project",
+                "--env",
+                "SOLANA_RISK_ALLOWED_UIDS=container-test-uid",
+                "--env",
+                "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=true",
+                "--env",
+                "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING=true",
+                "--env",
+                "SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT=/app/artifacts/experimental/anomaly_models.joblib",
+                "--env",
+                "SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST=/app/artifacts/experimental/anomaly_models_manifest.json",
+                "--env",
+                f"SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256={EXPERIMENTAL_ARTIFACT_SHA256}",
+            ]
+        )
+    command.append(image)
+    _run(*command)
 
 
-def validate_image(image: str) -> dict[str, Any]:
+def validate_image(image: str, *, experimental_scoring: bool = False) -> dict[str, Any]:
     inspection = _docker_json("image", "inspect", image)[0]
     config = inspection["Config"]
     assert config["User"] == "10001:10001"
     assert config["Cmd"] == ["python", "-m", "solana_risk.api.run"]
     assert "/healthz" in " ".join(config["Healthcheck"]["Test"])
 
-    check_code = """
+    if experimental_scoring:
+        check_code = f"""
+import hashlib
+import importlib.util
+from pathlib import Path
+from solana_risk.api.experimental_scoring import TrustedExperimentalScorer
+from solana_risk.api.schemas import ScoreRequest
+
+artifact = Path('/app/artifacts/experimental/anomaly_models.joblib')
+manifest = Path('/app/artifacts/experimental/anomaly_models_manifest.json')
+expected = '{EXPERIMENTAL_ARTIFACT_SHA256}'
+assert importlib.util.find_spec('joblib') is not None
+assert importlib.util.find_spec('sklearn') is not None
+assert artifact.is_file() and manifest.is_file()
+assert hashlib.sha256(artifact.read_bytes()).hexdigest() == expected
+scorer = TrustedExperimentalScorer.load(
+    artifact_path=artifact,
+    manifest_path=manifest,
+    expected_sha256=expected,
+)
+result = scorer.score(ScoreRequest.model_validate({{
+    'as_of': '2025-11-01T00:00:00Z',
+    'events': [{{
+        'source_row_number': 1,
+        'wallet': 'synthetic-container-wallet',
+        'block_time': '2025-10-15T12:00:00Z',
+        'block_slot': 1001,
+        'tx_hash': 'synthetic-container-transaction',
+        'dex': 'synthetic-dex',
+        'token_pair': 'TOKEN-A/TOKEN-B',
+        'token_in': 'synthetic-token-a',
+        'token_out': 'synthetic-token-b',
+        'amount_usd': 125.5,
+        'fee_usd': 0.25,
+        'outer_instruction_index': 1,
+        'inner_instruction_index': 0,
+    }}],
+}}))
+assert result.status == 'experimental_anomaly_score'
+assert result.methodology_status == 'experimental_unsupervised_research_only'
+assert result.is_probability is False
+assert isinstance(result.anomaly_score, float)
+for forbidden in (
+    '/app/nft.csv', '/app/nft_trades.csv', '/app/.env', '/app/.agents',
+    '/app/AGENTS.md', '/app/data', '/app/reports', '/app/models',
+    '/app/notebooks', '/app/tests',
+):
+    assert not Path(forbidden).exists(), forbidden
+print('trusted experimental scoring image checks: PASS')
+"""
+    else:
+        check_code = """
 import importlib.util
 from pathlib import Path
 import solana_risk.api.main
@@ -194,21 +273,42 @@ def validate_default_runtime(
     name: str,
     *,
     host_port: int = 8080,
+    experimental_scoring: bool = False,
 ) -> dict[str, Any]:
     base_url = f"http://127.0.0.1:{host_port}"
-    _start_container(name=name, image=image, host_port=host_port, container_port=8080)
+    _start_container(
+        name=name,
+        image=image,
+        host_port=host_port,
+        container_port=8080,
+        experimental_scoring=experimental_scoring,
+    )
     _wait_for_health(base_url)
 
     status, health = _request("GET", f"{base_url}/healthz")
     assert status == 200 and health["status"] == "ok"
     status, readiness = _request("GET", f"{base_url}/readyz")
-    assert status == 503 and readiness["error"]["code"] == "MODEL_NOT_APPROVED"
+    if experimental_scoring:
+        assert status == 200
+        assert readiness == {
+            "status": "ready",
+            "available": True,
+            "capability": "experimental_anomaly_scoring",
+            "methodology_status": "experimental_unsupervised_research_only",
+            "is_probability": False,
+            "message": "Experimental unsupervised anomaly scoring is available.",
+        }
+    else:
+        assert status == 503 and readiness["error"]["code"] == "MODEL_NOT_APPROVED"
     status, preview = _request("POST", f"{base_url}/v1/features/preview", _synthetic_payload())
     assert status == 401 and preview["error"]["code"] == "AUTHENTICATION_REQUIRED"
     status, scoring = _request("POST", f"{base_url}/v1/score", _synthetic_payload())
     assert status == 401 and scoring["error"]["code"] == "AUTHENTICATION_REQUIRED"
     status, openapi = _request("GET", f"{base_url}/openapi.json")
-    assert status == 200 and "/healthz" in openapi["paths"]
+    if experimental_scoring:
+        assert status == 404
+    else:
+        assert status == 200 and "/healthz" in openapi["paths"]
 
     runtime_uid = _run("docker", "exec", name, "id", "-u", capture=True).stdout.strip()
     assert runtime_uid == "10001"
@@ -226,10 +326,10 @@ def validate_default_runtime(
     assert "Application shutdown complete" in combined_logs
     return {
         "healthz": 200,
-        "readyz": 503,
+        "readyz": 200 if experimental_scoring else 503,
         "feature_preview": 401,
         "score": 401,
-        "openapi": 200,
+        "openapi": 404 if experimental_scoring else 200,
         "runtime_uid": int(runtime_uid),
         "graceful_exit_code": exit_code,
     }
@@ -240,9 +340,16 @@ def validate_custom_port(
     name: str,
     *,
     host_port: int = 18081,
+    experimental_scoring: bool = False,
 ) -> dict[str, int]:
     base_url = f"http://127.0.0.1:{host_port}"
-    _start_container(name=name, image=image, host_port=host_port, container_port=9090)
+    _start_container(
+        name=name,
+        image=image,
+        host_port=host_port,
+        container_port=9090,
+        experimental_scoring=experimental_scoring,
+    )
     _wait_for_health(base_url)
     status, _ = _request("GET", f"{base_url}/healthz")
     assert status == 200
@@ -254,6 +361,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--skip-build", action="store_true")
+    parser.add_argument("--dockerfile", default="Dockerfile")
+    parser.add_argument("--expect-experimental-scoring", action="store_true")
     parser.add_argument("--host-port", type=int, default=8080)
     parser.add_argument("--custom-host-port", type=int, default=18081)
     args = parser.parse_args()
@@ -273,17 +382,22 @@ def main() -> None:
     results: dict[str, Any] = {}
     try:
         if not args.skip_build:
-            _run("docker", "build", "--tag", args.image, ".")
-        results["image"] = validate_image(args.image)
+            _run("docker", "build", "--file", args.dockerfile, "--tag", args.image, ".")
+        results["image"] = validate_image(
+            args.image,
+            experimental_scoring=args.expect_experimental_scoring,
+        )
         results["default_runtime"] = validate_default_runtime(
             args.image,
             default_name,
             host_port=args.host_port,
+            experimental_scoring=args.expect_experimental_scoring,
         )
         results["custom_port"] = validate_custom_port(
             args.image,
             custom_name,
             host_port=args.custom_host_port,
+            experimental_scoring=args.expect_experimental_scoring,
         )
     finally:
         _remove_container(default_name)

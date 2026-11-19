@@ -130,7 +130,7 @@ class FeaturePreviewRequest(ApiModel):
 
 
 class ScoreRequest(FeaturePreviewRequest):
-    """One-wallet history for explicitly enabled local experimental scoring."""
+    """One-wallet history for explicitly enabled experimental scoring."""
 
 
 class BatchWalletHistory(ApiModel):
@@ -292,6 +292,15 @@ class HealthResponse(ApiModel):
     status: Literal["ok"]
     service: str
     version: str
+
+
+class ExperimentalReadinessResponse(ApiModel):
+    status: Literal["ready"]
+    available: Literal[True]
+    capability: Literal["experimental_anomaly_scoring"]
+    methodology_status: Literal["experimental_unsupervised_research_only"]
+    is_probability: Literal[False]
+    message: str
 
 
 class ErrorDetail(ApiModel):

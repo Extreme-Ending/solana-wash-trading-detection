@@ -42,6 +42,20 @@ def test_dockerfile_has_reproducible_non_root_runtime_contract() -> None:
     assert "--reload" not in dockerfile
 
 
+def test_scoring_dockerfile_packages_only_the_pinned_experimental_artifact() -> None:
+    dockerfile = (ROOT / "Dockerfile.scoring").read_text(encoding="utf-8")
+    assert "python:3.11.14-slim-bookworm@sha256:" in dockerfile
+    assert '"solana-wallet-risk[api,models]==0.0.0"' in dockerfile
+    assert "USER 10001:10001" in dockerfile
+    assert "COPY ." not in dockerfile
+    assert "nft.csv" not in dockerfile
+    assert dockerfile.count("COPY --chown=10001:10001 artifacts/experimental/") == 2
+    assert "anomaly_models.joblib" in dockerfile
+    assert "anomaly_models_manifest.json" in dockerfile
+    assert "3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035" in dockerfile
+    assert 'CMD ["python", "-m", "solana_risk.api.run"]' in dockerfile
+
+
 def test_dockerignore_excludes_private_and_generated_material() -> None:
     rules = {
         line.strip()
@@ -68,6 +82,14 @@ def test_dockerignore_excludes_private_and_generated_material() -> None:
         "frontend/dist/",
     }
     assert required <= rules
+    assert {
+        "!artifacts/",
+        "artifacts/*",
+        "!artifacts/experimental/",
+        "artifacts/experimental/*",
+        "!artifacts/experimental/anomaly_models.joblib",
+        "!artifacts/experimental/anomaly_models_manifest.json",
+    } <= rules
     assert "src/" not in rules
     assert "pyproject.toml" not in rules
 

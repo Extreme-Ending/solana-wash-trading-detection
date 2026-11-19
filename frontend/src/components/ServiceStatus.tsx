@@ -38,7 +38,7 @@ export function ServiceStatus() {
     void apiClient.readiness(controller.signal)
       .then((response) => setStatus((current) => ({
         ...current,
-        scoring: "unavailable",
+        scoring: response.available ? "available" : "unavailable",
         scoringDetail: response.message,
       })))
       .catch((error: unknown) => {
@@ -72,7 +72,7 @@ export function ServiceStatus() {
           <div className={`status-dot ${status.scoring}`} aria-hidden="true" />
           <div>
             <p className="status-label">Model scoring</p>
-            <h3>{status.scoring === "checking" ? "Checking" : "Unavailable by design"}</h3>
+            <h3>{status.scoring === "checking" ? "Checking" : status.scoring === "available" ? "Available" : "Unavailable"}</h3>
             <p>{status.scoringDetail}</p>
           </div>
         </article>

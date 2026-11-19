@@ -99,6 +99,15 @@ export const MODEL_NOT_APPROVED = {
   },
 };
 
+export const EXPERIMENTAL_SCORING_READY = {
+  status: "ready",
+  available: true,
+  capability: "experimental_anomaly_scoring",
+  methodology_status: "experimental_unsupervised_research_only",
+  is_probability: false,
+  message: "Experimental unsupervised anomaly scoring is available.",
+} as const;
+
 export const VALID_EXPERIMENTAL_SCORE: ExperimentalScoreResponse = {
   status: "experimental_anomaly_score",
   methodology_status: "experimental_unsupervised_research_only",

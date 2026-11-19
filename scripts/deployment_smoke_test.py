@@ -14,12 +14,12 @@ from typing import Any
 
 def _payload() -> dict[str, Any]:
     return {
-        "as_of": "2025-02-01T00:00:00Z",
+        "as_of": "2025-11-01T00:00:00Z",
         "events": [
             {
                 "source_row_number": 1,
                 "wallet": "synthetic-wallet-001",
-                "block_time": "2025-01-15T12:00:00Z",
+                "block_time": "2025-10-15T12:00:00Z",
                 "block_slot": 1001,
                 "tx_hash": "synthetic-transaction-001",
                 "dex": "synthetic-dex",
@@ -93,6 +93,11 @@ def main() -> None:
         action="store_true",
         help="read one Firebase token for an already-public platform endpoint",
     )
+    parser.add_argument(
+        "--expect-experimental-scoring",
+        action="store_true",
+        help="require checksum-pinned experimental anomaly readiness and a score response",
+    )
     args = parser.parse_args()
     try:
         base_url = _validate_base_url(args.base_url)
@@ -118,12 +123,27 @@ def main() -> None:
     score_status, score = _request(base_url, cloud_run_token, firebase_token, "POST", "/v1/score", payload)
 
     assert health_status == 200 and health.get("status") == "ok"
-    assert ready_status == 503 and ready["error"]["code"] == "MODEL_NOT_APPROVED"
     assert preview_status == 200 and len(preview["feature_order"]) == 29
-    assert score_status == 503 and score["error"]["code"] == "MODEL_NOT_APPROVED"
-    score_text = json.dumps(score).casefold()
-    assert "anomaly_score" not in score_text and "fraud_probability" not in score_text
-    print("Deployment smoke test: PASS (health 200, readiness 503, preview 200/29 features, score 503)")
+    if args.expect_experimental_scoring:
+        assert ready_status == 200
+        assert ready["available"] is True
+        assert ready["capability"] == "experimental_anomaly_scoring"
+        assert ready["methodology_status"] == "experimental_unsupervised_research_only"
+        assert ready["is_probability"] is False
+        assert score_status == 200
+        assert score["status"] == "experimental_anomaly_score"
+        assert score["methodology_status"] == "experimental_unsupervised_research_only"
+        assert score["is_probability"] is False
+        assert isinstance(score["anomaly_score"], float)
+        score_text = json.dumps(score).casefold()
+        assert "fraud_probability" not in score_text and "wash_probability" not in score_text
+        print("Deployment smoke test: PASS (health/readiness/preview/experimental score all available)")
+    else:
+        assert ready_status == 503 and ready["error"]["code"] == "MODEL_NOT_APPROVED"
+        assert score_status == 503 and score["error"]["code"] == "MODEL_NOT_APPROVED"
+        score_text = json.dumps(score).casefold()
+        assert "anomaly_score" not in score_text and "fraud_probability" not in score_text
+        print("Deployment smoke test: PASS (health 200, readiness 503, preview 200/29 features, score 503)")
 
 
 if __name__ == "__main__":

@@ -397,11 +397,33 @@ def test_environment_configuration_and_unsafe_cors_rejection() -> None:
     assert settings.max_batch_events_per_wallet == 30
     assert settings.max_request_bytes == 4096
     assert settings.experimental_scoring_enabled is False
+    assert settings.allow_production_experimental_scoring is False
     assert settings.experimental_scoring_allowed is False
     with pytest.raises(ConfigurationError, match="Wildcard"):
         Settings(cors_origins=("*",))
     with pytest.raises(ConfigurationError, match="SHA256"):
         Settings(experimental_artifact_sha256="not-a-digest")
+
+
+def test_environment_configuration_requires_explicit_production_scoring_opt_in() -> None:
+    values = {
+        "SOLANA_RISK_ENVIRONMENT": "production",
+        "SOLANA_RISK_CORS_ORIGINS": "https://solana-wallet-risk.web.app",
+        "SOLANA_RISK_FIREBASE_PROJECT_ID": "solana-wallet-risk",
+        "SOLANA_RISK_ALLOWED_UIDS": "approved-user-uid",
+        "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING": "true",
+        "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING": "true",
+        "SOLANA_RISK_EXPERIMENTAL_MODEL_ARTIFACT": "/app/artifacts/experimental/anomaly_models.joblib",
+        "SOLANA_RISK_EXPERIMENTAL_MODEL_MANIFEST": "/app/artifacts/experimental/anomaly_models_manifest.json",
+        "SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256": "3" * 64,
+    }
+    settings = Settings.from_env(values)
+    assert settings.allow_production_experimental_scoring is True
+    assert settings.experimental_scoring_allowed is True
+
+    values["SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING"] = "false"
+    with pytest.raises(ConfigurationError, match="ALLOW_PRODUCTION_EXPERIMENTAL_SCORING"):
+        Settings.from_env(values)
 
 
 def test_startup_and_requests_never_load_or_fit_models(
@@ -439,4 +461,4 @@ def test_openapi_documents_health_features_and_unavailable_scoring(app: Any) -> 
     }.issubset(
         schema["paths"]
     )
-    assert "experimental anomaly scoring is disabled" in schema["info"]["description"].casefold()
+    assert "experimental unsupervised anomaly scoring is disabled" in schema["info"]["description"].casefold()
