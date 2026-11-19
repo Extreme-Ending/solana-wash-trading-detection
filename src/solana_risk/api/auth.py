@@ -7,11 +7,23 @@ from collections.abc import Mapping
 from typing import Any, Protocol
 
 import firebase_admin
-from fastapi import Request
+from fastapi import Request, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth, credentials, exceptions
 from starlette.concurrency import run_in_threadpool
 
 from solana_risk.api.errors import ApiError
+
+
+firebase_bearer = HTTPBearer(
+    auto_error=False,
+    scheme_name="FirebaseBearer",
+    description=(
+        "Firebase ID token from an approved Google-authenticated user. "
+        "The backend also enforces verified email, project identity, revocation checks, "
+        "and the server-side UID allowlist."
+    ),
+)
 
 
 class TokenVerifier(Protocol):
@@ -159,8 +171,13 @@ async def authenticate_authorization_header(
     return claims
 
 
-async def require_authorized_user(request: Request) -> Mapping[str, Any]:
+async def require_authorized_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Security(firebase_bearer),
+) -> Mapping[str, Any]:
     """Return claims established by the protected-route boundary middleware."""
+
+    del credentials
 
     claims = getattr(request.state, "authorized_user", None)
     if not isinstance(claims, Mapping):

@@ -250,6 +250,23 @@ def test_development_docs_remain_available() -> None:
     assert schema.status_code == 200
 
 
+def test_openapi_documents_firebase_bearer_on_protected_routes() -> None:
+    settings = Settings(
+        environment="development",
+        firebase_project_id=PROJECT_ID,
+        allowed_user_uids=frozenset({APPROVED_UID}),
+    )
+    app = create_app(settings, token_verifier=_Verifier(_claims()))
+    schema = app.openapi()
+    bearer = schema["components"]["securitySchemes"]["FirebaseBearer"]
+    assert bearer["type"] == "http"
+    assert bearer["scheme"] == "bearer"
+    for path in ("/v1/features/preview", "/v1/score", "/v1/score/batch"):
+        assert {"FirebaseBearer": []} in schema["paths"][path]["post"]["security"]
+    for path in ("/healthz", "/v1/health", "/readyz"):
+        assert "security" not in schema["paths"][path]["get"]
+
+
 def test_per_instance_rate_limit_returns_429_with_retry_after() -> None:
     app = _app(_claims(), rate_limit_requests=1, rate_limit_window_seconds=60)
     first = _request(app, "/v1/features/preview")

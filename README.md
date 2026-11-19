@@ -10,6 +10,10 @@ Solana Wallet Risk analyzes user-supplied Solana decentralized exchange swap his
 
 The application uses Google sign-in. Protected analysis features require a verified account whose Firebase UID is approved by the service operator. Users supply transaction-history JSON; the application does not retrieve live blockchain history from a wallet address. On 19 November 2026, the live readiness endpoint reported checksum-verified experimental anomaly scoring as available and explicitly marked the output as non-probabilistic.
 
+## API-first product architecture
+
+The primary product is the FastAPI scoring service. External applications can submit validated JSON transaction histories, receive point-in-time wallet features, and request single-wallet or bounded batch anomaly analysis. JSON is the integration contract because it is structured, typed, and directly validated against the API schema. The React application is a demonstration client showing how a consumer can authenticate, submit supported histories, and visualize the response. A future SaaS offering could add customer and billing capabilities, but those features and live wallet-address data retrieval are not implemented.
+
 ## Key features
 
 - Single-wallet and bounded multi-wallet analysis from supplied DEX event histories
@@ -34,9 +38,11 @@ The application uses Google sign-in. Protected analysis features require a verif
 
 ## Dataset
 
-**Data source: Dune Analytics**
+**Data source: [Dune Analytics query 6561080](https://dune.com/queries/6561080)**
 
-The private source export contains Solana wallet-attributed DEX swap events. It is excluded from Git because redistribution permission has not been verified.
+The dataset was extracted from Dune Analytics query 6561080 in multiple batches of approximately 1,000 rows. The query was executed again after the original extraction, so its currently visible SQL should not be treated as a preserved snapshot of the extraction-time query. The batches were combined as `nft.csv`, which contains 10,800 records covering January through November 2025. The preserved file has 1,000 rows for each month from January to March and May to November, plus 800 rows for April.
+
+The 4.2 MB CSV remains excluded from Git because public redistribution permission for the result has not been established. The exact historical SQL revision, execution identifiers, parameters, extraction timestamps, and original batch files are not independently archived.
 
 | Property | Verified value |
 | --- | ---: |
@@ -50,7 +56,7 @@ The private source export contains Solana wallet-attributed DEX swap events. It 
 
 Fields cover wallet, block time and slot, transaction hash, DEX, directional token information, amounts, USD value, fee, instruction indices, source, and supplied history fields. The cleaner preserves raw lineage, normalizes timestamps to UTC, applies formatting-only DEX normalization, retains missing fees as missing, retains large-value review flags, and quarantines two records with nonpositive required amounts.
 
-The exact Dune query URL or identifier, SQL, export method, extraction date, licence, sampling procedure, and redistribution permission are not recorded in the repository. See [data pipeline and provenance](docs/data_pipeline.md).
+The query URL and source identity are confirmed. Missing provenance evidence is limited to extraction-time metadata and data-sharing permission. See [data pipeline and provenance](docs/data_pipeline.md).
 
 ## Machine-learning pipeline
 
@@ -70,7 +76,7 @@ flowchart LR
 4. Three cutoffs produce 1,754 training, 1,930 validation, and 2,312 holdout wallet snapshots. There are 5,996 snapshots in total.
 5. Missing model inputs are imputed with medians learned from the training reference only. LOF also uses a training-fitted robust scaler.
 6. Three unsupervised methods are fitted on the 1 September 2025 reference. October is used for exploratory validation and December for the final descriptive holdout.
-7. The selected Isolation Forest, feature order, reference statistics, versions, and hashes are serialized to a local joblib bundle and manifest.
+7. The selected Isolation Forest, feature order, reference statistics, versions, and hashes are serialized to a local research bundle. A selected-model-only release artifact is published without LOF's retained row-level feature matrix.
 8. FastAPI validates the artifact checksum and compatibility metadata before serving protected scoring requests.
 
 ## Models
@@ -116,10 +122,11 @@ All 1,754 training wallets occur again in later cumulative snapshots, so full-pe
 
 ```mermaid
 flowchart LR
-    U[Browser] --> H[React on Firebase Hosting]
+    C[External client integrations] --> API[FastAPI scoring service]
+    U[Browser] --> H[React demonstration client]
     H --> A[Google sign-in via Firebase]
     A --> T[Firebase ID token]
-    T --> API[FastAPI on Cloud Run]
+    T --> API
     API --> Z[UID allowlist and request controls]
     Z --> FE[Point-in-time feature builder]
     FE --> M[Checksum-verified Isolation Forest]
@@ -127,6 +134,28 @@ flowchart LR
 ```
 
 Cloud Run is reachable through its platform URL, while protected endpoints still require a valid Firebase ID token and an approved UID. Firebase authentication does not grant Cloud Run IAM access. The application enforces authorization inside FastAPI.
+
+## Published model artifact
+
+The versioned [4B.1 model release](artifacts/release/4B.1/) contains the fitted selected Isolation Forest, manifest, checksum list, aggregate feature-reference statistics, and loading instructions. It excludes the raw CSV, wallet identifiers, wallet snapshots, LOF's retained training matrix, and the robust comparison model.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Public selected-model artifact | `de349dd2284db122ef528c03f0c61e7ab75f92ad002489399d074f554a61ebe5` |
+| Public manifest | `e7c6188b6983650c6fecc002033ca3c70de9ef6f77e0395c5c6dccb99415bc13` |
+| Private full research bundle | `3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035` |
+
+Verify and run deterministic synthetic inference:
+
+```bash
+(cd artifacts/release/4B.1 && sha256sum -c SHA256SUMS)
+python scripts/demonstrate_batch_scoring.py \
+  --artifact artifacts/release/4B.1/anomaly_models.joblib \
+  --manifest artifacts/release/4B.1/anomaly_models_manifest.json \
+  --sha256 de349dd2284db122ef528c03f0c61e7ab75f92ad002489399d074f554a61ebe5
+```
+
+Joblib uses pickle-compatible serialization. Load the artifact only from this trusted repository after verifying its checksum.
 
 ## Local setup
 
@@ -174,7 +203,7 @@ docker compose config --quiet
 
 ## Reproduce the ML pipeline
 
-Obtain the authorized Dune export separately and place the verified file at `nft.csv` in the repository root. The current default pipeline expects the audited source checksum. A different export requires a separately reviewed data contract.
+Obtain the authorized reference export separately and place it at `nft.csv` in the repository root. It must match SHA-256 `8f387709c6742f2fc31c19fc32dac27474b6b27b9304786c367a8d8bece81271`. Query 6561080 may be rerun for a new dataset, but a later Dune execution is not expected to reproduce this historical file byte for byte. A different export requires a separately reviewed data contract.
 
 ```bash
 python -m solana_risk.data.audit
@@ -197,7 +226,7 @@ python scripts/demonstrate_batch_scoring.py \
   --sha256 "$(sha256sum artifacts/experimental/anomaly_models.joblib | cut -d' ' -f1)"
 ```
 
-Generated data, reports, and model artifacts remain ignored. See the [reproducibility guide](docs/reproducibility.md) for artifact fingerprints and environment constraints.
+Generated data, pipeline reports, and the full research model bundle remain ignored. The selected-model-only release above is tracked for reviewer inference. See the [reproducibility guide](docs/reproducibility.md) for environment constraints.
 
 ## API
 
@@ -210,7 +239,17 @@ Generated data, reports, and model artifacts remain ignored. See the [reproducib
 | `POST /v1/score` | Firebase token and approved UID | Score one supplied wallet history |
 | `POST /v1/score/batch` | Firebase token and approved UID | Rank a bounded submitted wallet batch |
 
-Production OpenAPI routes are disabled. Development mode exposes `/docs`. Request schemas, limits, error codes, and authentication behavior are documented in the [API contract](docs/api_contract.md).
+Production OpenAPI routes are disabled. Local development exposes Swagger at `http://127.0.0.1:8080/docs`, ReDoc at `http://127.0.0.1:8080/redoc`, and the schema at `http://127.0.0.1:8080/openapi.json`. Protected operations document the Firebase Bearer scheme without bypassing token verification or the UID allowlist. Request schemas, limits, error codes, and authentication behavior are documented in the [API contract](docs/api_contract.md).
+
+Build and smoke-test the scoring-capable image from the public repository:
+
+```bash
+docker build -f Dockerfile.scoring -t solana-wallet-risk-api:4B.1 .
+python scripts/container_smoke_test.py \
+  --image solana-wallet-risk-api:4B.1 \
+  --dockerfile Dockerfile.scoring \
+  --expect-experimental-scoring
+```
 
 ## Deployment
 
@@ -224,12 +263,12 @@ Deployment remains an operator-controlled action. See the [deployment guide](doc
 - No independently verified fraud outcomes are available for accuracy, precision, recall, or calibration evaluation.
 - Results depend on the completeness and coverage of the supplied event history.
 - The application does not retrieve live wallet histories from Solana.
-- Dune query metadata, extraction details, licence, and redistribution permission remain unresolved.
+- Dune query 6561080 is the confirmed source. Its exact historical SQL revision, execution identifiers, parameters, extraction timestamps, and data-sharing permission are not independently archived.
 
 ## Documentation
 
-Start with the [documentation index](docs/README.md). It links to the authoritative data, feature, model, API, architecture, deployment, reproducibility, and limitation references. Historical milestone records remain in `docs/` for auditability but are not current operating instructions.
+Start with the [documentation index](docs/README.md). It links to the authoritative data, feature, model, API, architecture, deployment, reproducibility, and limitation references. The final submission report is available as [PDF](reports/submission/solana_wallet_risk_project_report.pdf), [DOCX](reports/submission/solana_wallet_risk_project_report.docx), and [Markdown source](reports/submission/solana_wallet_risk_project_report.md). Historical milestone records remain in `docs/` for auditability but are not current operating instructions.
 
 ## Licence and data use
 
-No public data licence or redistribution permission is established by this repository. The raw Dune export and generated model artifacts are excluded from version control. Confirm data rights before sharing either asset.
+No public redistribution permission for the query result is established by this repository, so the raw Dune export remains excluded. The public selected-model artifact contains no raw events, wallet identifiers, wallet snapshots, or retained LOF training rows. The full research bundle remains private. Confirm applicable Dune terms, source-table conditions, and institutional requirements before sharing data-derived row-level material.

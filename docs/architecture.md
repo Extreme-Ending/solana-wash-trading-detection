@@ -4,11 +4,12 @@
 
 ```mermaid
 flowchart LR
+    EC[External client] --> CR[FastAPI scoring service]
     B[Browser] --> FH[Firebase Hosting]
-    FH --> UI[React application]
+    FH --> UI[React demonstration client]
     UI --> FA[Firebase Google sign-in]
     FA --> ID[Firebase ID token]
-    ID --> CR[FastAPI on Cloud Run]
+    ID --> CR
     CR --> AU[Token verification and UID allowlist]
     AU --> FB[Point-in-time feature builder]
     FB --> IF[Checksum-verified Isolation Forest]
@@ -17,7 +18,7 @@ flowchart LR
 
 ## Frontend
 
-The React application accepts one or more explicitly separated wallet histories as JSON. It validates input bounds, obtains a current Firebase ID token for protected requests, and renders score distributions, rankings, review candidates, feature comparisons, rejected inputs, and wallet details. Results remain in browser memory. The frontend does not query Solana by address.
+FastAPI is the primary product interface and the intended integration point for future API-first SaaS clients. The React application is a demonstration client. It accepts one or more explicitly separated wallet histories as JSON, validates input bounds, obtains a current Firebase ID token for protected requests, and renders score distributions, rankings, review candidates, feature comparisons, rejected inputs, and wallet details. JSON is the typed transaction-history contract consumed by FastAPI. Results remain in browser memory. The frontend does not query Solana by address, and billing, subscriptions, multi-tenant organizations, and customer management are not implemented.
 
 Firebase Hosting serves the static Vite build. Local development uses Vite's `/api` proxy to `127.0.0.1:8080`.
 
@@ -46,4 +47,5 @@ The API performs no online fitting. It applies the stored training-median impute
 - Artifact Registry stores immutable Git-SHA-tagged images.
 - Google Application Default Credentials support Firebase token-revocation checks.
 - GitHub Actions uses Workload Identity Federation instead of stored Google Cloud keys.
-- Raw research data and local model artifacts are not committed to Git.
+- Raw research data and the full multi-model research bundle are not committed to Git.
+- The public 4B.1 artifact contains only the selected Isolation Forest and aggregate reference metadata needed for scoring.

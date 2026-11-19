@@ -15,7 +15,7 @@ The primary proposal, full capstone rubric, written methodology record and autho
 | API, container and frontend | Verified locally | regression and container evidence; not deployed |
 | Report/presentation evidence | Partial | chapter drafts and demo script exist; student-authored final report/slides absent |
 | Proposal/method alignment | Partial | evidence-aligned recommendation exists; primary formal record absent |
-| Dataset provenance/permission | Blocked | provider, query, licence and redistribution permission required |
+| Dataset extraction/permission | Blocked | query 6561080 confirmed; historical extraction metadata and redistribution permission required |
 | Labels/coordination evidence | Blocked for fraud claim | independent outcomes/direct edges absent |
 | Scholarly references | Verified working set | 13 audited sources; student/library style review still required |
 | AI assistance disclosure | Blocked/incomplete | `AI_USE.md` absent; steering summary says disclosure is required |

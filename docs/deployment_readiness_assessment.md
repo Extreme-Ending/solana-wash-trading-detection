@@ -5,7 +5,7 @@
 | Area | Decision | Basis |
 |---|---|---|
 | Engineering readiness | **CONDITIONAL GO** for a local academic demonstration | Deterministic pipeline, actual-artifact API audit, full automated tests, typed frontend, checksum-pinned loader and production fail-closed controls pass. Real hosted Firebase/browser protected-route acceptance remains unverified. |
-| Research readiness | **NO-GO** for fraud/wash-trading effectiveness claims; **CONDITIONAL GO** for anomaly research | No verified outcomes, unresolved provenance/licence, primary proposal/rubric absent, written methodology evidence absent locally and AI disclosure gap. |
+| Research readiness | **NO-GO** for fraud/wash-trading effectiveness claims; **CONDITIONAL GO** for anomaly research | No verified outcomes, incomplete extraction metadata and data-sharing permission, primary proposal/rubric absent, written methodology evidence absent locally and AI disclosure gap. |
 | Cloud readiness | **NO-GO** for live deployment | No Phase 8D cloud mutation or acceptance test occurred; project, billing, IAM/runtime identity, public/private browser access choice, production data source and production artifact policy are unresolved. |
 
 Private infrastructure deployment can be considered separately from enabling scoring. The current container deliberately excludes the experimental artifact and must continue returning `MODEL_NOT_APPROVED` in production.
@@ -56,6 +56,6 @@ Use an explicitly named prior Cloud Run revision and prior Firebase Hosting rele
 - [ ] Hosted real-Firebase checks cover 401, 403, approved preview, CORS and token revocation.
 - [ ] Static bundle contains no secrets/private files.
 - [ ] Production still refuses experimental scoring.
-- [ ] Dataset provenance/licence, methodology evidence and disclosure gaps are resolved before research claims.
+- [ ] Dataset extraction metadata/data-sharing permission, methodology evidence and disclosure gaps are resolved before research claims.
 
 Passing local checks is necessary but not sufficient for live cloud deployment or research approval.

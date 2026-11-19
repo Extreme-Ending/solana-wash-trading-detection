@@ -253,7 +253,7 @@ def test_local_private_deployment_is_guarded_digest_pinned_and_defers_http() -> 
     assert "SOLANA_RISK_ENABLE_EXPERIMENTAL_SCORING=true" in script
     assert "SOLANA_RISK_ALLOW_PRODUCTION_EXPERIMENTAL_SCORING=true" in script
     assert "SOLANA_RISK_EXPERIMENTAL_ARTIFACT_SHA256" in script
-    assert "3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035" in script
+    assert "de349dd2284db122ef528c03f0c61e7ab75f92ad002489399d074f554a61ebe5" in script
     assert "HTTP check:  deferred" in script
     assert "curl " not in script
     for forbidden in (

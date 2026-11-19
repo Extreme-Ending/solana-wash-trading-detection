@@ -12,7 +12,7 @@ The approved project summary describes supervised, point-in-time wallet-risk sco
 - Phase 2 retains 10,798 valid events. Phase 3 supplies 29 point-in-time descriptive features for 5,996 `(wallet, as_of)` snapshots.
 - Feature history is sparse: 55.30% of snapshots contain one event; 2,302 of 2,312 wallets occur in only one event month.
 - Cumulative cutoffs repeat wallets and event history. Random row-level splitting is invalid.
-- The source provider, extraction query, licence, approved proposal PDF, and independently verified evidence register remain unavailable.
+- Dune Analytics query 6561080 is the confirmed dataset source. Its exact historical SQL revision, execution metadata, parameters, data-sharing permission, the approved proposal PDF, and an independently verified evidence register remain unavailable.
 - An unusual wallet is not necessarily a wash trader. An anomaly score is not a fraud probability or ground-truth classification.
 
 ## Option comparison
@@ -62,7 +62,7 @@ With valid evidence, results could support discrimination of the specified, evid
 
 ### Proposal and implementation implications
 
-The original research direction can be retained only if the authentic data matches it. The proposal's provider/API placeholder, sample construction, licence, target timing, and negative-class definition still need formal resolution. The current DEX-specific feature pipeline would need an NFT event adapter and NFT feature registry. A later API could return an estimated labelled-task risk with provenance and model metadata; address-only lookup would still require an authorized event source.
+The original research direction can be retained only if authentic NFT data matches it. Query 6561080 is the confirmed source of the current DEX sample, while its sample construction, licence, target timing, and negative-class definition still need formal resolution. The current DEX-specific feature pipeline would need an NFT event adapter and NFT feature registry. A later API could return an estimated labelled-task risk with provenance and model metadata; address-only lookup would still require an authorized event source.
 
 ### Lab and rubric alignment
 
@@ -116,7 +116,7 @@ This option does **not** classify confirmed wash trading. A high score may refle
 
 ### Data and missing evidence
 
-The existing DEX events, deterministic cleaning, coverage indicators, and point-in-time feature registry are usable without labels. Missing provenance/licence and sparse histories still require resolution. Direct coordination or NFT claims remain impossible. Eligibility rules may need to exclude or separately analyse observations with insufficient history, but must be fixed before inspecting anomaly rankings.
+The existing DEX events, deterministic cleaning, coverage indicators, and point-in-time feature registry are usable without labels. Missing extraction metadata, data-sharing permission and sparse histories still require resolution. Direct coordination or NFT claims remain impossible. Eligibility rules may need to exclude or separately analyse observations with insufficient history, but must be fixed before inspecting anomaly rankings.
 
 ### Algorithms and rationale
 

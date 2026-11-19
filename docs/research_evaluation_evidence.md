@@ -68,6 +68,6 @@ The current model comparison is defensible as label-free descriptive evaluation 
 
 **NO-GO for claims of wash-trading or fraud-detection effectiveness.**
 
-**CONDITIONAL GO for a clearly labelled unsupervised anomaly-detection capstone demonstration**, subject to resolving/verifying dataset provenance and permitted use, attaching primary proposal/rubric evidence, documenting the methodology authorization in a reviewable artifact, and restoring the required factual AI-use disclosure through a student-reviewed action.
+**CONDITIONAL GO for a clearly labelled unsupervised anomaly-detection capstone demonstration**, subject to documenting extraction-time metadata and permitted use for confirmed Dune query 6561080, attaching primary proposal/rubric evidence, documenting the methodology authorization in a reviewable artifact, and restoring the required factual AI-use disclosure through a student-reviewed action.
 
 The student has stated in conversation that the methodology was authorized, but no written approval artifact is present in this repository. This audit therefore records that repository evidence is unresolved; it does not contradict the student's statement or claim approval independently.

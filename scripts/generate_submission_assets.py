@@ -117,8 +117,8 @@ def generate_figures() -> None:
     )
     _flow_diagram(
         ASSETS / "application_architecture.png",
-        ["Browser", "React", "Firebase\nauth", "FastAPI", "UID policy", "Feature\nbuilder", "Isolation\nForest", "Results"],
-        title="Application and authentication path",
+        ["External client\nor React demo", "JSON +\nID token", "FastAPI", "UID policy", "Feature\nbuilder", "Isolation\nForest", "Scores", "Client view"],
+        title="API-first scoring and authentication path",
     )
 
     fig, ax = plt.subplots(figsize=(9, 4.8))
@@ -444,16 +444,16 @@ def generate_presentation() -> None:
 
     slide = presentation.slides.add_slide(blank)
     _slide_background(slide)
-    _add_title(slide, "Dune Analytics dataset", "Known source, incomplete acquisition metadata")
+    _add_title(slide, "Dune Analytics dataset", "Query 6561080, confirmed source")
     _add_stat_card(slide, 0.75, 1.35, "10,800", "DEX swap events")
     _add_stat_card(slide, 3.65, 1.35, "2,312", "wallet identifiers", color=DARK)
     _add_stat_card(slide, 6.55, 1.35, "9,221", "transaction hashes", color=GREEN)
     _add_stat_card(slide, 9.45, 1.35, "18", "source columns", color=AMBER)
     _add_bullets(slide, [
         "January to November 2025 UTC",
-        "DEX swap semantics, not NFT marketplace-sale semantics",
-        "Exact query, extraction procedure, sampling and licence are unavailable",
-        "Raw export remains private until redistribution rights are established",
+        "Wallet-attributed DEX swap-event schema",
+        "11 month-bounded blocks: ten at 1,000 rows, April at 800",
+        "Historical extraction metadata and data-sharing rights are incomplete",
     ], x=1.0, y=3.15, w=11.2, h=3.0, size=18)
     _add_footer(slide, 3)
 
@@ -546,7 +546,7 @@ def generate_presentation() -> None:
         "Detector rankings differ materially, especially at small review budgets.",
         "No verified outcomes exist for detection-effectiveness metrics.",
         "No counterparty evidence exists for coordination claims.",
-        "Dune query, acquisition and redistribution rights remain unresolved.",
+        "Historical Dune extraction metadata and data-sharing rights remain incomplete.",
     ], x=0.85, y=1.35, w=6.1, size=17)
     _add_picture(slide, "parameter_sensitivity.png", x=6.7, y=1.25, w=5.9)
     _add_footer(slide, 11)

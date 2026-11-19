@@ -11,14 +11,14 @@ The working tree entered Phase 9 with the completed Phase 8E documentation still
 | Phase 8E workstream | Handover result | Phase 9 treatment |
 |---|---|---|
 | Dataset characterization | Passed internally: 10,800 supplied DEX/swap events, not NFT marketplace records | Retain the DEX framing and checksum; do not infer origin or licence |
-| Dataset provenance/licence | Unresolved | Critical blocker remains; no raw-data or artifact publication |
+| Dataset extraction/licence | Query 6561080 confirmed; extraction metadata and sharing permission incomplete | No raw-data or artifact publication |
 | Methodology alignment | Conditional pass for unsupervised point-in-time anomaly ranking | Preserve anomaly-only objective and language |
 | Research evaluation | Conditional pass: reproducible rank, sensitivity, drift and coverage diagnostics | Consolidate into deterministic dissertation figures/tables |
 | Fraud/wash-trading effectiveness | Blocked | No accuracy, precision, recall, F1, AUC, calibration or confirmed cases |
 | Local integration/security | Passed under automated and synthetic local checks | Re-run complete regression and actual-artifact integration |
 | Hosted authentication | Not accepted live | Real Firebase sign-in remains a presentation prerequisite, not an automated pass |
 | Deployment architecture | Evaluated; private core plus authentication BFF recommended | Document only; no implementation or cloud mutation |
-| Academic compliance | Incomplete | Primary proposal/rubric, approval record, source/licence and AI disclosure remain unresolved |
+| Academic compliance | Incomplete | Primary proposal/rubric, approval record, data-sharing permission and AI disclosure remain unresolved |
 
 ## Evidence available at entry
 

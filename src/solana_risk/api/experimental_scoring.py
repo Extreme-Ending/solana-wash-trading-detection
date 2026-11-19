@@ -44,6 +44,8 @@ from solana_risk.models.train_anomaly import (
     MODEL_NAMES,
 )
 
+PUBLIC_ARTIFACT_PROFILE = "selected_isolation_forest_serving_only"
+
 
 class ExperimentalArtifactError(ValueError):
     """Raised when an experimental artifact is missing, untrusted, or incompatible."""
@@ -226,8 +228,31 @@ class TrustedExperimentalScorer:
         bundle_map = _mapping(bundle, name="artifact bundle")
         metadata = _mapping(bundle_map.get("metadata"), name="artifact metadata")
         models = _mapping(bundle_map.get("models"), name="artifact models")
-        if set(models) != set(MODEL_NAMES):
+        model_names = set(models)
+        if model_names not in (set(MODEL_NAMES), {"isolation_forest"}):
             raise ExperimentalArtifactError("The artifact model set is incompatible")
+        if model_names == {"isolation_forest"}:
+            _same(
+                manifest.get("artifact_profile"),
+                PUBLIC_ARTIFACT_PROFILE,
+                name="public artifact profile",
+            )
+            _same(
+                metadata.get("artifact_profile"),
+                PUBLIC_ARTIFACT_PROFILE,
+                name="public bundle profile",
+            )
+            _same(manifest.get("models"), ["isolation_forest"], name="public model list")
+            _same(
+                manifest.get("contains_training_rows"),
+                False,
+                name="public training-row declaration",
+            )
+            if set(bundle_map) != {"metadata", "models", "training_reference"}:
+                raise ExperimentalArtifactError("The public artifact contains unsupported sections")
+            reference = _mapping(bundle_map.get("training_reference"), name="training reference")
+            if "local_outlier_factor_intrinsic_scores" in reference:
+                raise ExperimentalArtifactError("The public artifact contains retained LOF rows")
 
         for field in (
             "experiment_status",

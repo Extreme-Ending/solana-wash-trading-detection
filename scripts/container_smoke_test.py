@@ -15,7 +15,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IMAGE = "solana-wallet-risk-api:phase7b"
 EXPERIMENTAL_ARTIFACT_SHA256 = (
-    "3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035"
+    "de349dd2284db122ef528c03f0c61e7ab75f92ad002489399d074f554a61ebe5"
 )
 
 

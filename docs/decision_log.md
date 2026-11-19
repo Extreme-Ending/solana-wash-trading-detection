@@ -47,12 +47,12 @@ This log records decisions that constrain later implementation. It does not clai
 - **Decision:** Target Python 3.11+, pin only the scaffold test dependency, and defer data/ML/API packages until the phase that uses them.
 - **Reason:** This makes current claims reproducible without implying unimplemented capabilities or adding unjustified tooling.
 
-## D007 — Record missing primary documents and provenance
+## D007 — Record missing primary documents and extraction metadata
 
 - **Date:** 2026-11-07
-- **Status:** open
+- **Status:** partially resolved; source identity confirmed
 - **Decision:** Use the verified steering summaries temporarily and explicitly disclose that `references/` is absent.
-- **Required follow-up:** Add and read the approved proposal and rubric when the student can lawfully include or provide them. Resolve the provider/API placeholder, collection method, chain, snapshot dates, licence, and checksums before making source claims.
+- **Required follow-up:** Add and read the approved proposal and rubric when the student can lawfully include or provide them. Dune Analytics query 6561080 is now confirmed as the source. Preserve any available historical SQL revision, execution identifiers, parameters, extraction timestamps and batch manifest, and resolve data-sharing permission before publishing the data.
 
 ## D008 — Preserve student Git ownership
 

@@ -6,7 +6,7 @@ The study uses a quantitative observational design with unsupervised anomaly ana
 
 ## 3.2 Data
 
-The private input is a 10,800-row, 18-column Solana DEX/swap-event CSV covering 2,312 wallet identifiers from January through November 2025. Its checksum is fixed in the audit. The provider, query, sample selection, enrichment process and licence remain unknown. A Phase 10 public-chain check corroborated selected first-row transaction fields but did not establish collection provenance or reuse rights.
+The private input is a 10,800-row, 18-column Solana DEX/swap-event CSV covering 2,312 wallet identifiers from January through November 2025. Its checksum is fixed in the audit. The dataset was extracted from Dune Analytics query 6561080 in multiple batches of approximately 1,000 rows. The query was executed again after the original extraction, so its currently visible SQL should not be treated as a preserved snapshot of the extraction-time query. The exact historical SQL revision, execution identifiers, parameters, extraction timestamps, sample selection detail and data-sharing permission remain unavailable.
 
 ## 3.3 Audit and preprocessing
 
@@ -50,8 +50,8 @@ Fixed seeds, sorted outputs, versioned feature definitions, exact dependencies a
 
 ## 3.9 Ethics and validity
 
-Wallet addresses are pseudonymous behavioural identifiers. Results must not be used to accuse, deanonymise or penalise persons. Internal validity is constrained by unknown sampling, missing labels, sparse histories and detector assumptions. External validity is constrained to one provenance-unresolved sample. Construct validity is limited because unusualness is not wash trading. No direct graph claim is permitted.
+Wallet addresses are pseudonymous behavioural identifiers. Results must not be used to accuse, deanonymise or penalise persons. Internal validity is constrained by incomplete sampling metadata, missing labels, sparse histories and detector assumptions. External validity is constrained to one bounded sample with incomplete extraction metadata. Construct validity is limited because unusualness is not wash trading. No direct graph claim is permitted.
 
 ## 3.10 Student work required
 
-**[DOCUMENT REQUIRED]** Insert authoritative data source and licence. **[STUDENT INPUT REQUIRED]** Confirm the final methodology language, ethical-review requirements and whether the institution requires a formal data-management statement.
+**[DOCUMENT REQUIRED]** Insert authoritative extraction metadata and data-sharing permission. **[STUDENT INPUT REQUIRED]** Confirm the final methodology language, ethical-review requirements and whether the institution requires a formal data-management statement.

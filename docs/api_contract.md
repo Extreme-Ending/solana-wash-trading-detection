@@ -1,6 +1,6 @@
 # API contract
 
-The FastAPI service exposes health, point-in-time feature generation, and checksum-gated anomaly scoring. Protected routes analyze only caller-supplied transaction histories. The API does not retrieve a wallet's on-chain history.
+The FastAPI service is the primary product interface. It exposes health, point-in-time feature generation, and checksum-gated anomaly scoring for external clients and the React demonstration client. Protected routes analyze only caller-supplied JSON transaction histories. The API does not retrieve a wallet's on-chain history, and commercial SaaS account or billing features are not implemented.
 
 ## Base URLs
 
@@ -8,7 +8,7 @@ The FastAPI service exposes health, point-in-time feature generation, and checks
 - Frontend development proxy: `/api`
 - Hosted frontend: configured through `VITE_API_BASE_URL`
 
-Production disables OpenAPI and documentation routes. Development mode exposes `/docs` and `/openapi.json`.
+Production disables OpenAPI and documentation routes. Development mode exposes Swagger at `http://127.0.0.1:8080/docs`, ReDoc at `http://127.0.0.1:8080/redoc`, and the schema at `http://127.0.0.1:8080/openapi.json`. Protected operations declare the `FirebaseBearer` security scheme; using Swagger still requires a valid Firebase ID token from an allowlisted user.
 
 ## Routes
 

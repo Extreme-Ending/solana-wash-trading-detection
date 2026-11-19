@@ -19,7 +19,7 @@ The results also demonstrate the difference between engineering validity and con
 
 ## 5.3 Limitations
 
-The greatest limitations are unresolved source/licence, absent ground truth, missing counterparty edges, sparse histories, detector disagreement, one sample and no live deployment evaluation. The held-out period has already been used for descriptive reporting and should not become an iterative tuning set. A real Firebase browser acceptance session remains unverified in the Phase 10 environment.
+The greatest limitations are incomplete extraction metadata and data-sharing permission, absent ground truth, missing counterparty edges, sparse histories, detector disagreement, one sample and no live deployment evaluation. The held-out period has already been used for descriptive reporting and should not become an iterative tuning set. A real Firebase browser acceptance session remains unverified in the Phase 10 environment.
 
 ## 5.4 Ethical implications
 
@@ -35,4 +35,4 @@ The project demonstrates a reproducible local service for ranking wallet-time ob
 
 ## 5.7 Student work required
 
-**[STUDENT INPUT REQUIRED]** Write the final reflective conclusion, connect findings to the official approved objectives and incorporate any supervisor feedback. **[DOCUMENT REQUIRED]** Resolve or explicitly accept the provenance/licensing limitation under institutional guidance.
+**[STUDENT INPUT REQUIRED]** Write the final reflective conclusion, connect findings to the official approved objectives and incorporate any supervisor feedback. **[DOCUMENT REQUIRED]** Resolve or explicitly accept the missing extraction metadata and data-sharing limitation under institutional guidance.

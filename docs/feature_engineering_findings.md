@@ -36,7 +36,7 @@ Both notebooks were executed top-to-bottom with Jupyter in a clean temporary out
 
 - No independently verified wash-trading label, label definition, evidence source, knowledge timestamp, version, or review methodology is available.
 - No buyer/seller or wallet-counterparty edge is present, so graph or coordinated-wallet claims remain blocked.
-- Provider/API, extraction method, licence, source snapshot, and independent provenance remain unresolved.
+- Dune Analytics query 6561080 is the confirmed source. The exact historical SQL revision, execution metadata, parameters, data-sharing permission, and source snapshot remain unavailable.
 - The filename does not establish NFT-sale semantics; the observed records remain DEX/swap events.
 - The approved proposal and capstone-rubric PDFs are still absent from `references/`.
 - `AI_USE.md` is absent by the student's explicit repository decision, despite the steering rubric identifying an AI-use statement as required submission evidence. This remains an academic documentation blocker until the student decides how to reconcile it.

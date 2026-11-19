@@ -23,8 +23,8 @@ The earlier reference to 249 flagged wallets is not a verified target in the sup
 
 | Question | Status |
 |---|---|
-| Exact upstream provider/API | Unresolved; local `source` values describe events but do not prove the external provider. |
-| Collector/query and collection date | Unresolved. |
+| Upstream source | Dune Analytics query `6561080`, confirmed by the dataset creator. |
+| Extraction record | Multiple batches of approximately 1,000 rows; exact historical SQL revision, execution identifiers, parameters and extraction timestamps are not archived. |
 | Chain/domain | Solana DEX/swap semantics are supported by the observed schema; NFT-sale semantics are unsupported. |
 | Dataset ownership and licence | Unresolved; no licence or permission artifact is present. |
 | Source integrity | Locally pinned by SHA-256 and row/schema checks. |
@@ -56,7 +56,7 @@ Local integrity does not prove lawful provenance or permitted publication. The s
 
 ## Required resolution before research submission
 
-1. Obtain a citable provider/source statement, collector/query description, collection window and licence/permitted-use evidence.
+1. Archive any available extraction-time SQL, execution identifiers, parameters, timestamps and batch manifest, and obtain licence/permitted-use evidence.
 2. Add or privately verify the approved proposal and course rubric; reconcile the title/objective with the actual DEX anomaly methodology in the final report.
 3. Retain the explicit statement that anomaly candidates are not confirmed fraud.
 4. Record the methodology authorization in a student-approved form suitable for assessment evidence.

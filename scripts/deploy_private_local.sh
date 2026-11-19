@@ -85,9 +85,9 @@ RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-solana-wallet-risk-runtime@s
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-solana-wallet-risk}"
 FIREBASE_ORIGINS="${FIREBASE_ORIGINS:-https://solana-wallet-risk.web.app,https://solana-wallet-risk.firebaseapp.com}"
 ALLOWED_USER_UIDS="${ALLOWED_USER_UIDS:-${SOLANA_RISK_ALLOWED_UIDS:-}}"
-MODEL_ARTIFACT="${ROOT_DIR}/artifacts/experimental/anomaly_models.joblib"
-MODEL_MANIFEST="${ROOT_DIR}/artifacts/experimental/anomaly_models_manifest.json"
-MODEL_ARTIFACT_SHA256="3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035"
+MODEL_ARTIFACT="${ROOT_DIR}/artifacts/release/4B.1/anomaly_models.joblib"
+MODEL_MANIFEST="${ROOT_DIR}/artifacts/release/4B.1/anomaly_models_manifest.json"
+MODEL_ARTIFACT_SHA256="de349dd2284db122ef528c03f0c61e7ab75f92ad002489399d074f554a61ebe5"
 CONTAINER_MODEL_ARTIFACT="/app/artifacts/experimental/anomaly_models.joblib"
 CONTAINER_MODEL_MANIFEST="/app/artifacts/experimental/anomaly_models_manifest.json"
 

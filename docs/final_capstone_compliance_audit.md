@@ -25,7 +25,7 @@ The project is a substantial, tested end-to-end **unsupervised wallet anomaly-an
 It is not submission-ready against all mandatory requirements because:
 
 1. the explicit `AI_USE.md` deliverable is absent;
-2. the input's provider, acquisition procedure, licence and redistribution permission are unresolved, so a fresh reviewer cannot lawfully or deterministically obtain it;
+2. the input's exact historical extraction procedure, licence and redistribution permission are unresolved, so a fresh reviewer cannot lawfully or deterministically reproduce it;
 3. the serialized artifact exists only as an ignored local file and inside a deployed container, with no documented reviewer acquisition route;
 4. the README has no architecture diagram and materially misstates the current cloud/scoring state;
 5. only dissertation working drafts exist and no final report or slide deck exists; and
@@ -39,7 +39,7 @@ The strongest defensible research conclusion is that the implementation can repr
 |---:|---|---|---|---|
 | 1 | `README.md`: overview, setup, architecture diagram and reproduction instructions | **PARTIAL** | `README.md`; documented commands were checked | It has a detailed overview, dependencies and pipeline commands, but no architecture diagram. It still says no live deployment, production scoring is disabled, the artifact is not in Docker, and the project is at Phase 8C. Those statements contradict revision 7's live scoring container and Firebase release. It also cannot tell a fresh reviewer how to obtain the approved input/artifact. Update only in a separately authorized remediation. |
 | 2 | `AI_USE.md` | **FAIL** | `git ls-files`; filesystem search; `docs/proposed_ai_use_disclosure.md` | `AI_USE.md` is absent. The proposed disclosure explicitly says it is not the required file. A truthful, student-reviewed disclosure of AI-assisted code, documentation, tests and troubleshooting is mandatory; this audit did not recreate it. |
-| 3 | Scripted reproducible data pipeline | **PARTIAL** | `src/solana_risk/data/audit.py`, `data/preprocess.py`, `features/build.py`, `models/train_anomaly.py`, `models/evaluate_anomaly.py`; fresh `/tmp` run | The non-notebook pipeline runs end to end and is byte-deterministic with the private `nft.csv`. Fresh-clone reproduction is incomplete because the input is ignored, provenance/licensing is unresolved, and there is no acquisition mechanism. |
+| 3 | Scripted reproducible data pipeline | **PARTIAL** | `src/solana_risk/data/audit.py`, `data/preprocess.py`, `features/build.py`, `models/train_anomaly.py`, `models/evaluate_anomaly.py`; fresh `/tmp` run | The non-notebook pipeline runs end to end and is byte-deterministic with the private `nft.csv`. Fresh-clone reproduction is incomplete because the input is ignored, exact extraction metadata and sharing permission are incomplete, and there is no authorized acquisition mechanism. |
 | 4 | Model training code and serialized model artifact | **PARTIAL** | `train_anomaly.py::fit_experiment`, `save_bundle`, `load_bundle`; local artifact and manifest | Training code and a valid 1,185,949-byte artifact exist. The artifact reproduced byte-for-byte, but `git ls-files` contains no artifact and no approved release/storage retrieval procedure exists. Publish only through a lecturer-approved mechanism with checksum/manifest and a trust warning for joblib/pickle; confirm whether an external release satisfies the repository-deliverable wording. |
 | 5 | Dockerfile and Compose or equivalent | **PASS** | `Dockerfile`, `Dockerfile.scoring`, `.dockerignore`, `docker-compose.yml`, `scripts/container_smoke_test.py` | Both the model-free and checksum-pinned scoring images built and passed non-root, content, port, health, readiness and graceful-shutdown checks. Compose validated. |
 | 6 | FastAPI model-serving API | **PASS** | `api/main.py::create_app`; `routes/scoring.py`; `experimental_scoring.py::TrustedExperimentalScorer`; API/auth tests; local Docker; live Cloud Run | The API loads only an explicitly enabled, checksum-verified Isolation Forest and returns typed non-probability single/batch anomaly scores. Live readiness is 200 and request logs contain an authenticated/protected batch POST returning 200. The live `/healthz` path nevertheless returns 404 while its `/v1/health` alias returns 200; fix and retest separately. |
@@ -81,7 +81,7 @@ The capstone correctly departs from random row splitting and supervised class me
 
 | Stage | Status | Evidence/functions | Audit finding |
 |---|---|---|---|
-| Raw ingestion | **PARTIAL** | `audit.py::_load_input`, `audit_dataset`; local `nft.csv` SHA-256 `8f387709c6742f2fc31c19fc32dac27474b6b27b9304786c367a8d8bece81271` | Deterministic local reading and schema checks pass. The filename is misleading; the 18 fields describe DEX swaps. Provider, query, sampling and licence are absent. |
+| Raw ingestion | **PARTIAL** | `audit.py::_load_input`, `audit_dataset`; local `nft.csv` SHA-256 `8f387709c6742f2fc31c19fc32dac27474b6b27b9304786c367a8d8bece81271` | Deterministic local reading and schema checks pass. The filename is misleading; the 18 fields describe DEX swaps. Dune query 6561080 is confirmed, while exact extraction metadata, sampling detail and sharing permission are absent. |
 | Audit | **PASS locally** | `audit_dataset`, `write_reports` | Reproduced 10,800 rows, 18 columns, 2,312 wallets and 9,221 transaction hashes. No labels or direct counterparty fields were found. |
 | Preprocessing | **PASS locally** | `preprocess.py::preprocess_dataset`, `write_outputs` | Reproduced 10,798 retained plus two quarantined records, zero silent removal, UTC normalization, deterministic ordering and preserved raw lineage. Repeated transaction hashes are not blindly deduplicated. |
 | Feature engineering | **PASS locally** | `build.py::validate_events`, `_wallet_snapshot`, `build_wallet_snapshots` | Exactly 29 ordered features; `block_time < as_of`; closed-open windows; supplied previous-event fields excluded; wallet/cutoff retained only as metadata. |
@@ -118,7 +118,7 @@ Extreme USD events were retained rather than winsorized. This is transparent, bu
 
 **Clone-only/acquisition reproducibility: FAIL.**
 
-The README's default pipeline works after installation only if `nft.csv` has been supplied separately. Neither the raw input nor the artifact is tracked. The repository gives no lawful acquisition URL/query, licence or approved checksum-based retrieval step. On this host, the literal first command `python3.11 -m venv .venv` also fails because `python3.11` is unavailable; the existing Python 3.12 environment is compatible with `pyproject.toml` and passed all tests. This is an environment-specific documentation portability issue, not a package incompatibility.
+The README's default pipeline works after installation only if `nft.csv` has been supplied separately. Neither the raw input nor the artifact is tracked. The repository identifies Dune query 6561080 but provides no archived extraction-time configuration, licence or approved checksum-based retrieval step. On this host, the literal first command `python3.11 -m venv .venv` also fails because `python3.11` is unavailable; the existing Python 3.12 environment is compatible with `pyproject.toml` and passed all tests. This is an environment-specific documentation portability issue, not a package incompatibility.
 
 An acceptable closure is a provider-approved acquisition procedure or restricted reviewer handover with a source manifest, terms/permission, immutable checksum and data dictionary. A fabricated substitute must not be presented as equivalent reproduction.
 
@@ -211,8 +211,8 @@ Submission evidence should include an authorized written record reconciling titl
 
 | Provenance question | Status |
 |---|---|
-| Exact provider/indexer/API | **UNRESOLVED** |
-| Collector, query, sampling frame and collection date | **UNRESOLVED** |
+| Provider/query | **CONFIRMED:** Dune Analytics query `6561080` |
+| Historical SQL revision, execution IDs, parameters, sampling procedure and extraction timestamps | **NOT ARCHIVED** |
 | Dataset version/snapshot | Local filename/size/SHA known; upstream version **UNRESOLVED** |
 | Domain | **VERIFIED locally as Solana DEX/swap semantics**, not NFT marketplace sales |
 | Licence and academic-use permission | **UNRESOLVED — BLOCKER** |
@@ -221,7 +221,7 @@ Submission evidence should include an authorized written record reconciling titl
 | Label provenance | **No independently verified labels present** |
 | Direct counterparty evidence | **Absent** |
 
-One historical on-chain record was previously corroborated against Solana RPC, but that does not identify the table's provider, selection, enrichment, completeness or licence. Local SHA-256 proves file integrity only.
+One historical on-chain record was previously corroborated against Solana RPC, but that does not recover the extraction-time query state, selection, enrichment, completeness or licence. Local SHA-256 proves file integrity only.
 
 ## I. Academic submission readiness
 
@@ -274,7 +274,7 @@ Proposed presentation outline:
 | Priority | Gap | Required remediation |
 |---|---|---|
 | **BLOCKER** | Missing `AI_USE.md` | Student verifies institutional wording and authorizes a truthful tracked disclosure. |
-| **BLOCKER** | No source/licence/acquisition evidence | Obtain provider, extraction/sampling procedure, data dictionary, licence/permission and immutable source manifest; otherwise seek written academic direction on use. |
+| **BLOCKER** | Missing extraction/licence evidence | Preserve extraction-time SQL and execution metadata if available, plus the sampling procedure, data dictionary, licence/permission and immutable source manifest; otherwise seek written academic direction on use. |
 | **BLOCKER** | Methodology/title approval not independently documented | Supply a primary amendment/approval record or examiner-verifiable private record, and reconcile title/objective/claim boundary. |
 | **BLOCKER** | No reviewer artifact delivery and no clone-only pipeline reproduction | Establish approved artifact delivery with checksums/trust warning and a lawful data handover/acquisition path. |
 | **BLOCKER** | No final student-authored report/slide deck | Rewrite/complete the drafts, update deployment evidence, verify citations, prepare slides and perform rubric crosswalk. |

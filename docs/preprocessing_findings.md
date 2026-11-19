@@ -44,7 +44,7 @@ The two quarantined rows are source rows 2,328 and 3,548. Both have `amount_in =
 - All **936** rows missing instruction indices are retained with `instruction_index_missing = True`; these are the `jupiter_swap` source rows. Source-row identity is used as the conservative fallback event identity.
 - No statistical imputer, scaler, encoder, selector, or resampler is fitted in Phase 2. Such transforms must later be fitted inside training folds only.
 
-Missingness-mechanism labels remain hypotheses, not facts. Fee absence plausibly depends on source/extraction coverage, but provider and extraction documentation are still missing, so MCAR, MAR, or MNAR is not asserted.
+Missingness-mechanism labels remain hypotheses, not facts. Fee absence plausibly depends on source/extraction coverage, but extraction-time documentation is incomplete, so MCAR, MAR, or MNAR is not asserted.
 
 ### Duplicate and transaction grain
 
@@ -111,7 +111,7 @@ Unlike the lab’s synthetic labelled data, this source has no target. Unlike it
 
 ## Remaining problems before Phase 3
 
-1. Provider/API, extraction query, collection method, licence, source snapshot, and independent provenance remain unresolved.
+1. Dune Analytics query 6561080 is confirmed as the source, but the historical SQL revision, execution metadata, parameters, source snapshot, and data-sharing permission remain unresolved.
 2. Verified wash-trading labels and their as-of knowledge timestamps remain absent.
 3. Direct wallet-to-wallet counterparty edges remain absent.
 4. The intended Phase 3 scoring cutoffs and observation windows require student approval and must account for almost nonexistent cross-month wallet overlap.

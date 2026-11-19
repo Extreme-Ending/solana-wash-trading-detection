@@ -163,4 +163,4 @@ The integration auditor uses a verifier injected only into its process, exactly 
 
 ## Known limitations
 
-The interactive Firebase/browser path still requires a student-operated accepted account and local credentials. Automated tests do not establish real popup usability. Synthetic examples are not empirical cases. The raw data provider, licence and permitted use remain unresolved, and the Docker production image intentionally cannot serve experimental scores.
+The interactive Firebase/browser path still requires a student-operated accepted account and local credentials. Automated tests do not establish real popup usability. Synthetic examples are not empirical cases. Dune query 6561080 is the confirmed data source, but extraction metadata and permitted sharing remain incomplete. The Docker production image intentionally cannot serve experimental scores.

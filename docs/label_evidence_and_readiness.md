@@ -45,7 +45,7 @@ The repository still has no `references/` directory containing the approved NFT 
 - The exact 249 wallet identities cannot be validated against a supplied evidence register because no such register exists.
 - There is no evidence that an independent investigator, marketplace, regulator, or data provider reviewed either class.
 - There are no evidence or knowledge timestamps from which to determine whether a label was available at a proposed scoring time.
-- There is no verified source snapshot, extraction query, licence, provider/API record, or label-version history.
+- Dune Analytics query 6561080 is the confirmed event-data source, but no extraction-time query snapshot, licence, independent label source, or label-version history is available.
 
 ## Domain and identity mismatch
 

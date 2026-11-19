@@ -19,7 +19,7 @@ The `references/` directory is absent. Consequently, the following primary docum
 - the signed or submitted proposal;
 - the full DSA 8401 marking rubric;
 - a written methodology approval/amendment record;
-- the dataset provider, extraction specification or licence; and
+- the dataset's extraction-time specification or data-sharing permission; and
 - the institution's authoritative generative-AI policy or required disclosure form.
 
 The verified summaries in the private steering documents are used only as secondary project records. Earlier student communication states that the unsupervised direction was accepted, but that communication is not a submission-ready approval record. The current implementation can be described accurately; the formal academic record still needs to be supplied by the student.
@@ -28,7 +28,7 @@ The verified summaries in the private steering documents are used only as second
 
 | Phase 9 blocker | Can Phase 10 close it locally? | Phase 10 treatment |
 |---|---:|---|
-| Dataset origin/licence | No | Publicly corroborate what is possible; preserve provider, selection and rights gaps |
+| Dataset extraction/licence | Partial | Query 6561080 confirmed; preserve historical SQL, execution, selection and rights gaps |
 | Missing labels/counterparty edges | No | Keep fraud/coordination claims prohibited |
 | Title/method alignment | Partly | Recommend a title and prepare a reviewable amendment without changing the approved record |
 | Scholarly foundation | Yes, provisionally | Audit primary papers and add verified APA references |

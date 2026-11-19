@@ -106,7 +106,7 @@ The amendment changes the modelling/evaluation evidence available to the rubric:
 Before implementation, the student still needs:
 
 1. written supervisor approval of the revised title, objective, research questions, claim boundary, and evaluation evidence;
-2. confirmation of the data provider/API, extraction query, sampling method, snapshot dates, licence, and permitted use;
+2. archival of the extraction-time SQL revision, execution identifiers, parameters, sampling method and timestamps for confirmed Dune query 6561080, plus licence and permitted use;
 3. a decision on wallet-history eligibility and later scoring periods;
 4. an approved operational meaning for a review budget and anomaly-ranking output; and
 5. resolution of required submission documentation, including the rubric-required `AI_USE.md`.

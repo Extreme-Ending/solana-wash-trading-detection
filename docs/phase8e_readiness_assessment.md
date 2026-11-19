@@ -2,7 +2,7 @@
 
 ## Executive decision
 
-**Phase 8E: CONDITIONAL PASS.** The available evidence has been audited, the research boundary has been made explicit, the existing evaluator reproduced the label-free findings, and a technically viable secure architecture has been defined. External facts that cannot be recovered from code—dataset provenance/licence, primary proposal/rubric, documentary methodology approval, AI-use disclosure requirements and live cloud ownership/configuration—remain unresolved.
+**Phase 8E: CONDITIONAL PASS.** The available evidence has been audited, the research boundary has been made explicit, the existing evaluator reproduced the label-free findings, and a technically viable secure architecture has been defined. Dataset extraction metadata and sharing permission, primary proposal/rubric, documentary methodology approval, AI-use disclosure requirements and live cloud ownership/configuration remain unresolved.
 
 This decision does **not** authorize cloud deployment, model promotion, public access, a formal methodology/title change or fraud/wash-trading effectiveness claims.
 
@@ -11,7 +11,7 @@ This decision does **not** authorize cloud deployment, model promotion, public a
 | Local engineering demonstration | Conditional pass | Reproducible pipeline/artifact, guarded API, frontend and container are testable; raw input remains local/ignored |
 | Unsupervised research evidence | Conditional pass | Rank/sensitivity/temporal evidence is reproducible, but conclusions are dataset- and detector-limited |
 | Fraud or wash-trading detection | **Fail / prohibited claim** | No independently verified outcome labels or counterparty evidence |
-| Dataset publication/use | **Blocked** | Provider, acquisition procedure and licence are unknown |
+| Dataset publication/use | **Blocked** | Dune query 6561080 is confirmed; historical extraction metadata and data-sharing permission are incomplete |
 | Academic submission package | Conditional / incomplete | Primary proposal, rubric, approval record, AI-use disclosure and final report materials are absent locally |
 | Live cloud deployment | **NO-GO** | Architecture is proposed only; identity, IAM, billing, abuse, domain and live acceptance remain unverified |
 
@@ -19,7 +19,7 @@ This decision does **not** authorize cloud deployment, model promotion, public a
 
 ### Dataset provenance
 
-Direct schema/content inspection identifies the local source as 10,800 Solana wallet-attributed DEX/swap events, not NFT marketplace transactions. It has no ground-truth field or counterparty edge. Its SHA-256 establishes local file identity, not origin or permission. See [`dataset_provenance_resolution.md`](dataset_provenance_resolution.md).
+The dataset creator identifies Dune Analytics query 6561080 as the source of the 10,800 Solana wallet-attributed DEX/swap events. The file has no ground-truth field or counterparty edge. Its SHA-256 establishes local file identity, not data-sharing permission. See [`dataset_provenance_resolution.md`](dataset_provenance_resolution.md).
 
 ### Methodology
 
@@ -62,7 +62,7 @@ The first two temporary pipeline attempts used the filename copied from the Phas
 
 ## Blockers ranked by severity
 
-1. **Critical — provenance and use rights:** no provider, extraction procedure, sampling frame or licence. Resolve before publishing data/artifact or relying on it for final claims.
+1. **Critical — extraction evidence and use rights:** the source query is confirmed, but the exact historical SQL revision, execution metadata, parameters, sampling procedure and data-sharing permission are incomplete. Resolve before publishing data or artifacts.
 2. **Critical — claim validity:** no independent labels and no counterparty evidence. Fraud, wash trading, coordination and classification-effectiveness claims remain prohibited.
 3. **High — academic authorization/evidence:** primary proposal, rubric and written method-change evidence are absent locally; the DEX/unsupervised scope must be reconciled through the required academic process.
 4. **High — AI-use disclosure:** the prior required disclosure file is absent. Resolution must follow explicit student/institutional instruction; Phase 8E did not recreate it.
@@ -73,9 +73,9 @@ The first two temporary pipeline attempts used the filename copied from the Phas
 
 ## Phase 9 recommendation
 
-Do not start Phase 9 automatically. If the student explicitly authorizes it, scope it to **submission evidence consolidation**, conditional on first supplying the primary proposal/rubric and provenance/licence records. Appropriate work would be a rubric evidence matrix, student-reviewed final reproducibility manifest, bibliography/citation validation, model card with the claim boundary, and report/slide evidence tables.
+Do not start Phase 9 automatically. If the student explicitly authorizes it, scope it to **submission evidence consolidation**, conditional on first supplying the primary proposal/rubric and any available extraction/licence records. Appropriate work would be a rubric evidence matrix, student-reviewed final reproducibility manifest, bibliography/citation validation, model card with the claim boundary, and report/slide evidence tables.
 
-Phase 9 should not add supervised labels, promote the model, implement the BFF, publish data, or deploy cloud resources unless each is separately supported and authorized. If provenance/licence cannot be resolved, the next action is an academic/data-governance decision—not additional modelling.
+Phase 9 should not add supervised labels, promote the model, implement the BFF, publish data, or deploy cloud resources unless each is separately supported and authorized. If extraction metadata or data-sharing permission cannot be resolved, the next action is an academic/data-governance decision, not additional modelling.
 
 ## Completion statement
 

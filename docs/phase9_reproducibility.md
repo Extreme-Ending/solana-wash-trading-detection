@@ -63,4 +63,4 @@ The official AML Lab 2 sequence—audit, clean/aggregate, leakage-by-lineage ana
 
 ## Reproducibility conclusion
 
-Local engineering and label-free results are reproducible under the pinned environment. Repository-only reproduction and lawful evidence redistribution remain blocked by unresolved dataset provenance/licence and ignored binary inputs.
+Local engineering and label-free results are reproducible under the pinned environment. Repository-only reproduction and lawful evidence redistribution remain blocked by missing extraction-time metadata, unresolved data-sharing permission and ignored binary inputs. Dune query 6561080 is the confirmed source.

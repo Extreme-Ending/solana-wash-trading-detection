@@ -65,7 +65,31 @@ def expected_synthetic_result(artifact_digest: str) -> bytes:
     return (json.dumps(result, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+def clean_source_revision() -> str:
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=normal"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if status:
+        raise SystemExit(
+            "Reviewer package refused: the Git working tree has uncommitted files. "
+            "The student must review and commit the source, then rerun this script so "
+            "SOURCE_REVISION.txt identifies the exact reviewed revision."
+        )
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
 def main() -> int:
+    revision = clean_source_revision()
     for path in (ARTIFACT, MANIFEST):
         if path.is_symlink() or not path.is_file():
             raise SystemExit(f"Required trusted local file is unavailable: {path}")
@@ -79,13 +103,6 @@ def main() -> int:
     load_bundle(ARTIFACT)
     expected_result = expected_synthetic_result(artifact_digest)
     expected_result_digest = hashlib.sha256(expected_result).hexdigest()
-    revision = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
     readme = f"""Solana Wallet Risk model reviewer package
 
 Experiment version: {manifest['experiment_version']}

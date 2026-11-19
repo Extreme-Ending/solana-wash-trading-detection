@@ -9,7 +9,7 @@ Every material dissertation statement should point to code, generated evidence a
 | Proposed claim/topic | Supporting evidence | Status/qualification |
 |---|---|---|
 | Automated review can help prioritize unusual high-volume wallet activity | Anomaly-ranking interface and [`research_methodology_alignment.md`](research_methodology_alignment.md) | Motivate as review support, not confirmed fraud detection |
-| The implemented domain is Solana DEX swaps | Schema audit and [`dataset_provenance_resolution.md`](dataset_provenance_resolution.md) | Verified from fields; origin remains unknown |
+| The implemented domain is Solana DEX swaps | Schema audit and [`dataset_provenance_resolution.md`](dataset_provenance_resolution.md) | Verified from fields; source is Dune query 6561080 |
 | Research objective is reproducible point-in-time anomaly ranking | Feature contract, evaluator, API and [`phase9_research_results.md`](phase9_research_results.md) | Supported for the implemented system |
 | Original NFT/supervised framing differs from available evidence | Proposal summary in steering plus Phase 4A/8E documents | Primary proposal absent; formal reconciliation evidence incomplete |
 | Research contribution | Deterministic pipeline, comparison diagnostics, secure local demonstration | Limit contribution to methodology/engineering and label-free findings |
@@ -27,7 +27,7 @@ Every material dissertation statement should point to code, generated evidence a
 
 | Proposed claim/topic | Supporting code/evidence | Status/qualification |
 |---|---|---|
-| Dataset contains 10,800 events and 2,312 wallets | `audit.py`, audit JSON, Phase 9 table 01 | Source/licence unresolved |
+| Dataset contains 10,800 events and 2,312 wallets | `audit.py`, audit JSON, Phase 9 table 01 | Source confirmed; extraction metadata and sharing permission incomplete |
 | Two rows quarantined under explicit rules | `preprocess.py`, cleaning report, preprocessing tests | Supported; report reason codes |
 | Unit is `(wallet, as_of)` with strict `block_time < as_of` | `features/build.py`, feature registry/tests | Supported |
 | 29 registered features | feature registry, snapshot/manifest hashes | Supported; document categories and lineage |
@@ -64,4 +64,4 @@ Every material dissertation statement should point to code, generated evidence a
 
 ## Submission evidence gaps
 
-The primary proposal, marking rubric, written methodology authorization, dataset source/licence, consolidated scholarly bibliography, final report/slides and required AI disclosure are not present locally. This map organizes available evidence but cannot close those external or student-authored obligations.
+The primary proposal, marking rubric, written methodology authorization, dataset extraction metadata and sharing permission, consolidated scholarly bibliography, final report/slides and required AI disclosure are not present locally. This map organizes available evidence but cannot close those external or student-authored obligations.

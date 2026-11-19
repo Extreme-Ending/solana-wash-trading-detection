@@ -41,7 +41,7 @@ An anomaly score is a model-specific indicator of unusualness relative to the fi
 
 ## Validation limitations
 
-Automated DOM tests exercise desktop/mobile-compatible semantic structure, charts, filters, sorting, details, missing/constant/binary comparisons, rejections and budget-change behavior. The production build verifies compilation and bundling. No browser screenshot is claimed unless separately captured by the student; jsdom does not provide a real layout engine. The supplied DEX events and training snapshots still lack independently verified wash-trading outcomes, direct counterparty edges and resolved source/licensing provenance.
+Automated DOM tests exercise desktop/mobile-compatible semantic structure, charts, filters, sorting, details, missing/constant/binary comparisons, rejections and budget-change behavior. The production build verifies compilation and bundling. No browser screenshot is claimed unless separately captured by the student; jsdom does not provide a real layout engine. The supplied DEX events and training snapshots still lack independently verified wash-trading outcomes, direct counterparty edges, extraction-time metadata and data-sharing permission. Dune query 6561080 is the confirmed source.
 
 ## Observed local validation
 

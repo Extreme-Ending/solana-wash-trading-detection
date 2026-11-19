@@ -65,7 +65,7 @@ The production-shaped image intentionally excludes experimental artifact/model d
 
 ## Safe demonstration sequence
 
-1. State that the data are a provenance-unresolved DEX sample with no verified fraud target.
+1. State that the data are a DEX sample from confirmed Dune query 6561080 with incomplete extraction metadata and no verified fraud target.
 2. Show the Phase 9 aggregate evidence and Phase 10 interpretation captions.
 3. Demonstrate public health and fail-closed readiness.
 4. If the student has a legitimate configured session, sign in without exposing tokens and preview synthetic events.

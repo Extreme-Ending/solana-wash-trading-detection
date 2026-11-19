@@ -42,10 +42,12 @@ def create_app(
         title=selected.service_name,
         version=selected.api_version,
         description=(
-            "Descriptive point-in-time wallet feature previews. Process health is separate "
-            "from scoring readiness. Experimental unsupervised anomaly scoring is disabled "
-            "unless an explicit checksum-pinned artifact configuration is valid. Scores are "
-            "not probabilities or fraud determinations."
+            "API-first Solana DEX wallet analysis service. Clients submit validated JSON "
+            "transaction histories; the service builds point-in-time features and can apply "
+            "a checksum-pinned Isolation Forest. The service does not fetch live blockchain "
+            "history from a wallet address. Experimental unsupervised anomaly scoring is disabled "
+            "unless explicitly configured with a trusted artifact. Scores are not probabilities "
+            "or fraud determinations."
         ),
         lifespan=lifespan,
         docs_url=None if production else "/docs",

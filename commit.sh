@@ -38,6 +38,12 @@ is_private_path() {
     local lower_path=${path,,}
     local base_name=${lower_path##*/}
 
+    # This exact selected-model release is intentionally public. The full research
+    # bundle and every other serialized model path remain blocked below.
+    if [[ "$lower_path" == "artifacts/release/4b.1/anomaly_models.joblib" ]]; then
+        return 1
+    fi
+
     case "$path" in
         AGENTS.md|*/AGENTS.md|.agents|.agents/*|*/.agents/*|\
         CODEX_IMPLEMENTATION_PROMPT.md|*/CODEX_IMPLEMENTATION_PROMPT.md|\

@@ -31,7 +31,7 @@ sha256sum nft.csv
 sed -n '1,100p' reports/preprocessing/preprocessing_summary.md
 ```
 
-Talking points: 10,800 input, 10,798 retained, two quarantined, no silent removal; provenance/licence unresolved.
+Talking points: 10,800 input, 10,798 retained, two quarantined, no silent removal; query 6561080 confirmed; extraction metadata and data-sharing permission incomplete. FastAPI is the primary API-first scoring service, while React is a JSON demonstration client rather than a complete commercial SaaS platform.
 
 ### 2:15–3:15 — Features and leakage
 
@@ -69,7 +69,7 @@ Talking points:
 
 - Contribution: reproducible leakage-aware anomaly workflow plus secure local delivery.
 - Not demonstrated: fraud effectiveness, NFT wash trading or coordination.
-- Critical next evidence: lawful provenance/licence and independent timestamped labels if supervised claims are desired.
+- Critical next evidence: extraction-time metadata, data-sharing permission and independent timestamped labels if supervised claims are desired.
 
 ## Detailed 20-minute technical demonstration
 
@@ -131,7 +131,7 @@ Show the Phase 9 manifest and test summary. Explain that the production Docker i
 
 ### 18:30–20:00 — Limitations and questions
 
-End with provenance/licence, no labels/edges, repeated-wallet dependence, coverage shift, real Firebase acceptance and academic documentation gaps. Present the future label contract and secure deployment architecture as proposals, not completed work.
+End with missing extraction metadata and data-sharing permission, no labels/edges, repeated-wallet dependence, coverage shift, real Firebase acceptance and academic documentation gaps. Present the future label contract and secure deployment architecture as proposals, not completed work.
 
 ## Fallbacks
 

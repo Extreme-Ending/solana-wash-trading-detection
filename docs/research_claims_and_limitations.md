@@ -18,7 +18,7 @@ An anomaly score indicates that a wallet snapshot differs from the training refe
 
 ## Data limitations
 
-- The source is identified as Dune Analytics, but the query URL or ID, SQL, export date, sampling method, licence, and redistribution permission remain unrecorded.
+- The dataset was extracted from Dune Analytics query 6561080 in multiple batches of approximately 1,000 rows. The query was executed again after the original extraction, so its currently visible SQL should not be treated as a preserved snapshot of the extraction-time query. The exact historical SQL revision, execution identifiers, parameters, extraction timestamps, and data-sharing permission remain unrecorded.
 - The file contains no independently verified fraud outcome, case evidence, or evidence timestamp.
 - No direct buyer, seller, sender, receiver, or counterparty-wallet edge is present.
 - Wallet histories are sparse. Most wallets occur in one event month, and later entrants have shorter observable histories.

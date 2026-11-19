@@ -47,10 +47,12 @@ reports/
 artifacts/
 !artifacts/
 artifacts/*
-!artifacts/experimental/
-artifacts/experimental/*
-!artifacts/experimental/anomaly_models.joblib
-!artifacts/experimental/anomaly_models_manifest.json
+!artifacts/release/
+artifacts/release/*
+!artifacts/release/4B.1/
+artifacts/release/4B.1/*
+!artifacts/release/4B.1/anomaly_models.joblib
+!artifacts/release/4B.1/anomaly_models_manifest.json
 models/
 model_artifacts/
 mlruns/

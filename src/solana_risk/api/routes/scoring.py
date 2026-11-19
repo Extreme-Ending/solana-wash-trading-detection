@@ -43,6 +43,8 @@ def _experimental_scorer(request: Request):
     responses={
         401: {"model": ErrorResponse},
         403: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
         429: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },

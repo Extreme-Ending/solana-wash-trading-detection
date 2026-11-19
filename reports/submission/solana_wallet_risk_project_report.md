@@ -6,23 +6,23 @@
 
 | Report evidence | Value |
 | --- | --- |
-| Validated repository revision | `a3a2b795d7d5a3e589bcd66f6a1cddbe95fc53ac` |
+| Working-tree base revision | `6dd168578422c55ad4a56ad75015d348b75bc0c2` |
 | Validation date | 19 November 2026 |
 | Live application | https://solana-wallet-risk.web.app/#home |
 
 ## Abstract
 
-This project implements a reproducible system for ranking statistically unusual wallet activity in a supplied sample of Solana decentralized exchange swaps. The data, identified by the student as a Dune Analytics export, contains 10,800 event rows, 18 fields and 2,312 wallet identifiers between January and November 2025. It does not contain independently verified wash-trading outcomes or direct wallet-to-wallet counterparty evidence. The valid research task is therefore unsupervised anomaly analysis rather than supervised fraud classification.
+This project implements a reproducible system for ranking statistically unusual wallet activity in a supplied sample of Solana decentralized exchange swaps. The dataset was extracted from Dune Analytics query 6561080 and contains 10,800 event rows, 18 fields and 2,312 wallet identifiers between January and November 2025. It does not contain independently verified wash-trading outcomes or direct wallet-to-wallet counterparty evidence. The valid research task is therefore unsupervised anomaly analysis rather than supervised fraud classification.
 
 The pipeline audits the source, quarantines unsupported records, creates 29 point-in-time wallet features and compares Isolation Forest, novelty Local Outlier Factor and a robust median absolute deviation baseline. Models are fitted on 1,754 wallet snapshots at 1 September 2025. October supports exploratory validation and December is a descriptive holdout. Isolation Forest was selected for application serving because its validation rankings were stable across tested settings and agreed strongly with the robust baseline. Holdout Spearman correlation was 0.8662 between Isolation Forest and robust MAD, but only 0.0488 between Isolation Forest and LOF. These results assess ranking stability and detector agreement, not fraud-detection accuracy.
 
-The selected artifact is checksum-verified before FastAPI loads it. A React application on Firebase Hosting uses Google sign-in and sends Firebase ID tokens to a Cloud Run API that applies a server-side UID allowlist. The system returns anomaly scores, rankings and descriptive feature context. It does not return fraud probabilities or confirmed wash-trading findings. Major limitations are unresolved Dune query and licence evidence, sparse wallet histories, absent ground truth and incomplete clone-only data acquisition.
+The primary product is a FastAPI scoring service that accepts validated JSON transaction histories. A React demonstration client on Firebase Hosting uses Google sign-in and sends Firebase ID tokens to the Cloud Run API, which applies a server-side UID allowlist. The selected artifact is checksum-verified before loading. The system returns anomaly scores, rankings and descriptive feature context. It does not retrieve live transactions from a wallet address, return fraud probabilities or report confirmed wash trading. Commercial SaaS billing, subscriptions and multi-tenant account management are future directions, not implemented capabilities. Major limitations are incomplete Dune extraction metadata and redistribution evidence, sparse wallet histories, absent ground truth and incomplete clone-only data acquisition.
 
 ## 1. Introduction and problem definition
 
 Public blockchain data provides timestamped transaction evidence, but observable transactions do not reveal intent or reliably identify the people controlling addresses. Wash trading is a particularly difficult construct because strong identification may require self-trade records, counterparty relationships, common-control evidence or independently adjudicated cases. Unusual volume, timing or concentration can also arise from legitimate activity.
 
-The supplied project file contains DEX swap fields such as wallet, DEX, token pair, amounts, transaction hash and instruction indices. It does not contain NFT marketplace sale fields, independently verified outcomes or direct counterparty-wallet relationships. A supervised classifier trained from heuristic flags derived from the same behavioral variables would be circular and could produce misleading performance estimates.
+The supplied project file contains DEX swap fields such as wallet, DEX, token pair, amounts, transaction hash and instruction indices. It does not contain independently verified outcomes or direct counterparty-wallet relationships. A supervised classifier trained from heuristic flags derived from the same behavioral variables would be circular and could produce misleading performance estimates.
 
 The implemented problem is therefore narrower: can a reproducible point-in-time pipeline identify wallet observations that are statistically unusual relative to an earlier reference cohort, compare alternative anomaly concepts and deliver the results through a controlled review interface? The unit of analysis is `(wallet, as_of)`. A score describes relative unusualness for that unit and must not be interpreted as proof of misconduct.
 
@@ -37,13 +37,15 @@ The specific objectives are to:
 3. compare Isolation Forest, LOF and robust MAD using label-free chronological diagnostics;
 4. examine repeated-wallet dependence, later entrants and observable-history coverage;
 5. serialize and validate a trusted model artifact with exact feature and dependency contracts; and
-6. deliver bounded single-wallet and batch review through an authenticated web application.
+6. deliver bounded single-wallet and batch review through an authenticated API with a React demonstration client.
 
 The project does not attempt to prove coordinated trading, infer wallet ownership, automate adverse decisions or report supervised fraud metrics.
 
 ## 3. Dune Analytics dataset
 
-The student identifies Dune Analytics as the source of the private CSV export. The exact Dune query URL or ID, SQL, extraction date, export procedure, sampling method, licence and redistribution permission are not present in the repository. This prevents independent reacquisition and means the raw file must not be published without further evidence.
+The dataset was extracted from [Dune Analytics query 6561080](https://dune.com/queries/6561080) in multiple batches of approximately 1,000 rows. The query was executed again after the original extraction, so its currently visible SQL should not be treated as a preserved snapshot of the extraction-time query. The resulting `nft.csv` contains 10,800 records covering January through November 2025. The preserved row order contains 1,000 rows for ten months and 800 for April.
+
+The original batch files, exact historical SQL revision, execution identifiers, parameters, and extraction timestamps are not independently archived. Redistribution permission also remains unresolved. The checksum identifies the actual experimental file, but a current query execution is not expected to reproduce it byte for byte.
 
 | Property | Verified value |
 | --- | ---: |
@@ -57,7 +59,7 @@ The student identifies Dune Analytics as the source of the private CSV export. T
 
 The fields describe wallet-attributed DEX swap observations. They include event time and slot, transaction hash, DEX, token pair and mints, input and output amounts, USD value, fee, instruction indices, source and supplied history fields. Source values are `dex_trade` and `jupiter_swap`.
 
-Data quality issues include 7,303 missing fees, 2,322 missing supplied previous-event values and gaps, 936 missing instruction-index pairs, 39 missing token-pair display labels and two rows with nonpositive required amounts. There are no exact duplicate rows. Repeated transaction hashes are not assumed to be duplicates because one Solana transaction can contain several instructions.
+Data quality issues include 7,303 missing fees, 2,322 missing supplied previous-event values and gaps, 936 missing instruction-index pairs, 39 missing token-pair display labels and two rows with nonpositive required amounts. There are no exact duplicate rows. Repeated transaction hashes are not assumed to be duplicates because one Solana transaction can contain several swap legs. All 179 groups sharing wallet, transaction hash, instruction indices and source differ in amounts, and 173 differ in token legs.
 
 ## 4. Data preprocessing and quality
 
@@ -154,19 +156,19 @@ Repeated-wallet reference-to-holdout rank correlations were 0.7502 for Isolation
 
 ## 9. Software architecture
 
-The repository separates reusable research modules, tests, FastAPI, React and deployment configuration. Training runs locally and offline. The API does not fit models on startup or request. The same feature registry and `build_wallet_snapshots` function are used for offline training and online inference.
+The repository separates reusable research modules, tests, FastAPI, React and deployment configuration. FastAPI is the primary product interface and supports integration by clients that can submit the documented JSON transaction-history schema. React is a demonstration client, not a complete commercial SaaS platform. Training runs locally and offline. The API does not fit models on startup or request. The same feature registry and `build_wallet_snapshots` function are used for offline training and online inference.
 
-The serialized joblib bundle and sidecar manifest record feature order, registry checksum, snapshot checksum, training cutoff, model settings, random seed, reference summaries and library versions. The verified artifact SHA-256 is `3e35561b...f5533035`; the manifest SHA-256 is `1551d55f...061ad0`. Two clean runs in the pinned environment produced byte-identical files.
+The full local research bundle and sidecar manifest record feature order, registry checksum, snapshot checksum, training cutoff, model settings, random seed, reference summaries and library versions. Their verified SHA-256 values are `3e35561b...f5533035` and `1551d55f...061ad0`. Two clean training runs in the pinned environment produced byte-identical files. The public 4B.1 release contains only the selected Isolation Forest and aggregate reference metadata. It excludes LOF's retained row-level feature matrix. Its artifact SHA-256 is `de349dd...61ebe5`; its manifest SHA-256 is `e7c6188...15bc13`.
 
 ![Application architecture](assets/application_architecture.png)
 
 ## 10. API and deployment
 
-FastAPI exposes public health and readiness endpoints plus protected feature preview, single scoring and batch scoring. The protected routes accept user-supplied event histories and explicit UTC scoring times. They do not retrieve blockchain data from a wallet address.
+FastAPI exposes public health and readiness endpoints plus protected feature preview, single scoring and batch scoring. The protected routes accept user-supplied JSON event histories and explicit UTC scoring times. JSON provides a typed contract that FastAPI validates for the React demonstration and other API clients. The service does not retrieve blockchain data from a wallet address. A future authorized provider integration could construct the same schema, but it is outside this implementation.
 
 Firebase Authentication supplies Google sign-in. The backend validates token signature, issuer, audience, expiration, Firebase project, subject, verified email, Google provider and revocation state. A server-side UID allowlist provides an additional authorization boundary. CORS, body-size limits, event and wallet limits, schema validation and per-instance rate limiting constrain requests.
 
-The React frontend is hosted at https://solana-wallet-risk.web.app/#home. The backend runs on Cloud Run in `africa-south1`. Read-only inspection on 19 November 2026 confirmed revision `solana-wallet-risk-api-00007-4mh` at 100% traffic, one CPU, 512 MiB memory and the dedicated runtime identity. `/v1/health` and `/readyz` returned HTTP 200. Readiness reported `experimental_anomaly_scoring` and `is_probability=false`, confirming that startup artifact validation passed. Protected endpoints returned HTTP 401 without a token.
+The React demonstration frontend is hosted at https://solana-wallet-risk.web.app/#home. It shows how an authenticated consumer can submit sample or user-provided JSON and visualize the API response. The backend runs on Cloud Run in `africa-south1`. Read-only inspection on 19 November 2026 confirmed revision `solana-wallet-risk-api-00007-4mh` at 100% traffic, one CPU, 512 MiB memory and the dedicated runtime identity. `/v1/health` and `/readyz` returned HTTP 200. Readiness reported `experimental_anomaly_scoring` and `is_probability=false`, confirming that startup artifact validation passed. Protected endpoints returned HTTP 401 without a token.
 
 The live `/healthz` route returned a Google-edge HTTP 404 although the same route works in local containers. Cloud Run documents that some paths ending in `z` are reserved, and the deployed service uses a TCP startup probe rather than this HTTP path. External monitoring therefore uses the working `/v1/health` route; no ingress or authentication change is required. An authenticated numerical response was not independently captured for this report because no Firebase user token was supplied to the verification process. The repository provides a secure manual acceptance script that reads a token from an environment variable without storing or printing it.
 
@@ -178,11 +180,11 @@ The detector comparison shows why anomaly output needs careful interpretation. I
 
 Temporal design also exposes limitations that a random split would hide. Repeated wallets create dependent cumulative observations, while later entrants are independent identities with shorter histories and shifted coverage. A high score can reflect amount extremes, incomplete history, unusual concentration or other divergence from the reference. None of these mechanisms alone proves manipulation.
 
-The web application makes these boundaries visible. It displays model-specific values without percentage formatting, separates score, rank and review-budget markers, and presents feature comparisons as descriptive context rather than SHAP or causal attribution. Synthetic examples exercise the software but are never presented as empirical cases.
+The React demonstration makes these boundaries visible. It displays model-specific values without percentage formatting, separates score, rank and review-budget markers, and presents feature comparisons as descriptive context rather than SHAP or causal attribution. Synthetic examples exercise the software but are never presented as empirical cases.
 
 ## 12. Limitations and ethics
 
-The exact Dune query, extraction process, sample construction, extraction date, licence and redistribution conditions are unresolved. This is the main reproducibility and governance blocker. The checksum proves local file identity but not lawful origin, completeness or public reuse rights.
+Dune query 6561080 is the confirmed source, but the exact historical SQL revision, execution identifiers, parameters, extraction timestamps and redistribution conditions remain unresolved. This is the main reproducibility and governance blocker. The checksum proves local file identity but not a complete fixed execution or public reuse rights.
 
 No independently verified fraud or wash-trading outcomes exist. Detection accuracy cannot be measured. The schema contains no direct counterparty or common-control evidence, so graph coordination claims are disabled. Histories are sparse, most wallets appear in one event month, feature groups contain correlated variables and the study covers one sample and one period.
 
@@ -194,7 +196,7 @@ Solana Wallet Risk demonstrates that an unlabelled DEX sample can support a rigo
 
 Isolation Forest is the current application ranker because it was the most stable tested nonlinear method and aligned strongly with the transparent robust baseline. The result is a relative anomaly score and review ranking, not a fraud probability.
 
-Priority future work is to recover the exact Dune query and use rights, obtain an independent later cohort, predeclare broader feature and seed sensitivity analyses, and secure expert timestamped review outcomes. Verified outcomes could support a separately approved effectiveness study. Direct counterparty and ownership evidence would be required before coordination analysis.
+Priority future work is to archive any available extraction-time Dune metadata and clarify use rights, obtain an independent later cohort, predeclare broader feature and seed sensitivity analyses, and secure expert timestamped review outcomes. Verified outcomes could support a separately approved effectiveness study. Direct counterparty and ownership evidence would be required before coordination analysis.
 
 ## 14. Reproducibility and handover
 
@@ -211,7 +213,7 @@ python -m solana_risk.models.train_anomaly
 python -m solana_risk.models.evaluate_anomaly
 ```
 
-The source CSV and model binary are excluded from Git. Full computation requires the authorized source matching checksum `8f387709...e81271`. The reviewer model package can be built with `python scripts/package_model_artifact.py` after the lecturer confirms an acceptable distribution channel. Joblib files must be loaded only from a trusted source.
+The source CSV remains excluded from Git. Full retraining requires the authorized source matching checksum `8f387709...e81271`. The selected-model-only 4B.1 artifact, manifest and checksum list are published under `artifacts/release/4B.1/`, allowing a reviewer to verify compatibility and obtain numerical synthetic inference without the private CSV. The full three-model research bundle remains private because novelty LOF retains row-level fitted feature arrays. Joblib files must be loaded only from the trusted repository after checksum verification.
 
 ## References
 
@@ -221,7 +223,7 @@ Campos, G. O., Zimek, A., Sander, J., Campello, R. J. G. B., Micenková, B., Sch
 
 Chandola, V., Banerjee, A., and Kumar, V. (2009). Anomaly detection: A survey. *ACM Computing Surveys, 41*(3), Article 15. https://doi.org/10.1145/1541880.1541882
 
-Dune Analytics. (n.d.). *Dune Analytics*. https://dune.com/
+Dune Analytics. (2025). *Query 6561080*. https://dune.com/queries/6561080
 
 Gama, J., Žliobaitė, I., Bifet, A., Pechenizkiy, M., and Bouchachia, A. (2014). A survey on concept drift adaptation. *ACM Computing Surveys, 46*(4), Article 44. https://doi.org/10.1145/2523813
 

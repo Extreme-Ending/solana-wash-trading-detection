@@ -9,7 +9,7 @@
 | Original approved proposal | No `references/` directory or primary proposal found | Obtain the authoritative approved copy; compare title, domain and method |
 | Marking rubric | No primary rubric found | Obtain the issued rubric and map final evidence to each criterion |
 | Methodology approval record | Draft amendment/comparison exist; no written approval artefact found | Retain supervisor/institutional evidence through the permitted academic channel |
-| Dataset source documentation | No provider, acquisition query, sampling frame or source manifest | Blocking; obtain the records listed in [`dataset_provenance_resolution.md`](dataset_provenance_resolution.md) |
+| Dataset extraction documentation | Dune query 6561080 confirmed; historical SQL revision, execution metadata, parameters, sampling frame and source manifest unavailable | Obtain the records listed in [`dataset_provenance_resolution.md`](dataset_provenance_resolution.md) if they exist |
 | Dataset licence/use permission | None found | Blocking for publication/redistribution and potentially submission use |
 | Verified label evidence | None found | Do not make supervised or fraud-effectiveness claims |
 | Lecturer-lab traceability | [`lab_traceability.md`](lab_traceability.md) records exact official references and adaptations | Present; recheck against primary rubric when supplied |
@@ -22,7 +22,7 @@
 
 ## Academic-integrity controls already present
 
-- missing outcomes and provenance are stated instead of fabricated;
+- missing outcomes and extraction metadata are stated instead of fabricated;
 - heuristic flags are not promoted to ground truth;
 - the anomaly score is not called a fraud probability;
 - point-in-time feature construction and data-lineage leakage controls are testable;

@@ -318,6 +318,52 @@ def test_scoring_is_deterministic_after_trusted_reload(
     assert first.model_dump(mode="json") == second.model_dump(mode="json")
 
 
+def test_selected_model_only_public_artifact_scores_without_training_rows(
+    trusted_files: tuple[Path, Path, str],
+    tmp_path: Path,
+) -> None:
+    artifact, manifest_path, _ = trusted_files
+    bundle = joblib.load(artifact)
+    public_bundle = {
+        "metadata": {
+            **bundle["metadata"],
+            "artifact_profile": "selected_isolation_forest_serving_only",
+        },
+        "models": {"isolation_forest": bundle["models"]["isolation_forest"]},
+        "training_reference": {
+            key: value
+            for key, value in bundle["training_reference"].items()
+            if key != "local_outlier_factor_intrinsic_scores"
+        },
+    }
+    public_artifact = tmp_path / artifact.name
+    joblib.dump(public_bundle, public_artifact, compress=3)
+    digest = sha256_file(public_artifact)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.update(
+        {
+            "artifact_profile": "selected_isolation_forest_serving_only",
+            "artifact_sha256": digest,
+            "contains_training_rows": False,
+            "models": ["isolation_forest"],
+        }
+    )
+    public_manifest = tmp_path / manifest_path.name
+    public_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    scorer = TrustedExperimentalScorer.load(
+        artifact_path=public_artifact,
+        manifest_path=public_manifest,
+        expected_sha256=digest,
+    )
+    response = scorer.score(ScoreRequest.model_validate(_payload()))
+    assert math.isfinite(response.anomaly_score)
+    assert response.model_id == "isolation_forest"
+    assert set(public_bundle) == {"metadata", "models", "training_reference"}
+    assert set(public_bundle["models"]) == {"isolation_forest"}
+    assert "local_outlier_factor_intrinsic_scores" not in public_bundle["training_reference"]
+
+
 def test_single_event_history_returns_explicit_warnings(
     trusted_files: tuple[Path, Path, str],
 ) -> None:

@@ -9,6 +9,7 @@ This index separates current operating documentation from historical research an
 | Data | [Data pipeline](data_pipeline.md) | Source evidence, audit, cleaning, and generated data |
 | Features | [Feature registry](feature_registry.md) | Exact 29-feature definitions and leakage controls |
 | Models | [Model training and evaluation](model_training_and_evaluation.md) | Split, preprocessing, algorithms, results, and interpretation |
+| Model artifact | [Model artifact handover](model_artifact_handover.md) | Public release, checksums, trusted loading and private-bundle boundary |
 | API | [API contract](api_contract.md) | Routes, authentication, limits, errors, and model availability |
 | System | [Architecture](architecture.md) | Frontend, authentication, API, model, and trust boundaries |
 | Deployment | [Deployment](deployment.md) | Current cloud design, release controls, and operational checks |

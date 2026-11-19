@@ -4,13 +4,13 @@
 
 **Phase 10: CONDITIONAL PASS.** The repository now contains an evidence-grounded methodology recommendation, verified scholarly foundation, research-gap analysis, dissertation working drafts, figure/table audit, academic compliance assessment and a revalidated local demonstration. The technical evidence remains reproducible and the experimental claim boundary remains intact.
 
-The conditions are external and material: dataset source/licence, primary proposal/rubric/amendment records, final AI disclosure, student-authored submission material and a real authenticated Firebase rehearsal remain unresolved. Phase 10 does not authorise deployment, artifact promotion or fraud claims.
+The conditions are external and material: dataset extraction metadata and sharing permission, primary proposal/rubric/amendment records, final AI disclosure, student-authored submission material and a real authenticated Firebase rehearsal remain unresolved. Phase 10 does not authorise deployment, artifact promotion or fraud claims.
 
 ## 2. Phase 9 blocker reconciliation
 
 | Blocker | Phase 10 result |
 |---|---|
-| Dataset source/licence | Partially investigated; one transaction corroborated on-chain, but provider, sampling, derivation and rights remain unresolved |
+| Dataset extraction/licence | Dune query 6561080 confirmed; historical extraction metadata, sampling detail and rights remain incomplete |
 | No labels/counterparty edges | Unchanged critical scientific boundary; no evidence invented |
 | Title/method mismatch | Evidence-aligned title/objectives/method drafted; formal primary record still missing |
 | Scholarly context | Improved with 13 audited peer-reviewed sources and transfer limitations |
@@ -23,9 +23,9 @@ The conditions are external and material: dataset source/licence, primary propos
 
 ## 3. Dataset provenance and licensing
 
-The file is demonstrably a Solana DEX/swap-event table, not an NFT sales table. A read-only Solana mainnet query confirmed that the first signature exists and matches selected CSV fields. This improves authenticity confidence for that row only. It does not identify the dataset provider or establish completeness, derivation, licence, academic-use permission or redistribution rights.
+The file is demonstrably a Solana DEX/swap-event table, not an NFT sales table. Dune Analytics query 6561080 is the confirmed source. A read-only Solana mainnet query confirmed that the first signature exists and matches selected CSV fields. This improves authenticity confidence for that row only. It does not establish completeness, the exact historical extraction configuration, licence, academic-use permission or redistribution rights.
 
-Status: **BLOCKED FOR REDISTRIBUTION AND INDEPENDENT ACQUISITION.** Keep raw and row-level derivatives private/untracked until provider terms and permission are documented.
+Status: **BLOCKED FOR REDISTRIBUTION AND EXACT INDEPENDENT RECONSTRUCTION.** Keep raw and row-level derivatives private/untracked until applicable terms and permission are documented.
 
 ## 4. Research alignment recommendation
 
@@ -93,7 +93,7 @@ One preliminary batch-demonstration command omitted mandatory CLI arguments and 
 
 ## 11. Remaining blockers ranked by severity
 
-1. **Critical — data rights/provenance:** no provider, acquisition specification, licence or redistribution permission.
+1. **Critical — extraction evidence and data rights:** source query confirmed; historical SQL revision, execution metadata, parameters, acquisition detail and redistribution permission incomplete.
 2. **Critical — construct validity:** no independent fraud labels or direct counterparty/control evidence.
 3. **High — academic governance:** primary proposal, full rubric and written amendment/approval record absent.
 4. **High — AI disclosure:** required final disclosure absent; student/policy review needed.

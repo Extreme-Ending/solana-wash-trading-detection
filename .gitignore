@@ -74,6 +74,10 @@ Thumbs.db
 /mlruns/
 /mlflow.db
 
+# Presentation is submitted separately; keep local copies outside the public repository
+/reports/submission/solana_wallet_risk_presentation.pptx
+/reports/submission/solana_wallet_risk_presentation_outline.md
+
 # Ignore environment files
 .env
 .env.*

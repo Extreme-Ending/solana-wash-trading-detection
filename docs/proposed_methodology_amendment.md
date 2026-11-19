@@ -39,7 +39,7 @@ Use chronological reference, exploratory validation and descriptive holdout cuto
 - primary approved proposal and marking rubric;
 - written amendment/approval record, date and approved wording;
 - confirmation of whether the recommended title is formally adopted;
-- dataset provider, extraction method and permitted-use evidence; and
+- extraction-time metadata and permitted-use evidence for confirmed Dune query 6561080; and
 - institutionally compliant AI-assistance disclosure.
 
 ## Student confirmation fields

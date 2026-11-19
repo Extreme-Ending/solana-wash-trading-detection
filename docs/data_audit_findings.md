@@ -73,7 +73,7 @@ The supplied `prev_event_time` never occurs after its current event for 8,478 co
 
 ## Provenance and proposal differences
 
-The local file checksum makes repeated local audits comparable, but it does not establish origin or lawful reuse. The on-chain provider/API, extraction query, collection method, creator, licence, permitted reuse, independent snapshot/version, and source-issued checksum remain undocumented.
+The local file checksum makes repeated local audits comparable. Dune Analytics query 6561080 is the confirmed source, but the exact historical SQL revision, execution identifiers, parameters, extraction timestamps, batch manifest, licence, permitted reuse, independent snapshot/version, and source-issued checksum remain undocumented.
 
 Compared with the approved description available to the project:
 
@@ -87,7 +87,7 @@ These are dataset-to-proposal differences, not evidence that any row is fraudule
 
 ## Requirements before Phase 2
 
-1. Preserve `nft.csv` unchanged and confirm its provider/API, extraction query, licence, collection method, snapshot/version, and chain context.
+1. Preserve `nft.csv` unchanged and archive any available extraction-time SQL, execution identifiers, parameters, timestamps, batch manifest, licence, snapshot/version, and chain context for confirmed Dune query 6561080.
 2. Define the event grain and decide how transaction/instruction identifiers determine distinct rows; do not drop repeated hashes by default.
 3. Establish explicit, tested policies for timestamp parsing, missingness, nonpositive values, amount outliers, token-pair gaps, DEX naming, and source-specific instruction gaps.
 4. Recompute or validate temporal lineage from sorted events and enforce `block_time < as_of` in all later features.

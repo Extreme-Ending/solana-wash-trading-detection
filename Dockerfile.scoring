@@ -22,7 +22,7 @@ FROM ${PYTHON_IMAGE} AS runtime
 LABEL org.opencontainers.image.title="Solana wallet experimental anomaly API" \
       org.opencontainers.image.description="Firebase-authenticated, checksum-pinned experimental unsupervised anomaly scoring" \
       org.opencontainers.image.source="https://github.com/Extreme-Ending/solana-wash-trading-detection" \
-      org.opencontainers.image.experimental-artifact-sha256="3e35561b0bf5db42c5b7146e7ff568e313be1beb1be724997356af45f5533035"
+      org.opencontainers.image.experimental-artifact-sha256="de349dd2284db122ef528c03f0c61e7ab75f92ad002489399d074f554a61ebe5"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -41,9 +41,9 @@ RUN groupadd --gid 10001 appuser \
         --home-dir /nonexistent --shell /usr/sbin/nologin appuser
 
 COPY --from=builder /install/ /usr/local/
-COPY --chown=10001:10001 artifacts/experimental/anomaly_models.joblib \
+COPY --chown=10001:10001 artifacts/release/4B.1/anomaly_models.joblib \
     /app/artifacts/experimental/anomaly_models.joblib
-COPY --chown=10001:10001 artifacts/experimental/anomaly_models_manifest.json \
+COPY --chown=10001:10001 artifacts/release/4B.1/anomaly_models_manifest.json \
     /app/artifacts/experimental/anomaly_models_manifest.json
 
 USER 10001:10001

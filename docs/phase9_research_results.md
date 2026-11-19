@@ -17,7 +17,7 @@ This section consolidates actual label-free experimental evidence for an MSc dis
 | Registered features | 29 |
 | Total point-in-time snapshots | 5,996 |
 
-The schema supports DEX swaps, not NFT marketplace sales. Provider, collection query, sampling frame and licence remain unknown. Fee missingness and sparse wallet histories are material. The cleaner preserves missingness, reports invalid essential evidence, recomputes prior-event timing and does not create labels or graph edges.
+The schema supports DEX swaps, not NFT marketplace sales. Dune Analytics query 6561080 is the confirmed source. The exact historical SQL revision, execution metadata, parameters, sampling procedure and data-sharing permission remain unavailable. Fee missingness and sparse wallet histories are material. The cleaner preserves missingness, reports invalid essential evidence, recomputes prior-event timing and does not create labels or graph edges.
 
 ## Feature engineering
 
@@ -94,7 +94,7 @@ No real wallet case study can be labelled a success or error because no independ
 
 ## Threats to validity
 
-1. Unknown source, selection mechanism, completeness and licence.
+1. Incomplete extraction metadata, unknown selection completeness and unresolved data-sharing permission.
 2. DEX data does not match the original NFT marketplace framing.
 3. No independently verified outcome labels.
 4. No wallet-to-wallet edges for coordination analysis.
