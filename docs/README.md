@@ -14,6 +14,7 @@ This index separates current operating documentation from historical research an
 | Deployment | [Deployment](deployment.md) | Current cloud design, release controls, and operational checks |
 | Reproduction | [Reproducibility](reproducibility.md) | Commands, fingerprints, tests, and environment constraints |
 | Claims | [Research claims and limitations](research_claims_and_limitations.md) | Supported conclusions and unresolved limitations |
+| Delivery | [Final deliverables checklist](final_deliverables_checklist.md) | Submission evidence, readiness decision and open gates |
 
 The root [README](../README.md) is the concise project entry point. [AI_USE.md](../AI_USE.md) records the use of AI tools.
 

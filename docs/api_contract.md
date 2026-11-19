@@ -14,7 +14,7 @@ Production disables OpenAPI and documentation routes. Development mode exposes `
 
 | Method and path | Access | Success behavior |
 | --- | --- | --- |
-| `GET /healthz` | Public | Process health only |
+| `GET /healthz` | Local/container | Docker process health; the Cloud Run edge can reserve paths ending in `z` |
 | `GET /v1/health` | Public | Hosted application health alias |
 | `GET /readyz` | Public | Reports whether verified experimental scoring is available |
 | `POST /v1/features/preview` | Protected | Builds one registered 29-feature snapshot |
@@ -22,6 +22,8 @@ Production disables OpenAPI and documentation routes. Development mode exposes `
 | `POST /v1/score/batch` | Protected | Scores and ranks a bounded submitted batch |
 
 `/readyz` returns HTTP 200 only when scoring is explicitly enabled and the model bundle passes all integrity checks. It returns HTTP 503 with `MODEL_NOT_APPROVED` when scoring is disabled, or `EXPERIMENTAL_MODEL_UNAVAILABLE` when enabled configuration cannot load a valid artifact.
+
+Use `GET /v1/health` for external Cloud Run monitoring. Cloud Run documents that some paths ending in `z` are reserved, which explains why the local `/healthz` route can work inside the container while the exact hosted path is intercepted before FastAPI.
 
 ## Authentication
 

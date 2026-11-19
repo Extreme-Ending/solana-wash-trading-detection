@@ -204,7 +204,7 @@ Generated data, reports, and model artifacts remain ignored. See the [reproducib
 | Endpoint | Access | Purpose |
 | --- | --- | --- |
 | `GET /v1/health` | Public | Hosted application process health |
-| `GET /healthz` | Public | Container process health |
+| `GET /healthz` | Local/container | Docker process health; Cloud Run external checks use `/v1/health` because paths ending in `z` can be reserved |
 | `GET /readyz` | Public | Experimental scoring readiness |
 | `POST /v1/features/preview` | Firebase token and approved UID | Build one 29-feature snapshot |
 | `POST /v1/score` | Firebase token and approved UID | Score one supplied wallet history |

@@ -40,7 +40,7 @@ An anomaly score indicates that a wallet snapshot differs from the training refe
 - Cloud Run platform reachability is separate from FastAPI authentication and authorization.
 - The per-instance rate limiter is not a distributed abuse-control system.
 - Model loading is intentionally unavailable if the artifact or configuration fails validation.
-- The live `/healthz` path has previously returned an edge-level 404 while `/v1/health` remained available. This requires operational investigation.
+- Cloud Run reserves some paths ending in `z`; external monitoring therefore uses `/v1/health`, while `/healthz` remains a local Docker health route.
 
 ## Appropriate use
 

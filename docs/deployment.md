@@ -37,7 +37,7 @@ The frontend uses public Firebase Web configuration and the exact HTTPS backend 
 
 The browser must be able to reach Cloud Run. Platform reachability does not authorize analysis. Protected routes still require a valid Firebase bearer token, verified Google email, correct Firebase project, and an approved UID. Public routes expose only health and readiness metadata.
 
-The live alias `GET /v1/health` is the recommended browser health check. A prior live verification observed `GET /healthz` returning a Google-edge 404 even though the route works in source and local containers. This routing discrepancy remains an operational issue to investigate. It does not justify weakening authentication.
+The live alias `GET /v1/health` is the production health check. Read-only verification found that exact `/healthz` returns Google-edge HTML 404, while `/healthz/` reaches FastAPI and redirects, and the route returns 200 in local containers. [Cloud Run documents](https://cloud.google.com/run/docs/known-issues) that some paths ending in `z` are reserved. The service uses a TCP startup probe on port 8080, so hosted `/healthz` is not required for platform startup. Keep `/healthz` for local Docker health and use `/v1/health` for external monitoring; no ingress, proxy or authentication change is needed.
 
 ## Acceptance checks
 
